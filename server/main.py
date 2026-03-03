@@ -5,7 +5,6 @@ FastAPI application with health endpoints, config loader, and structured logging
 """
 
 import logging
-import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,21 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from server.config import get_settings
 from server.datasets import load_sample_data
 from server.engine import db_manager
+from server.logging_config import setup_logging
+from server.middleware import AccessLogMiddleware
 from server.routers import export, health, query, schema
 
-
-# Configure logging before creating app
-def _setup_logging(level: str) -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-        stream=sys.stdout,
-    )
-
-
 settings = get_settings()
-_setup_logging(settings.log_level)
+setup_logging(settings.log_level, settings.log_format)
 logger = logging.getLogger("query_service")
 
 
@@ -49,6 +39,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(AccessLogMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8765", "http://127.0.0.1:8765", "http://localhost:8080", "http://127.0.0.1:8080"],
