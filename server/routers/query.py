@@ -335,33 +335,11 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
-    start = time.perf_counter()
-    sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-    rows = await db_manager.execute_sql_async(
-        sql,
-        tuple(params) if params else None,
-        dataset_id=body.dataset_id,
-    )
-    if rows:
-        total_count = int(rows[0][-1])
-        values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
     else:
         result = await _execute()
 
     duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
-    # Fallback to count when page is empty (e.g., offset beyond available values)
-    if total_count == 0 and (paging.offset if paging else 0) > 0:
-        count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        count_rows = await db_manager.execute_sql_async(
-            count_sql,
-            tuple(count_params) if count_params else None,
-            dataset_id=body.dataset_id,
-        )
-        if count_rows:
-            total_count = int(count_rows[0][0])
-    duration_ms = (time.perf_counter() - start) * 1000
-
     logger.info(
         "picklist query executed",
         extra={
@@ -372,8 +350,6 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
             "total_count": resp_body["total_count"],
             "cache_status": cache_status,
             "cache_source": cache_source,
-            "row_count": len(rows),
-            "total_count": total_count,
             "queue_wait_ms": round(queue_wait_ms, 2),
             "execution_ms": round(execution_ms, 2),
         },
