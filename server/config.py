@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Optional: path to datasets config YAML (for dataset/schema loader)
     datasets_config_path: Optional[str] = None
 
+    # Sample data seeding (disable in production)
+    seed_sample_data: bool = True
+
     # DuckDB
     data_dir: Optional[str] = None  # Path to DuckDB database file; None = in-memory
 
