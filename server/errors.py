@@ -49,6 +49,18 @@ class DatasetNotFoundError(AppError):
         )
 
 
+class DatasetUnavailableError(AppError):
+    """Raised when dataset metadata exists but backing table/data is unavailable."""
+
+    def __init__(self, dataset_id: str) -> None:
+        super().__init__(
+            code="DATASET_UNAVAILABLE",
+            message="Dataset is configured but not available for querying",
+            status_code=409,
+            details={"dataset_id": dataset_id},
+        )
+
+
 class ExportNotFoundError(AppError):
     """Raised when an export job ID does not exist in the job store."""
 
@@ -97,13 +109,39 @@ class TooManyConcurrentExportsError(AppError):
         )
 
 
-class CellsWindowTooLargeError(AppError):
-    """Raised when requested cells window exceeds configured bounds."""
+class QueryTimeoutError(AppError):
+    """Raised when a query exceeds the configured timeout budget."""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
+    def __init__(self, timeout_seconds: float) -> None:
         super().__init__(
-            code="CELLS_WINDOW_TOO_LARGE",
-            message=message,
-            status_code=400,
-            details=details,
+            code="QUERY_TIMEOUT",
+            message=f"Query exceeded timeout of {timeout_seconds} seconds",
+            status_code=504,
+            details={"timeout_seconds": timeout_seconds},
+        )
+
+
+class QueryCancelledError(AppError):
+    """Raised when a query is cancelled due to client disconnect."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            code="QUERY_CANCELLED",
+            message="Query cancelled because the client disconnected",
+            status_code=499,
+        )
+
+
+class TooManyConcurrentQueriesError(AppError):
+    """Raised when the in-flight query limit and queue depth are exceeded."""
+
+    def __init__(self, max_concurrent: int, max_queue_depth: int | None) -> None:
+        super().__init__(
+            code="TOO_MANY_QUERIES",
+            message="Query service is overloaded, please retry later",
+            status_code=429,
+            details={
+                "max_concurrent": max_concurrent,
+                "max_queue_depth": max_queue_depth,
+            },
         )

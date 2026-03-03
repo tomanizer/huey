@@ -34,6 +34,14 @@ class TestDateRangeSingle:
         with pytest.raises(ValidationError, match="YYYY-MM-DD"):
             DateRangeSingle(type="single", date="")
 
+    def test_invalid_calendar_day(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeSingle(type="single", date="2026-02-30")
+
+    def test_invalid_calendar_month(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeSingle(type="single", date="2026-13-01")
+
     def test_wrong_type_literal(self) -> None:
         with pytest.raises(ValidationError):
             DateRangeSingle(type="range", date="2026-03-01")
@@ -60,6 +68,14 @@ class TestDateRangeRange:
     def test_bad_end_format(self) -> None:
         with pytest.raises(ValidationError, match="YYYY-MM-DD"):
             DateRangeRange(type="range", start="2026-01-01", end="bad")
+
+    def test_bad_start_calendar_date(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeRange(type="range", start="2026-02-30", end="2026-03-01")
+
+    def test_bad_end_calendar_date(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeRange(type="range", start="2026-03-01", end="2026-13-01")
 
 
 class TestTupleFieldSpec:
