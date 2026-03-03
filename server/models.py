@@ -104,6 +104,13 @@ class PagingSpec(BaseModel):
     offset: int = Field(default=0, ge=0)
 
 
+class WindowSpec(BaseModel):
+    """Row/column window for virtualized cells requests."""
+
+    start_index: int = Field(default=0, ge=0)
+    count: int | None = Field(default=None, ge=1)
+
+
 class PagingResponse(BaseModel):
     """Paging metadata returned alongside tuple/picklist responses."""
 
@@ -125,8 +132,8 @@ class TuplesQueryBody(BaseModel):
 class CellsQueryBody(BaseModel):
     """Body for /query/cells, driving aggregation axes and filters."""
 
-    rows: dict[str, int] | None = None  # reserved: tech spec virtualized paging
-    columns: dict[str, int] | None = None  # reserved: tech spec virtualized paging
+    rows: WindowSpec | None = None  # virtualized row window (start/count)
+    columns: WindowSpec | None = None  # virtualized column window (start/count)
     axes: dict[str, Any] | None = None
     filters: list[TupleFilter] | None = None
 

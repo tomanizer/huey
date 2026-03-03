@@ -8,12 +8,14 @@ import time
 from fastapi import APIRouter, Depends, Request
 
 from server import datasets
+from server.config import get_settings
 from server.auth import require_api_key
 from server.engine import db_manager
-from server.errors import DatasetNotFoundError
+from server.errors import CellsWindowTooLargeError, DatasetNotFoundError
 from server.models import (
     CellsResponse,
     PagingResponse,
+    PagingSpec,
     PicklistResponse,
     QueryCellsRequest,
     QueryPicklistRequest,
@@ -25,9 +27,11 @@ from server.query_builder import (
     build_cells_sql,
     build_picklist_count_sql,
     build_picklist_sql,
-    build_tuples_sql,
     build_tuples_count_sql,
+    build_tuples_sql,
 )
+from server.config import get_settings
+from server.query_budget import get_query_budget
 from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.query")
@@ -42,22 +46,35 @@ def _apply_client_request_id(body, request: Request) -> None:
         request.state.request_id = rid
 
 
+async def _execute_with_budget(request: Request, coro):
+    """Run a SQL coroutine with query budget enforcement."""
+    budget = get_query_budget()
+    async with budget.acquire() as queue_wait_ms:
+        result, execution_ms = await budget.run_with_budget(request, coro)
+    return result, queue_wait_ms, execution_ms
+
+
 @router.post("/tuples", response_model=TuplesResponse)
 async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
+    settings = get_settings()
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
-    paging = body.query.paging
-    limit = paging.limit if paging else 200
-    offset = paging.offset if paging else 0
+    paging = body.query.paging or PagingSpec(limit=settings.tuples_default_limit, offset=0)
+    limit = paging.limit
+    offset = paging.offset
 
     start = time.perf_counter()
     sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-    rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
+    rows = await db_manager.execute_sql_async(
+        sql,
+        tuple(params) if params else None,
+        dataset_id=body.dataset_id,
+    )
     if rows:
         total_count = int(rows[0][-1])
         items = [TupleItem(values=list(row[:-1])) for row in rows]
@@ -68,7 +85,11 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
     # Fallback to a lightweight count when page is empty (e.g., offset beyond results)
     if total_count == 0 and (paging.offset if paging else 0) > 0:
         count_sql, count_params = build_tuples_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        count_rows = await db_manager.execute_sql_async(count_sql, tuple(count_params) if count_params else None)
+        count_rows = await db_manager.execute_sql_async(
+            count_sql,
+            tuple(count_params) if count_params else None,
+            dataset_id=body.dataset_id,
+        )
         if count_rows:
             total_count = int(count_rows[0][0])
     duration_ms = (time.perf_counter() - start) * 1000
@@ -81,6 +102,8 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
             "duration_ms": round(duration_ms, 2),
             "row_count": len(rows),
             "total_count": total_count,
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 
@@ -100,10 +123,53 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
+    settings = get_settings()
+
+    row_window = body.query.rows
+    col_window = body.query.columns
+
+    row_count = row_window.count if row_window else None
+    col_count = col_window.count if col_window else None
+
+    if row_count and row_count > settings.max_axis_cardinality:
+        raise CellsWindowTooLargeError(
+            "Row window exceeds maximum axis cardinality",
+            {"max_axis_cardinality": settings.max_axis_cardinality, "requested_rows": row_count},
+        )
+    if col_count and col_count > settings.max_axis_cardinality:
+        raise CellsWindowTooLargeError(
+            "Column window exceeds maximum axis cardinality",
+            {"max_axis_cardinality": settings.max_axis_cardinality, "requested_columns": col_count},
+        )
+
+    # Guard oversize single-axis requests even when only one dimension is supplied.
+    if row_count and row_count > settings.max_cells_per_response:
+        raise CellsWindowTooLargeError(
+            "Requested row window exceeds maximum cells per response",
+            {"max_cells_per_response": settings.max_cells_per_response, "requested_rows": row_count},
+        )
+    if col_count and col_count > settings.max_cells_per_response:
+        raise CellsWindowTooLargeError(
+            "Requested column window exceeds maximum cells per response",
+            {"max_cells_per_response": settings.max_cells_per_response, "requested_columns": col_count},
+        )
+    if row_count and col_count and (row_count * col_count) > settings.max_cells_per_response:
+        raise CellsWindowTooLargeError(
+            "Requested cells window exceeds maximum cells per response",
+            {
+                "max_cells_per_response": settings.max_cells_per_response,
+                "requested_rows": row_count,
+                "requested_columns": col_count,
+            },
+        )
 
     start = time.perf_counter()
     sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-    rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
+    rows = await db_manager.execute_sql_async(
+        sql,
+        tuple(params) if params else None,
+        dataset_id=body.dataset_id,
+    )
     duration_ms = (time.perf_counter() - start) * 1000
 
     logger.info(
@@ -113,6 +179,8 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
             "endpoint": "cells",
             "duration_ms": round(duration_ms, 2),
             "row_count": len(rows),
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 
@@ -126,18 +194,24 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
 async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
+    settings = get_settings()
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging
-    limit = paging.limit if paging else 100
-    offset = paging.offset if paging else 0
+    paging = paging or PagingSpec(limit=settings.picklist_default_limit, offset=0)
+    limit = paging.limit
+    offset = paging.offset
 
     start = time.perf_counter()
     sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-    rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
+    rows = await db_manager.execute_sql_async(
+        sql,
+        tuple(params) if params else None,
+        dataset_id=body.dataset_id,
+    )
     if rows:
         total_count = int(rows[0][-1])
         values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
@@ -148,7 +222,11 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
     # Fallback to count when page is empty (e.g., offset beyond available values)
     if total_count == 0 and (paging.offset if paging else 0) > 0:
         count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        count_rows = await db_manager.execute_sql_async(count_sql, tuple(count_params) if count_params else None)
+        count_rows = await db_manager.execute_sql_async(
+            count_sql,
+            tuple(count_params) if count_params else None,
+            dataset_id=body.dataset_id,
+        )
         if count_rows:
             total_count = int(count_rows[0][0])
     duration_ms = (time.perf_counter() - start) * 1000
@@ -161,6 +239,8 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
             "duration_ms": round(duration_ms, 2),
             "row_count": len(rows),
             "total_count": total_count,
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 

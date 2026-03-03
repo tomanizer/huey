@@ -80,6 +80,20 @@ def test_query_tuples_paging(client: TestClient) -> None:
     assert data["total_count"] == 5
 
 
+def test_query_tuples_paging_limit_one(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 1, "offset": 0}},
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["paging"]["limit"] == 1
+    assert data["paging"]["returned"] <= 1
+    assert data["total_count"] >= data["paging"]["returned"]
+
+
 def test_query_tuples_paging_offset(client: TestClient) -> None:
     body_page1 = {
         "dataset_id": "trades_v1",
@@ -92,6 +106,26 @@ def test_query_tuples_paging_offset(client: TestClient) -> None:
     page1_symbols = {item["values"][0] for item in r1.json()["items"]}
     page2_symbols = {item["values"][0] for item in r2.json()["items"]}
     assert page1_symbols.isdisjoint(page2_symbols)
+
+
+def test_query_tuples_paging_offset_limit_one(client: TestClient) -> None:
+    base_query = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol", "sort": "ASC"}]},
+    }
+    body_page1 = {**base_query, "query": {**base_query["query"], "paging": {"limit": 1, "offset": 0}}}
+    body_page2 = {**base_query, "query": {**base_query["query"], "paging": {"limit": 1, "offset": 1}}}
+    r1 = client.post("/query/tuples", json=body_page1)
+    r2 = client.post("/query/tuples", json=body_page2)
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    data1 = r1.json()
+    data2 = r2.json()
+    assert data1["paging"]["returned"] <= 1
+    assert data2["paging"]["returned"] <= 1
+    if data1["total_count"] > 1:
+        assert data1["items"] != data2["items"]
 
 
 def test_query_tuples_empty_page_reports_total(client: TestClient) -> None:

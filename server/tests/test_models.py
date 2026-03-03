@@ -216,7 +216,9 @@ class TestQueryCellsRequest:
             },
         )
         assert isinstance(req.query, CellsQueryBody)
-        assert req.query.rows == {"start_index": 0, "count": 10}
+        assert req.query.rows is not None
+        assert req.query.rows.start_index == 0
+        assert req.query.rows.count == 10
 
 
 class TestQueryPicklistRequest:

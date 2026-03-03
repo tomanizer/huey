@@ -172,6 +172,7 @@ def build_cells_sql(
     query: CellsQueryBody,
     date_range: DateRange,
     schema_fields: set[str],
+    max_cells: int | None = None,
 ) -> tuple[str, list[Any]]:
     """
     Generate SQL for a cells query: aggregated measure values grouped by dimensions.
@@ -223,8 +224,55 @@ def build_cells_sql(
 
     group_clause = (" GROUP BY " + ", ".join(dim_cols)) if dim_cols else ""
 
-    sql_body = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}"
-    sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
+    base_cte = f'base AS (SELECT * FROM {table}{where_clause})'
+    ctes = [base_cte]
+
+    row_window = query.rows
+    row_cte_name = None
+    if row_fields:
+        row_cte_name = "row_window"
+        row_select_cols = ", ".join(_quote(f) for f in row_fields)
+        row_order = " ORDER BY " + ", ".join(_quote(f) for f in row_fields)
+        row_limit = ""
+        if row_window:
+            limit_val = row_window.count
+            offset_val = row_window.start_index or 0
+            if limit_val is not None:
+                row_limit = f" LIMIT {limit_val} OFFSET {offset_val}"
+            elif offset_val:
+                row_limit = f" OFFSET {offset_val}"
+        ctes.append(f"{row_cte_name} AS (SELECT DISTINCT {row_select_cols} FROM base{row_order}{row_limit})")
+
+    col_window = query.columns
+    col_cte_name = None
+    if col_fields:
+        col_cte_name = "col_window"
+        col_select_cols = ", ".join(_quote(f) for f in col_fields)
+        col_order = " ORDER BY " + ", ".join(_quote(f) for f in col_fields)
+        col_limit = ""
+        if col_window:
+            limit_val = col_window.count
+            offset_val = col_window.start_index or 0
+            if limit_val is not None:
+                col_limit = f" LIMIT {limit_val} OFFSET {offset_val}"
+            elif offset_val:
+                col_limit = f" OFFSET {offset_val}"
+        ctes.append(f"{col_cte_name} AS (SELECT DISTINCT {col_select_cols} FROM base{col_order}{col_limit})")
+
+    with_clause = f"WITH {', '.join(ctes)}"
+
+    joins = []
+    if row_cte_name:
+        joins.append(f"INNER JOIN {row_cte_name} USING ({', '.join(_quote(f) for f in row_fields)})")
+    if col_cte_name:
+        joins.append(f"INNER JOIN {col_cte_name} USING ({', '.join(_quote(f) for f in col_fields)})")
+
+    from_clause = " FROM base " + " ".join(joins)
+
+    order_clause = (" ORDER BY " + ", ".join(dim_cols)) if dim_cols else ""
+    limit_clause = f" LIMIT {max_cells}" if max_cells else ""
+
+    sql = f"{with_clause} SELECT {select_clause}{from_clause}{group_clause}{order_clause}{limit_clause}"
     return sql, params
 
 

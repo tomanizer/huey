@@ -65,6 +65,20 @@ def test_query_picklist_paging(client: TestClient) -> None:
     assert data["total_count"] == 5
 
 
+def test_query_picklist_paging_limit_one(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"field": "symbol", "paging": {"limit": 1, "offset": 0}},
+    }
+    r = client.post("/query/picklist", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["paging"]["limit"] == 1
+    assert data["paging"]["returned"] <= 1
+    assert data["total_count"] >= data["paging"]["returned"]
+
+
 def test_query_picklist_empty_page_reports_total(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",
