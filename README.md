@@ -9,6 +9,16 @@ Or, __Try Huey now__ with some [sample reports](https://github.com/rpbouman/huey
 
 (Note: this is a live demo that allows you to runvHuey without even downloading it. Even though it's available online, it's still a static webapp: any data you load into it is safe, and stays on your local client.)
 
+## Backend / Server Docs
+
+This repository includes the QueryService backend in `server/`.
+
+Start here for complete backend documentation:
+
+- [Backend documentation index](docs/server/README.md)
+- [API reference](docs/server/api-reference.md)
+- [Configuration reference](docs/server/configuration-reference.md)
+
 ![image](https://github.com/user-attachments/assets/f9d49b89-f29e-49b4-accf-64545b3e4c62)
 
 ## Key features

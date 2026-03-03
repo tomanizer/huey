@@ -52,6 +52,25 @@ def test_query_picklist_with_filter(client: TestClient) -> None:
     assert "AAPL" not in values
 
 
+def test_query_picklist_with_search_and_between_filter(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        "query": {
+            "field": "symbol",
+            "search": "AA*",
+            "filters": [{"field": "volume", "operator": "BETWEEN", "values": [1000, 3000]}],
+            "paging": {"limit": 10, "offset": 0},
+        },
+    }
+    r = client.post("/query/picklist", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total_count"] == 1
+    assert data["paging"]["returned"] == 1
+    assert [v["value"] for v in data["values"]] == ["AAPL"]
+
+
 def test_query_picklist_paging(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",

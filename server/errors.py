@@ -169,7 +169,7 @@ class QueryCancelledError(AppError):
 
 
 class CellsWindowTooLargeError(AppError):
-    """Raised when a /query/cells window request exceeds configured limits."""
+    """Raised when a requested cells window exceeds configured limits."""
 
     def __init__(self, message: str, details: dict[str, Any]) -> None:
         super().__init__(

@@ -5,7 +5,7 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Request
 
 from server import datasets
 from server.auth import require_api_key
@@ -48,14 +48,11 @@ def _apply_client_request_id(body, request: Request) -> None:
 
 @router.post("/tuples", response_model=TuplesResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_tuples(
-    request: Request,
-    body: QueryTuplesRequest,
-    response: Response,
-    _api_key: str = Depends(require_api_key),
-) -> TuplesResponse:
+async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
+    queue_wait_ms = 0.0
+    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
@@ -124,7 +121,6 @@ async def post_query_tuples(
 
     duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
-
     logger.info(
         "tuples query executed",
         extra={
@@ -135,6 +131,8 @@ async def post_query_tuples(
             "total_count": resp_body["total_count"],
             "cache_status": cache_status,
             "cache_source": cache_source,
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 
@@ -147,14 +145,11 @@ async def post_query_tuples(
 
 @router.post("/cells", response_model=CellsResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_cells(
-    request: Request,
-    body: QueryCellsRequest,
-    response: Response,
-    _api_key: str = Depends(require_api_key),
-) -> CellsResponse:
+async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: str = Depends(require_api_key)) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
+    queue_wait_ms = 0.0
+    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
@@ -244,6 +239,8 @@ async def post_query_cells(
             "row_count": result.get("row_count", 0),
             "cache_status": cache_status,
             "cache_source": cache_source,
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 
@@ -252,14 +249,11 @@ async def post_query_cells(
 
 @router.post("/picklist", response_model=PicklistResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_picklist(
-    request: Request,
-    body: QueryPicklistRequest,
-    response: Response,
-    _api_key: str = Depends(require_api_key),
-) -> PicklistResponse:
+async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
+    queue_wait_ms = 0.0
+    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
@@ -328,7 +322,6 @@ async def post_query_picklist(
 
     duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
-
     logger.info(
         "picklist query executed",
         extra={
@@ -339,6 +332,8 @@ async def post_query_picklist(
             "total_count": resp_body["total_count"],
             "cache_status": cache_status,
             "cache_source": cache_source,
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 
