@@ -47,7 +47,11 @@ def validate_tuples_query_fields(query: TuplesQueryBody, schema_fields: set[str]
     _raise_if_unknown(errors)
 
 
-def _validate_axes_fields(axes: dict[str, Any] | None, errors: list[dict[str, Any]], schema_fields: set[str]) -> None:
+def _validate_axes_fields(
+    axes: dict[str, Any] | None,
+    errors: list[dict[str, Any]],
+    schema_fields: set[str],
+) -> None:
     axis_names = ("rows", "columns", "measures")
     axes_data = axes or {}
     for axis_name in axis_names:
@@ -55,10 +59,19 @@ def _validate_axes_fields(axes: dict[str, Any] | None, errors: list[dict[str, An
             if isinstance(item, dict) and isinstance(item.get("field"), str):
                 field_name = item["field"]
                 if field_name not in schema_fields:
-                    errors.append(_unknown_field_error(["body", "query", "axes", axis_name, idx, "field"], field_name))
+                    errors.append(
+                        _unknown_field_error(
+                            ["body", "query", "axes", axis_name, idx, "field"],
+                            field_name,
+                        )
+                    )
 
 
-def _validate_filter_fields(filters: list[TupleFilter] | None, errors: list[dict[str, Any]], schema_fields: set[str]) -> None:
+def _validate_filter_fields(
+    filters: list[TupleFilter] | None,
+    errors: list[dict[str, Any]],
+    schema_fields: set[str],
+) -> None:
     for idx, f in enumerate(filters or []):
         if f.field not in schema_fields:
             errors.append(_unknown_field_error(["body", "query", "filters", idx, "field"], f.field))

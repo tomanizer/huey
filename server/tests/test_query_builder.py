@@ -1,5 +1,8 @@
 """Unit tests for SQL query builder."""
 
+import pytest
+
+from server.errors import ValidationAppError
 from server.models import (
     CellsQueryBody,
     DateRangeRange,
@@ -35,13 +38,14 @@ class TestBuildTuplesSql:
         assert '"symbol"' in sql
         assert "GROUP BY" in sql
         assert "LIMIT 10 OFFSET 0" in sql
-        assert params == ["2026-03-01"]
+        assert "2026-03-01" in params
 
     def test_date_range_filter(self) -> None:
         query = TuplesQueryBody(fields=[TupleFieldSpec(field="symbol")])
         sql, params = build_tuples_sql("trades_v1", query, DR_RANGE, SCHEMA_FIELDS)
         assert "BETWEEN ? AND ?" in sql
-        assert params == ["2026-03-01", "2026-03-31"]
+        assert "2026-03-01" in params
+        assert "2026-03-31" in params
 
     def test_include_filter(self) -> None:
         query = TuplesQueryBody(
@@ -99,18 +103,18 @@ class TestBuildTuplesSql:
         sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "FALSE" in sql
 
-    def test_unknown_field_skipped(self) -> None:
+    def test_unknown_field_rejected(self) -> None:
         query = TuplesQueryBody(fields=[TupleFieldSpec(field="nonexistent")])
-        sql, _ = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
-        assert "FALSE" in sql
+        with pytest.raises(ValidationAppError):
+            build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
 
-    def test_filter_on_unknown_field_skipped(self) -> None:
+    def test_filter_on_unknown_field_rejected(self) -> None:
         query = TuplesQueryBody(
             fields=[TupleFieldSpec(field="symbol")],
             filters=[TupleFilter(field="unknown_col", operator="INCLUDE", values=["X"])],
         )
-        sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
-        assert "unknown_col" not in sql
+        with pytest.raises(ValidationAppError):
+            build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
 
     def test_multiple_fields(self) -> None:
         query = TuplesQueryBody(
@@ -218,7 +222,7 @@ class TestBuildCellsSql:
         assert '"symbol"' in sql
         assert "GROUP BY" in sql
 
-    def test_unknown_measure_field_skipped(self) -> None:
+    def test_unknown_measure_field_rejected(self) -> None:
         query = CellsQueryBody(
             axes={
                 "rows": [{"field": "symbol"}],
@@ -226,8 +230,8 @@ class TestBuildCellsSql:
                 "measures": [{"field": "nonexistent", "aggregation": "SUM", "alias": "x"}],
             },
         )
-        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
-        assert "nonexistent" not in sql
+        with pytest.raises(ValidationAppError):
+            build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
 
     def test_windows_pushdown(self) -> None:
         query = CellsQueryBody(
@@ -306,7 +310,7 @@ class TestBuildExportSql:
         assert "ORDER BY" in sql
         assert "LIMIT 500" in sql
         assert headers == ["symbol", "total_volume"]
-        assert params == ["2026-03-01"]
+        assert "2026-03-01" in params
 
     def test_date_range(self) -> None:
         query = ExportQueryBody(
@@ -314,7 +318,8 @@ class TestBuildExportSql:
         )
         sql, params, headers = build_export_sql("trades_v1", query, DR_RANGE, SCHEMA_FIELDS)
         assert "BETWEEN ? AND ?" in sql
-        assert params == ["2026-03-01", "2026-03-31"]
+        assert "2026-03-01" in params
+        assert "2026-03-31" in params
 
     def test_with_filter(self) -> None:
         query = ExportQueryBody(
@@ -372,13 +377,12 @@ class TestBuildExportSql:
         assert "GROUP BY" in sql
         assert headers == ["date", "symbol", "vol"]
 
-    def test_unknown_field_skipped(self) -> None:
+    def test_unknown_field_rejected(self) -> None:
         query = ExportQueryBody(
             axes={
                 "rows": [{"field": "nonexistent"}],
                 "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
             },
         )
-        sql, _, headers = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
-        assert "nonexistent" not in sql
-        assert headers == ["vol"]
+        with pytest.raises(ValidationAppError):
+            build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)

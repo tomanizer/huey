@@ -38,7 +38,7 @@ class AppError(Exception):
 
 
 class ValidationAppError(AppError):
-    """Raised for request validation failures outside Pydantic model parsing."""
+    """Raised when request body contains unknown or invalid fields (422)."""
 
     def __init__(self, errors: list[dict[str, Any]]) -> None:
         super().__init__(
