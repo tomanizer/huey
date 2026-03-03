@@ -86,6 +86,13 @@ Environment variables (prefix `QUERYSERVICE_`):
 - `QUERYSERVICE_S3_BUCKET` (default `None`)
 - `QUERYSERVICE_S3_REGION` (default `None`)
 - `QUERYSERVICE_SCHEMA_CACHE_TTL_SECONDS` (default `300`, set `0` to disable TTL refresh)
+- `QUERYSERVICE_CACHE_ENABLED` (default `false`)
+- `QUERYSERVICE_CACHE_TTL_SECONDS` (default `120`)
+- `QUERYSERVICE_CACHE_MAX_BYTES` (default `67108864`)
+- `QUERYSERVICE_CACHE_MAX_ITEM_BYTES` (default `1048576`)
+- `QUERYSERVICE_CACHE_ADMISSION_MIN_DURATION_MS` (default `0.0`)
+- `QUERYSERVICE_CACHE_SQLITE_PATH` (default `None`, enables L2 persistence when set)
+- `QUERYSERVICE_CACHE_SQLITE_MAX_BYTES` (default `268435456`)
 
 Schema metadata is cached in memory and automatically refreshed when the datasets
 config file changes on disk or when the TTL elapses. Use the TTL env var to tune
