@@ -163,6 +163,9 @@ class SettingsBase extends EventEmitter {
     function copyData(source, target){
       const keys = Object.keys(source);
       keys.forEach((propertyName) =>{
+        if (propertyName === '__proto__' || propertyName === 'constructor' || propertyName === 'prototype') {
+          return;
+        }
         const sourceValue = source[propertyName];
         let targetValue = target[propertyName];          
         if (targetValue === undefined || targetValue === null || targetValue === '') {

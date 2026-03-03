@@ -24,8 +24,8 @@ class PivotTableUiHighlighting {
         > .pivotTableUiTable {
           .pivotTableUiRow { 
             > .pivotTableUiCell:not( .pivotTableUiStufferCell ):nth-child(`, `) {
-              background-color: let( --huey-highlight-background-color );
-              color: let( --huey-highlight-color );
+              background-color: var( --huey-highlight-background-color );
+              color: var( --huey-highlight-color );
             }
           }
         }
