@@ -361,35 +361,18 @@ class CellSet extends DataSetComponent {
 
   #buildRemoteCellsQuery(tuplesToQuery, tuplesFields, cellsAxisItemsToFetch){
     var queryModel = this.getQueryModel();
-    var rowsAxis = queryModel.getRowsAxis().getItems();
-    var columnsAxis = queryModel.getColumnsAxis().getItems();
-    var filterAxis = queryModel.getFiltersAxis().getItems();
-    var filters = filterAxis.filter(function(item) { return item.filter; }).map(function(item) {
-      return { field: item.columnName, operator: 'in', values: (item.filter && item.filter.values) ? item.filter.values : [] };
-    });
     var rowCount = 0, colCount = 0;
     var tupleSets = this.#tupleSets;
     if (tupleSets[0]) rowCount = Math.max(1, tupleSets[0].getTupleCountSync() || 0);
     if (tupleSets[1]) colCount = Math.max(1, tupleSets[1].getTupleCountSync() || 0);
-    var axes = {
-      rows: rowsAxis.map(function(item) { return { field: item.columnName, derivation: item.derivation || null }; }),
-      columns: columnsAxis.map(function(item) { return { field: item.columnName, derivation: item.derivation || null }; }),
-      measures: (cellsAxisItemsToFetch || []).map(function(item) {
-        return { field: item.columnName, aggregation: item.aggregator || 'sum', alias: item.columnName };
-      })
-    };
-    return {
-      rows: { start_index: 0, count: rowCount },
-      columns: { start_index: 0, count: colCount },
-      axes: axes,
-      filters: filters
-    };
+    return RemoteQueryAdapter.createRemoteCellsQuery(queryModel, rowCount, colCount, cellsAxisItemsToFetch);
   }
 
-  #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount){
+  #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount, measureAliases){
     var cells = apiResponse.cells || [];
     var colCount = columnCount || 1;
     var items = cellsAxisItemsToFetch || [];
+    var aliases = measureAliases || [];
     // Use same key as pivot: getSqlForQueryAxisItem (e.g. "sum(volume)") so cell.values[sqlExpression] finds the value
     var fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map(function(item) {
       return { name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName) };
@@ -401,10 +384,10 @@ class CellSet extends DataSetComponent {
       var row = {};
       row[CellSet.#cellIndexColumnName] = (c.row_index || 0) * colCount + (c.column_index || 0);
       var vals = c.values || {};
-      items.forEach(function(item) {
+      items.forEach(function(item, index) {
         var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
-        // API returns values keyed by alias (we send alias: item.columnName), so read by columnName
-        row[sqlExpression] = vals[item.columnName];
+        var alias = aliases[index] || item.columnName;
+        row[sqlExpression] = vals[alias];
       });
       return row;
     };
@@ -423,10 +406,11 @@ class CellSet extends DataSetComponent {
     if (isRemote && datasource.getManagedConnection().fetchCells) {
       var query = this.#buildRemoteCellsQuery(tuplesToQuery, tuplesFields, cellsAxisItemsToFetch);
       var colCount = query.columns && query.columns.count ? query.columns.count : 1;
-      var dateRange = { type: 'single', date: new Date().toISOString().slice(0, 10) };
+      var measureAliases = query.axes && query.axes.measures ? query.axes.measures.map(function(measure) { return measure.alias; }) : [];
+      var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
       var connection = await this.getManagedConnection();
       var apiResponse = await connection.fetchCells(dateRange, query);
-      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount);
+      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases);
       return resultSet;
     }
 

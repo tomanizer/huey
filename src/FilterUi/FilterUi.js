@@ -1159,35 +1159,40 @@ class FilterDialog {
 
     if (isRemote && datasource.getManagedConnection().fetchPicklist) {
       var search = this.#getSearch();
-      var query = {
-        field: this.#queryAxisItem.columnName,
-        search: search && search.value ? search.value : undefined,
-        filters: this.#getOtherFilterAxisItems(true).filter(function(item) { return item.filter; }).map(function(item) {
-          return { field: item.columnName, operator: 'in', values: (item.filter && item.filter.values) ? Object.keys(item.filter.values) : [] };
-        }),
-        paging: { limit: limit, offset: offset }
-      };
-      var dateRange = { type: 'single', date: new Date().toISOString().slice(0, 10) };
-      var connection = datasource.getManagedConnection();
-      var timeMessage = `Executing filter dialog picklist query.`;
-      console.time(timeMessage);
-      var apiResponse = await connection.fetchPicklist(dateRange, query);
-      console.timeEnd(timeMessage);
-      var totalCount = apiResponse.total_count != null ? apiResponse.total_count : (apiResponse.values || []).length;
-      var values = apiResponse.values || [];
-      var fields = (offset === 0 ? [{ name: FilterDialog.#numRowsColumnName }] : []).concat([{ name: 'value', type: { typeId: 0 } }, { name: 'label', type: { typeId: 0 } }]);
-      var resultSet = {
-        numRows: values.length,
-        schema: { fields: fields },
-        get: function(i) {
-          var v = values[i];
-          var row = { value: v ? v.value : null, label: v ? (v.label != null ? v.label : v.value) : null };
-          if (offset === 0 && i === 0) row[FilterDialog.#numRowsColumnName] = totalCount;
-          return row;
-        }
-      };
-      this.#setBusy(false);
-      return resultSet;
+      try {
+        var query = RemoteQueryAdapter.createRemotePicklistQuery(
+          this.#queryAxisItem,
+          this.#getOtherFilterAxisItems(true),
+          search && search.value ? search.value : undefined,
+          limit,
+          offset
+        );
+        var dateRange = RemoteQueryAdapter.getDateRange(this.#queryModel);
+        var connection = datasource.getManagedConnection();
+        var timeMessage = `Executing filter dialog picklist query.`;
+        console.time(timeMessage);
+        var apiResponse = await connection.fetchPicklist(dateRange, query);
+        console.timeEnd(timeMessage);
+        var totalCount = apiResponse.total_count != null ? apiResponse.total_count : (apiResponse.values || []).length;
+        var values = apiResponse.values || [];
+        var fields = (offset === 0 ? [{ name: FilterDialog.#numRowsColumnName }] : []).concat([{ name: 'value', type: { typeId: 0 } }, { name: 'label', type: { typeId: 0 } }]);
+        var resultSet = {
+          numRows: values.length,
+          schema: { fields: fields },
+          get: function(i) {
+            var v = values[i];
+            var row = { value: v ? v.value : null, label: v ? (v.label != null ? v.label : v.value) : null };
+            if (offset === 0 && i === 0) row[FilterDialog.#numRowsColumnName] = totalCount;
+            return row;
+          }
+        };
+        this.#setBusy(false);
+        return resultSet;
+      }
+      catch (error) {
+        this.#setBusy(false);
+        throw error;
+      }
     }
 
     var sql = this.#getSqlSelectStatementForPickList(offset, limit);

@@ -17,6 +17,7 @@ const scriptOrder = [
   'src/util/event/EventEmitter.js',
   'src/util/event/EventBuffer.js',
   'src/util/sql/SQLHelper.js',
+  'src/DataSource/remote/RemoteQueryAdapter.js',
   'src/Internationalization/Internationalization.js',
   'src/AttributeUi/AttributeUi.js',
   'src/FilterUi/FilterUi.js',
@@ -102,6 +103,7 @@ function loadScripts() {
     'QueryAxisItem',
     'FilterDialog',
     'AttributeUi',
+    'RemoteQueryAdapter',
   ];
   globalNames.forEach((name) => {
     if (typeof dom.window[name] === 'undefined') {

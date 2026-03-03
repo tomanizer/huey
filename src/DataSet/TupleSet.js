@@ -225,33 +225,7 @@ class TupleSet extends DataSetComponent {
 
   #buildRemoteTuplesQuery(limit, offset){
     var queryModel = this.getQueryModel();
-    var axisId = this.#queryAxisId;
-    var queryAxis = queryModel.getQueryAxis(axisId);
-    var items = queryAxis.getItems();
-    if (!items.length) return null;
-    var fields = items.map(function(item) {
-      return {
-        field: item.columnName,
-        derivation: item.derivation || null,
-        sort: 'asc',
-        include_totals: item.includeTotals !== false
-      };
-    });
-    var filterAxis = queryModel.getFiltersAxis();
-    var filterItems = filterAxis.getItems();
-    var filters = filterItems.filter(function(item) { return item.filter; }).map(function(item) {
-      return {
-        field: item.columnName,
-        operator: 'in',
-        values: (item.filter && item.filter.values) ? item.filter.values : []
-      };
-    });
-    return {
-      axis: axisId,
-      fields: fields,
-      filters: filters,
-      paging: { limit: limit, offset: offset }
-    };
+    return RemoteQueryAdapter.createRemoteTuplesQuery(queryModel, this.#queryAxisId, limit, offset);
   }
 
   #remoteResponseToResultSet(apiResponse, axisItems, includeCountAll){
@@ -296,7 +270,7 @@ class TupleSet extends DataSetComponent {
     if (isRemote && datasource.getManagedConnection().fetchTuples) {
       var query = this.#buildRemoteTuplesQuery(limit, offset);
       if (!query) return 0;
-      var dateRange = { type: 'single', date: new Date().toISOString().slice(0, 10) };
+      var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
       var connection = await this.getManagedConnection();
       var apiResponse;
       try {
