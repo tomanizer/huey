@@ -18,6 +18,7 @@ from server.models import (
     TupleFilter,
     TuplesQueryBody,
 )
+from server.relation_builder import build_base_relation
 from server.utils import quote_identifier as _quote
 
 
@@ -74,12 +75,9 @@ def build_tuples_sql(
 
     Returns (sql, params) for parameterized execution.
     """
-    params: list[Any] = []
-    table = _quote(dataset_id)
-
     fields = query.fields or []
     if not fields:
-        return f"SELECT 1 FROM {table} WHERE FALSE", params
+        return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     select_cols = []
     for f in fields:
@@ -87,14 +85,24 @@ def build_tuples_sql(
             continue
         select_cols.append(_quote(f.field))
     if not select_cols:
-        return f"SELECT 1 FROM {table} WHERE FALSE", params
+        return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
+
+    required_columns = {f.field for f in fields if f.field in schema_fields}
+    if query.filters:
+        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+    required_columns.add("date")
+
+    base = build_base_relation(dataset_id, date_range, required_columns)
+    params: list[Any] = list(base.params)
+    table = base.from_sql
 
     select_clause = ", ".join(select_cols)
     where_parts = []
 
-    date_clause = _build_date_clause(date_range, params)
-    if date_clause:
-        where_parts.append(date_clause)
+    if not base.handles_date:
+        date_clause = _build_date_clause(date_range, params)
+        if date_clause:
+            where_parts.append(date_clause)
 
     where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
 
@@ -115,10 +123,11 @@ def build_tuples_sql(
     limit_clause = f" LIMIT {limit} OFFSET {offset}"
 
     base_sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}"
-    sql = (
+    sql_body = (
         f"SELECT {select_clause}, COUNT(*) OVER() AS __count__ "
         f"FROM ({base_sql}) AS grouped{order_clause}{limit_clause}"
     )
+    sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 
 
@@ -129,25 +138,32 @@ def build_tuples_count_sql(
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """Generate a COUNT query for total_count in tuples response."""
-    params: list[Any] = []
-    table = _quote(dataset_id)
-
     fields = query.fields or []
     select_cols = [_quote(f.field) for f in fields if f.field in schema_fields]
     if not select_cols:
-        return "SELECT 0", params
+        return "SELECT 0", []
 
+    required_columns = {f.field for f in fields if f.field in schema_fields}
+    if query.filters:
+        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+    required_columns.add("date")
+
+    base = build_base_relation(dataset_id, date_range, required_columns)
+    params: list[Any] = list(base.params)
+    table = base.from_sql
     group_expr = ", ".join(select_cols)
     where_parts = []
 
-    date_clause = _build_date_clause(date_range, params)
-    if date_clause:
-        where_parts.append(date_clause)
+    if not base.handles_date:
+        date_clause = _build_date_clause(date_range, params)
+        if date_clause:
+            where_parts.append(date_clause)
     where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
 
     where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
-    sql = f"SELECT COUNT(*) FROM (SELECT {group_expr} FROM {table}{where_clause} GROUP BY {group_expr})"
+    sql_body = f"SELECT COUNT(*) FROM (SELECT {group_expr} FROM {table}{where_clause} GROUP BY {group_expr})"
+    sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 
 
@@ -156,14 +172,13 @@ def build_cells_sql(
     query: CellsQueryBody,
     date_range: DateRange,
     schema_fields: set[str],
+    max_cells: int | None = None,
 ) -> tuple[str, list[Any]]:
     """
     Generate SQL for a cells query: aggregated measure values grouped by dimensions.
 
     Returns (sql, params) for parameterized execution.
     """
-    params: list[Any] = []
-    table = _quote(dataset_id)
     axes = query.axes or {}
 
     row_fields = [f["field"] for f in axes.get("rows", []) if isinstance(f, dict) and f.get("field") in schema_fields]
@@ -184,21 +199,80 @@ def build_cells_sql(
             agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
 
     if not dim_cols and not agg_exprs:
-        return f"SELECT 1 FROM {table} WHERE FALSE", params
+        return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
+
+    required_columns = set(row_fields + col_fields)
+    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field") in schema_fields)
+    if query.filters:
+        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+    required_columns.add("date")
+
+    base = build_base_relation(dataset_id, date_range, required_columns)
+    params: list[Any] = list(base.params)
+    table = base.from_sql
 
     select_parts = dim_cols + agg_exprs
     select_clause = ", ".join(select_parts)
 
     where_parts = []
-    date_clause = _build_date_clause(date_range, params)
-    if date_clause:
-        where_parts.append(date_clause)
+    if not base.handles_date:
+        date_clause = _build_date_clause(date_range, params)
+        if date_clause:
+            where_parts.append(date_clause)
     where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
     where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
     group_clause = (" GROUP BY " + ", ".join(dim_cols)) if dim_cols else ""
 
-    sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}"
+    base_cte = f'base AS (SELECT * FROM {table}{where_clause})'
+    ctes = [base_cte]
+
+    row_window = query.rows
+    row_cte_name = None
+    if row_fields:
+        row_cte_name = "row_window"
+        row_select_cols = ", ".join(_quote(f) for f in row_fields)
+        row_order = " ORDER BY " + ", ".join(_quote(f) for f in row_fields)
+        row_limit = ""
+        if row_window:
+            limit_val = row_window.count
+            offset_val = row_window.start_index or 0
+            if limit_val is not None:
+                row_limit = f" LIMIT {limit_val} OFFSET {offset_val}"
+            elif offset_val:
+                row_limit = f" OFFSET {offset_val}"
+        ctes.append(f"{row_cte_name} AS (SELECT DISTINCT {row_select_cols} FROM base{row_order}{row_limit})")
+
+    col_window = query.columns
+    col_cte_name = None
+    if col_fields:
+        col_cte_name = "col_window"
+        col_select_cols = ", ".join(_quote(f) for f in col_fields)
+        col_order = " ORDER BY " + ", ".join(_quote(f) for f in col_fields)
+        col_limit = ""
+        if col_window:
+            limit_val = col_window.count
+            offset_val = col_window.start_index or 0
+            if limit_val is not None:
+                col_limit = f" LIMIT {limit_val} OFFSET {offset_val}"
+            elif offset_val:
+                col_limit = f" OFFSET {offset_val}"
+        ctes.append(f"{col_cte_name} AS (SELECT DISTINCT {col_select_cols} FROM base{col_order}{col_limit})")
+
+    with_clause = f"WITH {', '.join(ctes)}"
+
+    joins = []
+    if row_cte_name:
+        joins.append(f"INNER JOIN {row_cte_name} USING ({', '.join(_quote(f) for f in row_fields)})")
+    if col_cte_name:
+        joins.append(f"INNER JOIN {col_cte_name} USING ({', '.join(_quote(f) for f in col_fields)})")
+
+    from_clause = " FROM base " + " ".join(joins)
+
+    order_clause = (" ORDER BY " + ", ".join(dim_cols)) if dim_cols else ""
+    limit_clause = f" LIMIT {max_cells}" if max_cells else ""
+
+    sql = f"{with_clause} SELECT {select_clause}{from_clause}{group_clause}{order_clause}{limit_clause}"
     return sql, params
 
 
@@ -213,19 +287,24 @@ def build_picklist_sql(
 
     Returns (sql, params) for parameterized execution.
     """
-    params: list[Any] = []
-    table = _quote(dataset_id)
-
     field = query.field
     if not field or field not in schema_fields:
-        return f"SELECT 1 FROM {table} WHERE FALSE", params
+        return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     col = _quote(field)
+    required_columns = {field, "date"}
+    if query.filters:
+        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+
+    base = build_base_relation(dataset_id, date_range, required_columns)
+    params: list[Any] = list(base.params)
+    table = base.from_sql
     where_parts = []
 
-    date_clause = _build_date_clause(date_range, params)
-    if date_clause:
-        where_parts.append(date_clause)
+    if not base.handles_date:
+        date_clause = _build_date_clause(date_range, params)
+        if date_clause:
+            where_parts.append(date_clause)
 
     if query.search:
         search_val = query.search.replace("*", "%")
@@ -240,10 +319,11 @@ def build_picklist_sql(
     offset = paging.offset if paging else 0
 
     base_sql = f"SELECT DISTINCT {col} AS value FROM {table}{where_clause}"
-    sql = (
+    sql_body = (
         f"SELECT value, COUNT(*) OVER() AS __count__ "
         f"FROM ({base_sql}) AS distinct_values ORDER BY value LIMIT {limit} OFFSET {offset}"
     )
+    sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 
 
@@ -254,19 +334,24 @@ def build_picklist_count_sql(
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """Generate a COUNT query for total_count in picklist response."""
-    params: list[Any] = []
-    table = _quote(dataset_id)
-
     field = query.field
     if not field or field not in schema_fields:
-        return "SELECT 0", params
+        return "SELECT 0", []
 
     col = _quote(field)
+    required_columns = {field, "date"}
+    if query.filters:
+        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+
+    base = build_base_relation(dataset_id, date_range, required_columns)
+    params: list[Any] = list(base.params)
+    table = base.from_sql
     where_parts = []
 
-    date_clause = _build_date_clause(date_range, params)
-    if date_clause:
-        where_parts.append(date_clause)
+    if not base.handles_date:
+        date_clause = _build_date_clause(date_range, params)
+        if date_clause:
+            where_parts.append(date_clause)
 
     if query.search:
         search_val = query.search.replace("*", "%")
@@ -276,7 +361,8 @@ def build_picklist_count_sql(
     where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
     where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
-    sql = f"SELECT COUNT(DISTINCT {col}) FROM {table}{where_clause}"
+    sql_body = f"SELECT COUNT(DISTINCT {col}) FROM {table}{where_clause}"
+    sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 
 
@@ -292,8 +378,6 @@ def build_export_sql(
     Returns (sql, params, headers) where headers is the list of column names
     for the CSV header row.
     """
-    params: list[Any] = []
-    table = _quote(dataset_id)
     axes = query.axes or {}
     max_rows = query.max_rows
 
@@ -325,8 +409,17 @@ def build_export_sql(
             agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
             agg_headers.append(alias)
 
+    required_columns = set(row_fields + col_fields)
+    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field") in schema_fields)
+    if query.filters:
+        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+    required_columns.add("date")
+
+    base = build_base_relation(dataset_id, date_range, required_columns)
+    params: list[Any] = list(base.params)
+    table = base.from_sql
+
     if not dim_cols and not agg_exprs:
-        # No dimensions and no measures: export all columns as raw rows
         all_fields = sorted(schema_fields)
         select_clause = ", ".join(_quote(f) for f in all_fields)
         headers = all_fields
@@ -336,9 +429,10 @@ def build_export_sql(
         headers = dim_headers + agg_headers
 
     where_parts = []
-    date_clause = _build_date_clause(date_range, params)
-    if date_clause:
-        where_parts.append(date_clause)
+    if not base.handles_date:
+        date_clause = _build_date_clause(date_range, params)
+        if date_clause:
+            where_parts.append(date_clause)
     where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
     where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
@@ -352,5 +446,6 @@ def build_export_sql(
 
     limit_clause = f" LIMIT {max_rows}"
 
-    sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}{order_clause}{limit_clause}"
+    sql_body = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}{order_clause}{limit_clause}"
+    sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params, headers

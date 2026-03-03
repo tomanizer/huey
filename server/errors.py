@@ -49,6 +49,18 @@ class DatasetNotFoundError(AppError):
         )
 
 
+class DatasetUnavailableError(AppError):
+    """Raised when dataset metadata exists but backing table/data is unavailable."""
+
+    def __init__(self, dataset_id: str) -> None:
+        super().__init__(
+            code="DATASET_UNAVAILABLE",
+            message="Dataset is configured but not available for querying",
+            status_code=409,
+            details={"dataset_id": dataset_id},
+        )
+
+
 class ExportNotFoundError(AppError):
     """Raised when an export job ID does not exist in the job store."""
 
@@ -94,4 +106,63 @@ class TooManyConcurrentExportsError(AppError):
             message=f"Too many concurrent exports (max {max_concurrent})",
             status_code=429,
             details={"max_concurrent": max_concurrent},
+        )
+
+
+class PartitionConfigError(AppError):
+    """Raised when partition-native execution is requested without required config."""
+
+    def __init__(self, details: dict[str, Any]) -> None:
+        super().__init__(
+            code="PARTITION_CONFIG_ERROR",
+            message="Partitioned execution requires a bucket or base path",
+            status_code=500,
+            details=details,
+        )
+
+
+class PartitionNotFoundError(AppError):
+    """Raised when requested partitions are missing on disk/remote storage."""
+
+    def __init__(self, dataset_id: str, dates: list[str]) -> None:
+        super().__init__(
+            code="PARTITION_NOT_FOUND",
+            message=f"Partitions not found for dataset {dataset_id}",
+            status_code=404,
+            details={"dataset_id": dataset_id, "dates": dates},
+class QueryTimeoutError(AppError):
+    """Raised when a query exceeds the configured timeout budget."""
+
+    def __init__(self, timeout_seconds: float) -> None:
+        super().__init__(
+            code="QUERY_TIMEOUT",
+            message=f"Query exceeded timeout of {timeout_seconds} seconds",
+            status_code=504,
+            details={"timeout_seconds": timeout_seconds},
+        )
+
+
+class QueryCancelledError(AppError):
+    """Raised when a query is cancelled due to client disconnect."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            code="QUERY_CANCELLED",
+            message="Query cancelled because the client disconnected",
+            status_code=499,
+        )
+
+
+class TooManyConcurrentQueriesError(AppError):
+    """Raised when the in-flight query limit and queue depth are exceeded."""
+
+    def __init__(self, max_concurrent: int, max_queue_depth: int | None) -> None:
+        super().__init__(
+            code="TOO_MANY_QUERIES",
+            message="Query service is overloaded, please retry later",
+            status_code=429,
+            details={
+                "max_concurrent": max_concurrent,
+                "max_queue_depth": max_queue_depth,
+            },
         )

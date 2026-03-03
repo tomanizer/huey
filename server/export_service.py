@@ -5,15 +5,15 @@ Provides the business logic boundary between API routes and the durable
 export job store. All export operations go through this service.
 """
 
-import csv
 import logging
 import uuid
 from pathlib import Path
 
 from server import datasets
 from server.config import get_settings
-from server.engine import db_manager
+from server.engine import db_manager, is_missing_table_error
 from server.errors import (
+    DatasetUnavailableError,
     ExportFileNotFoundError,
     ExportNotFoundError,
     ExportNotReadyError,
@@ -24,6 +24,11 @@ from server.models import ExportRequest
 from server.query_builder import build_export_sql
 
 logger = logging.getLogger("query_service.export")
+
+
+def _escape_sql_string(value: str) -> str:
+    """Escape single quotes for SQL string literals."""
+    return value.replace("'", "''")
 
 
 class ExportService:
@@ -47,11 +52,15 @@ class ExportService:
         self.cleanup_expired()
 
         settings = get_settings()
-        if self._store.count_active() >= settings.export_max_concurrent:
-            raise TooManyConcurrentExportsError(settings.export_max_concurrent)
-
         job_id = "exp-" + str(uuid.uuid4())[:8]
-        return self._store.create(job_id, body.dataset_id)
+        job = self._store.create_if_capacity(
+            job_id,
+            body.dataset_id,
+            max_concurrent=settings.export_max_concurrent,
+        )
+        if job is None:
+            raise TooManyConcurrentExportsError(settings.export_max_concurrent)
+        return job
 
     def process(self, job_id: str, body: ExportRequest) -> None:
         """Execute the export query and write the CSV file.
@@ -60,26 +69,49 @@ class ExportService:
         'processing' then 'complete' or 'failed'.
         """
         try:
-            self._store.update_status(job_id, "processing")
+            if not self._store.claim_pending(job_id):
+                logger.info(
+                    "Skipped export processing; job was already claimed or no longer pending",
+                    extra={"export_id": job_id},
+                )
+                return
             settings = get_settings()
             output_dir = Path(settings.export_output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
-            file_path = output_dir / f"{job_id}.csv"
+            fmt = body.query.format.lower()
+            file_ext = "parquet" if fmt == "parquet" else "csv"
+            file_path = output_dir / f"{job_id}.{file_ext}"
 
             schema_fields = datasets.get_schema_field_names(body.dataset_id)
-            sql, params, headers = build_export_sql(
+            sql, params, _headers = build_export_sql(
                 body.dataset_id, body.query, body.date_range, schema_fields,
             )
+            query_params = tuple(params) if params else None
 
-            rows = db_manager.execute_sql(sql, params)
+            count_sql = f"SELECT COUNT(*) FROM ({sql}) AS export_rows"
+            count_rows = db_manager.execute_sql(
+                count_sql,
+                query_params,
+                dataset_id=body.dataset_id,
+            )
+            row_count = int(count_rows[0][0]) if count_rows else 0
 
-            with open(file_path, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(headers)
-                for row in rows:
-                    writer.writerow(row)
+            escaped_path = _escape_sql_string(str(file_path))
+            if fmt == "parquet":
+                copy_sql = f"COPY ({sql}) TO '{escaped_path}' (FORMAT PARQUET)"
+            else:
+                copy_sql = f"COPY ({sql}) TO '{escaped_path}' (FORMAT CSV, HEADER TRUE)"
+            with db_manager.cursor() as cur:
+                try:
+                    if query_params:
+                        cur.execute(copy_sql, query_params)
+                    else:
+                        cur.execute(copy_sql)
+                except Exception as exc:
+                    if is_missing_table_error(exc):
+                        raise DatasetUnavailableError(body.dataset_id) from exc
+                    raise
 
-            row_count = len(rows) if rows else 0
             self._store.update_status(
                 job_id, "complete",
                 file_path=str(file_path),
@@ -89,6 +121,16 @@ class ExportService:
             logger.info(
                 "Export complete",
                 extra={"export_id": job_id, "row_count": row_count},
+            )
+        except DatasetUnavailableError as exc:
+            self._store.update_status(
+                job_id,
+                "failed",
+                error_message=f"{exc.code}: {exc.message} ({body.dataset_id})",
+            )
+            logger.warning(
+                "Export failed due to unavailable dataset",
+                extra={"export_id": job_id, "dataset_id": body.dataset_id, "error_code": exc.code},
             )
         except Exception:
             self._store.update_status(job_id, "failed", error_message="Export processing failed")
@@ -124,11 +166,11 @@ class ExportService:
         return count
 
     def recover_stale_jobs(self) -> int:
-        """Mark any 'processing' jobs as 'failed' on startup (stale from crash)."""
+        """Mark any active jobs as failed on startup (stale from crash/restart)."""
         stale: list[ExportJob] = []
         with self._store._lock:
             cur = self._store._conn.execute(
-                "SELECT * FROM export_jobs WHERE status = 'processing'",
+                "SELECT * FROM export_jobs WHERE status IN ('pending', 'processing')",
             )
             stale = [self._store._row_to_job(row) for row in cur.fetchall()]
 

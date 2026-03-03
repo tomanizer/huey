@@ -1,7 +1,9 @@
 """Caching tests for dataset metadata."""
 
 import os
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -128,3 +130,35 @@ def test_partition_metadata_hooks(monkeypatch) -> None:
 
     datasets.clear_partition_metadata("ds")
     assert datasets.get_partition_metadata("ds") is None
+
+
+def test_schema_cache_concurrent_reads_consistent(monkeypatch) -> None:
+    calls = {"count": 0}
+
+    def fake_load():
+        calls["count"] += 1
+        time.sleep(0.02)
+        return {
+            "datasets": [
+                {"dataset_id": "concurrent_ds", "fields": [{"name": "id", "type": "string"}]}
+            ]
+        }
+
+    monkeypatch.setattr(datasets, "load_datasets_config", fake_load)
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=1))
+    datasets.reset_cache()
+
+    start = threading.Barrier(8)
+
+    def worker():
+        start.wait()
+        return datasets.get_schema("concurrent_ds")
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(lambda _: worker(), range(8)))
+
+    assert all(r == results[0] for r in results)
+    assert results[0]["dataset_id"] == "concurrent_ds"
+    stats = datasets.get_cache_stats()
+    assert stats["cache_hit"] >= 1
+    assert calls["count"] >= 1

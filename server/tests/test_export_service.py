@@ -129,7 +129,16 @@ class TestRecoverStaleJobs:
         assert store.get(job.id).status == "failed"
         assert "restarted" in store.get(job.id).error_message.lower()
 
-    def test_ignores_non_processing_jobs(self, service: ExportService) -> None:
-        service.submit(_export_request())
+    def test_marks_pending_as_failed(self, service: ExportService, store: ExportJobStore) -> None:
+        job = service.submit(_export_request())
         recovered = service.recover_stale_jobs()
-        assert recovered == 0
+        assert recovered == 1
+        assert store.get(job.id).status == "failed"
+
+    def test_ignores_terminal_jobs(self, service: ExportService, store: ExportJobStore) -> None:
+        service.submit(_export_request())
+        job = service.submit(_export_request())
+        store.update_status(job.id, "processing")
+        store.update_status(job.id, "failed", error_message="boom")
+        recovered = service.recover_stale_jobs()
+        assert recovered == 1
