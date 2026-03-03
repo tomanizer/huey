@@ -43,7 +43,8 @@ async def post_export(
         request.state.request_id = rid
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
-    if not db_manager.table_exists(body.dataset_id):
+    settings = get_settings()
+    if settings.execution_mode == "sample_table" and not db_manager.table_exists(body.dataset_id):
         raise DatasetUnavailableError(body.dataset_id)
     validate_export_query_fields(body.query, datasets.get_schema_field_names(body.dataset_id))
 
