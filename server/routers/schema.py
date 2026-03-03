@@ -2,9 +2,10 @@
 Schema endpoint: GET /schema per tech spec.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from server import datasets
+from server.errors import DatasetNotFoundError
 
 router = APIRouter(tags=["schema"])
 
@@ -17,5 +18,5 @@ async def get_schema(dataset_id: str) -> dict:
     """
     schema = datasets.get_schema(dataset_id)
     if schema is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {dataset_id}")
+        raise DatasetNotFoundError(dataset_id)
     return schema

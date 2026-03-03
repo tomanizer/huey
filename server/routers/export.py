@@ -11,12 +11,19 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import FileResponse
 
 from server import datasets
 from server.config import get_settings
 from server.engine import db_manager
+from server.errors import (
+    DatasetNotFoundError,
+    ExportFileNotFoundError,
+    ExportNotFoundError,
+    ExportNotReadyError,
+    TooManyConcurrentExportsError,
+)
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
 from server.query_builder import build_export_sql
 from server.request_context import set_request_id
@@ -99,16 +106,13 @@ async def post_export(
         set_request_id(rid)
         request.state.request_id = rid
     if datasets.get_schema(body.dataset_id) is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
+        raise DatasetNotFoundError(body.dataset_id)
 
     _cleanup_expired()
 
     settings = get_settings()
     if _active_count() >= settings.export_max_concurrent:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Too many concurrent exports (max {settings.export_max_concurrent})",
-        )
+        raise TooManyConcurrentExportsError(settings.export_max_concurrent)
 
     export_id = "exp-" + str(uuid.uuid4())[:8]
     _exports[export_id] = {
@@ -124,7 +128,7 @@ async def post_export(
 async def get_export_status(export_id: str) -> ExportStatusResponse:
     """GET /export/{id}: return export job status (and download_url when complete)."""
     if export_id not in _exports:
-        raise HTTPException(status_code=404, detail="Export not found")
+        raise ExportNotFoundError(export_id)
     job = _exports[export_id]
     return ExportStatusResponse(
         export_id=export_id,
@@ -137,13 +141,13 @@ async def get_export_status(export_id: str) -> ExportStatusResponse:
 async def download_export(export_id: str) -> FileResponse:
     """GET /export/{id}/download: download the completed export file."""
     if export_id not in _exports:
-        raise HTTPException(status_code=404, detail="Export not found")
+        raise ExportNotFoundError(export_id)
     job = _exports[export_id]
     if job.get("status") != "complete":
-        raise HTTPException(status_code=409, detail=f"Export not ready (status: {job.get('status')})")
+        raise ExportNotReadyError(export_id, job.get("status", "unknown"))
     file_path = job.get("file_path")
     if not file_path or not Path(file_path).exists():
-        raise HTTPException(status_code=404, detail="Export file not found")
+        raise ExportFileNotFoundError(export_id)
     return FileResponse(
         path=file_path,
         filename=f"{export_id}.csv",
