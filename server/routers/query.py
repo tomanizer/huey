@@ -119,6 +119,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request) -> CellsRe
             {"max_axis_cardinality": settings.max_axis_cardinality, "requested_columns": col_count},
         )
 
+    # Guard oversize single-axis requests even when only one dimension is supplied.
     if row_count and row_count > settings.max_cells_per_response:
         raise CellsWindowTooLargeError(
             "Requested row window exceeds maximum cells per response",
