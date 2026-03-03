@@ -62,7 +62,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request) -> Tuple
         items = [TupleItem(values=list(row[:-1])) for row in rows]
     else:
         total_count = 0
-        items: list[TupleItem] = []
+        items = []
 
     # Fallback to a lightweight count when page is empty (e.g., offset beyond results)
     if total_count == 0 and (paging.offset if paging else 0) > 0:
@@ -142,7 +142,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request) -> P
         values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
     else:
         total_count = 0
-        values: list[dict[str, str]] = []
+        values = []
 
     # Fallback to count when page is empty (e.g., offset beyond available values)
     if total_count == 0 and (paging.offset if paging else 0) > 0:
