@@ -13,6 +13,7 @@ from server.models import (
     DateRange,
     DateRangeRange,
     DateRangeSingle,
+    ExportQueryBody,
     PicklistQueryBody,
     TupleFilter,
     TuplesQueryBody,
@@ -271,3 +272,79 @@ def build_picklist_count_sql(
 
     sql = f"SELECT COUNT(DISTINCT {col}) FROM {table}{where_clause}"
     return sql, params
+
+
+def build_export_sql(
+    dataset_id: str,
+    query: ExportQueryBody,
+    date_range: DateRange,
+    schema_fields: set[str],
+) -> tuple[str, list[Any], list[str]]:
+    """
+    Generate SQL for an export query: flat rows of dimensions + aggregated measures.
+
+    Returns (sql, params, headers) where headers is the list of column names
+    for the CSV header row.
+    """
+    params: list[Any] = []
+    table = _quote(dataset_id)
+    axes = query.axes or {}
+    max_rows = min(query.max_rows or 10000, 100000)
+
+    row_fields = [
+        f["field"]
+        for f in axes.get("rows", [])
+        if isinstance(f, dict) and f.get("field") in schema_fields
+    ]
+    col_fields = [
+        f["field"]
+        for f in axes.get("columns", [])
+        if isinstance(f, dict) and f.get("field") in schema_fields
+    ]
+    measures = axes.get("measures", [])
+
+    dim_cols = [_quote(f) for f in row_fields + col_fields]
+    dim_headers = row_fields + col_fields
+    agg_exprs = []
+    agg_headers: list[str] = []
+    for m in measures:
+        if not isinstance(m, dict):
+            continue
+        field = m.get("field", "")
+        agg = m.get("aggregation", "SUM").upper()
+        alias = m.get("alias", f"{agg.lower()}_{field}")
+        if field not in schema_fields:
+            continue
+        if agg in ("SUM", "COUNT", "AVG", "MIN", "MAX"):
+            agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
+            agg_headers.append(alias)
+
+    if not dim_cols and not agg_exprs:
+        # No dimensions and no measures: export all columns as raw rows
+        all_fields = sorted(schema_fields)
+        select_clause = ", ".join(_quote(f) for f in all_fields)
+        headers = all_fields
+    else:
+        select_parts = dim_cols + agg_exprs
+        select_clause = ", ".join(select_parts)
+        headers = dim_headers + agg_headers
+
+    where_parts = []
+    date_clause = _build_date_clause(date_range, params)
+    if date_clause:
+        where_parts.append(date_clause)
+    where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
+    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
+
+    group_clause = ""
+    if dim_cols and agg_exprs:
+        group_clause = " GROUP BY " + ", ".join(dim_cols)
+
+    order_clause = ""
+    if dim_cols:
+        order_clause = " ORDER BY " + ", ".join(dim_cols)
+
+    limit_clause = f" LIMIT {max_rows}"
+
+    sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}{order_clause}{limit_clause}"
+    return sql, params, headers
