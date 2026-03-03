@@ -1,5 +1,8 @@
 """Unit tests for QueryService config."""
 
+import pytest
+from pydantic import ValidationError
+
 from server.config import Settings, get_settings
 
 
@@ -23,3 +26,17 @@ def test_settings_defaults() -> None:
     assert hasattr(s, "datasets_config_path")
     assert hasattr(s, "s3_bucket")
     assert hasattr(s, "s3_region")
+    assert s.duckdb_memory_limit is None
+    assert s.duckdb_temp_directory == "/tmp/huey-duckdb-tmp"
+    assert s.duckdb_enable_object_cache is True
+
+
+def test_duckdb_threads_validation() -> None:
+    with pytest.raises(ValidationError):
+        Settings(duckdb_threads=0)
+
+
+def test_duckdb_optional_strings_normalized() -> None:
+    s = Settings(duckdb_memory_limit="  ", duckdb_temp_directory=" ")
+    assert s.duckdb_memory_limit is None
+    assert s.duckdb_temp_directory is None
