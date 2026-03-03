@@ -11,6 +11,18 @@ from fastapi.testclient import TestClient
 QUERY_ENDPOINTS = ["/query/tuples", "/query/cells", "/query/picklist"]
 ALL_POST_ENDPOINTS = [*QUERY_ENDPOINTS, "/export"]
 
+_BASE_BODY = {
+    "dataset_id": "trades_v1",
+    "date_range": {"type": "single", "date": "2026-03-01"},
+    "query": {},
+}
+
+
+def _body(**query_overrides):
+    """Build a valid base body with query overrides."""
+    body = {**_BASE_BODY, "query": {**_BASE_BODY["query"], **query_overrides}}
+    return body
+
 
 @pytest.mark.parametrize("endpoint", ALL_POST_ENDPOINTS)
 class TestCommonValidation:
@@ -96,8 +108,8 @@ class TestCommonValidation:
         assert r.status_code == 422
 
 
-class TestTuplesFilterValidation:
-    """Filter-specific validation for /query/tuples."""
+class TestFilterValidation:
+    """Filter operator and value validation."""
 
     def test_filter_missing_operator(self, client: TestClient) -> None:
         r = client.post("/query/tuples", json={
@@ -118,6 +130,128 @@ class TestTuplesFilterValidation:
                 "fields": [{"field": "symbol"}],
                 "filters": [{"field": "symbol", "operator": "INCLUDE"}],
             },
+        })
+        assert r.status_code == 422
+
+    def test_invalid_operator_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/tuples", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "fields": [{"field": "symbol"}],
+                "filters": [{"field": "symbol", "operator": "INVALID", "values": ["x"]}],
+            },
+        })
+        assert r.status_code == 422
+
+    def test_lowercase_operator_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/tuples", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "fields": [{"field": "symbol"}],
+                "filters": [{"field": "symbol", "operator": "include", "values": ["x"]}],
+            },
+        })
+        assert r.status_code == 422
+
+
+class TestSortValidation:
+    """Sort direction validation."""
+
+    def test_invalid_sort_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/tuples", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "fields": [{"field": "symbol", "sort": "RANDOM"}],
+            },
+        })
+        assert r.status_code == 422
+
+    def test_lowercase_sort_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/tuples", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "fields": [{"field": "symbol", "sort": "asc"}],
+            },
+        })
+        assert r.status_code == 422
+
+
+class TestPagingValidation:
+    """Paging bounds validation across tuples and picklist endpoints."""
+
+    @pytest.mark.parametrize("endpoint", ["/query/tuples", "/query/picklist"])
+    def test_limit_zero_rejected(self, client: TestClient, endpoint: str) -> None:
+        r = client.post(endpoint, json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"fields": [{"field": "symbol"}], "field": "symbol", "paging": {"limit": 0}},
+        })
+        assert r.status_code == 422
+
+    @pytest.mark.parametrize("endpoint", ["/query/tuples", "/query/picklist"])
+    def test_limit_negative_rejected(self, client: TestClient, endpoint: str) -> None:
+        r = client.post(endpoint, json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"fields": [{"field": "symbol"}], "field": "symbol", "paging": {"limit": -5}},
+        })
+        assert r.status_code == 422
+
+    @pytest.mark.parametrize("endpoint", ["/query/tuples", "/query/picklist"])
+    def test_limit_exceeds_max_rejected(self, client: TestClient, endpoint: str) -> None:
+        r = client.post(endpoint, json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"fields": [{"field": "symbol"}], "field": "symbol", "paging": {"limit": 10001}},
+        })
+        assert r.status_code == 422
+
+    @pytest.mark.parametrize("endpoint", ["/query/tuples", "/query/picklist"])
+    def test_offset_negative_rejected(self, client: TestClient, endpoint: str) -> None:
+        r = client.post(endpoint, json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"fields": [{"field": "symbol"}], "field": "symbol", "paging": {"offset": -1}},
+        })
+        assert r.status_code == 422
+
+
+class TestExportValidation:
+    """Export-specific field validation."""
+
+    def test_invalid_format_rejected(self, client: TestClient) -> None:
+        r = client.post("/export", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"format": "xlsx"},
+        })
+        assert r.status_code == 422
+
+    def test_max_rows_zero_rejected(self, client: TestClient) -> None:
+        r = client.post("/export", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"max_rows": 0},
+        })
+        assert r.status_code == 422
+
+    def test_max_rows_negative_rejected(self, client: TestClient) -> None:
+        r = client.post("/export", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"max_rows": -10},
+        })
+        assert r.status_code == 422
+
+    def test_max_rows_exceeds_limit_rejected(self, client: TestClient) -> None:
+        r = client.post("/export", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"max_rows": 100001},
         })
         assert r.status_code == 422
 

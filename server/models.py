@@ -1,5 +1,8 @@
 """
 Request/response models for QueryService API (tech spec).
+
+All user-facing fields use Literal types and Pydantic Field constraints
+so invalid requests fail fast with clear 422 errors.
 """
 
 import re
@@ -8,6 +11,13 @@ from typing import Annotated, Any, Literal, Optional, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
+SortDirection = Literal["ASC", "DESC"]
+ExportFormat = Literal["csv"]
+
+MAX_PAGE_LIMIT = 10000
+MAX_EXPORT_ROWS = 100000
 
 
 # --- Date range (envelope) ---
@@ -59,19 +69,19 @@ class ClientContext(BaseModel):
 class TupleFieldSpec(BaseModel):
     field: str
     derivation: Optional[str] = None  # reserved: tech spec derivation support
-    sort: Optional[str] = None
+    sort: Optional[SortDirection] = None
     include_totals: Optional[bool] = None  # reserved: tech spec totals support
 
 
 class TupleFilter(BaseModel):
     field: str
-    operator: str
+    operator: FilterOperator
     values: list[Any]
 
 
 class PagingSpec(BaseModel):
-    limit: int = 100
-    offset: int = 0
+    limit: int = Field(default=100, ge=1, le=MAX_PAGE_LIMIT)
+    offset: int = Field(default=0, ge=0)
 
 
 class PagingResponse(BaseModel):
@@ -106,8 +116,8 @@ class ExportQueryBody(BaseModel):
     export_type: Optional[str] = None
     axes: Optional[dict[str, Any]] = None
     filters: Optional[list[TupleFilter]] = None
-    max_rows: Optional[int] = 10000
-    format: Optional[str] = "csv"
+    max_rows: int = Field(default=10000, ge=1, le=MAX_EXPORT_ROWS)
+    format: ExportFormat = "csv"
 
 
 # --- Request models ---

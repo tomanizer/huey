@@ -15,6 +15,8 @@ from server.models import (
     QueryCellsRequest,
     QueryPicklistRequest,
     QueryTuplesRequest,
+    TupleFieldSpec,
+    TupleFilter,
     TuplesQueryBody,
 )
 
@@ -58,6 +60,97 @@ class TestDateRangeRange:
     def test_bad_end_format(self) -> None:
         with pytest.raises(ValidationError, match="YYYY-MM-DD"):
             DateRangeRange(type="range", start="2026-01-01", end="bad")
+
+
+class TestTupleFieldSpec:
+    def test_valid_sort_asc(self) -> None:
+        f = TupleFieldSpec(field="symbol", sort="ASC")
+        assert f.sort == "ASC"
+
+    def test_valid_sort_desc(self) -> None:
+        f = TupleFieldSpec(field="symbol", sort="DESC")
+        assert f.sort == "DESC"
+
+    def test_sort_none_default(self) -> None:
+        f = TupleFieldSpec(field="symbol")
+        assert f.sort is None
+
+    def test_invalid_sort_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="sort"):
+            TupleFieldSpec(field="symbol", sort="RANDOM")
+
+
+class TestTupleFilter:
+    def test_valid_operators(self) -> None:
+        for op in ("INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"):
+            f = TupleFilter(field="symbol", operator=op, values=["x"])
+            assert f.operator == op
+
+    def test_invalid_operator_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="operator"):
+            TupleFilter(field="symbol", operator="INVALID", values=["x"])
+
+    def test_lowercase_operator_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="operator"):
+            TupleFilter(field="symbol", operator="include", values=["x"])
+
+
+class TestPagingSpec:
+    def test_defaults(self) -> None:
+        ps = PagingSpec()
+        assert ps.limit == 100
+        assert ps.offset == 0
+
+    def test_valid_bounds(self) -> None:
+        ps = PagingSpec(limit=1, offset=0)
+        assert ps.limit == 1
+        ps = PagingSpec(limit=10000, offset=999)
+        assert ps.limit == 10000
+
+    def test_limit_zero_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="limit"):
+            PagingSpec(limit=0)
+
+    def test_limit_negative_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="limit"):
+            PagingSpec(limit=-1)
+
+    def test_limit_exceeds_max_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="limit"):
+            PagingSpec(limit=10001)
+
+    def test_offset_negative_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="offset"):
+            PagingSpec(offset=-1)
+
+
+class TestExportQueryBody:
+    def test_defaults(self) -> None:
+        eq = ExportQueryBody()
+        assert eq.max_rows == 10000
+        assert eq.format == "csv"
+
+    def test_valid_max_rows(self) -> None:
+        eq = ExportQueryBody(max_rows=1)
+        assert eq.max_rows == 1
+        eq = ExportQueryBody(max_rows=100000)
+        assert eq.max_rows == 100000
+
+    def test_max_rows_zero_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="max_rows"):
+            ExportQueryBody(max_rows=0)
+
+    def test_max_rows_negative_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="max_rows"):
+            ExportQueryBody(max_rows=-1)
+
+    def test_max_rows_exceeds_limit_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="max_rows"):
+            ExportQueryBody(max_rows=100001)
+
+    def test_invalid_format_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="format"):
+            ExportQueryBody(format="xlsx")
 
 
 class TestQueryTuplesRequest:

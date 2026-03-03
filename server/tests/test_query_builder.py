@@ -309,10 +309,10 @@ class TestBuildExportSql:
         assert '"symbol" IN (?)' in sql
         assert "AAPL" in params
 
-    def test_max_rows_capped_at_100k(self) -> None:
+    def test_max_rows_at_upper_bound(self) -> None:
         query = ExportQueryBody(
             axes={"rows": [{"field": "symbol"}], "measures": []},
-            max_rows=999999,
+            max_rows=100000,
         )
         sql, _, _ = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "LIMIT 100000" in sql
