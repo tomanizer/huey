@@ -47,6 +47,19 @@ def _apply_client_request_id(body, request: Request) -> None:
         request.state.request_id = rid
 
 
+def _time_filter_metadata(dataset_id: str) -> tuple[bool, str | None]:
+    """Describe whether date_range is actively applied for dataset execution."""
+    settings = get_settings()
+    if settings.execution_mode != "parquet_partitioned":
+        return True, "date"
+    source = datasets.get_dataset_source(dataset_id)
+    if source is None:
+        return True, "date"
+    if source.time_filter is None:
+        return False, None
+    return True, source.time_filter.column
+
+
 @router.post("/tuples", response_model=TuplesResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
 async def post_query_tuples(body: QueryTuplesRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
@@ -132,6 +145,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
 
     duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
+    time_filter_applied, time_filter_column = _time_filter_metadata(body.dataset_id)
     logger.info(
         "tuples query executed",
         extra={
@@ -144,6 +158,8 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
             "cache_source": cache_source,
             "queue_wait_ms": round(queue_wait_ms, 2),
             "execution_ms": round(execution_ms, 2),
+            "time_filter_applied": time_filter_applied,
+            "time_filter_column": time_filter_column,
         },
     )
 
@@ -250,6 +266,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
         result = await _budgeted_execute()
 
     duration_ms = result.get("duration_ms", 0.0)
+    time_filter_applied, time_filter_column = _time_filter_metadata(body.dataset_id)
 
     logger.info(
         "cells query executed",
@@ -262,6 +279,8 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
             "cache_source": cache_source,
             "queue_wait_ms": round(queue_wait_ms, 2),
             "execution_ms": round(execution_ms, 2),
+            "time_filter_applied": time_filter_applied,
+            "time_filter_column": time_filter_column,
         },
     )
 
@@ -353,6 +372,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
 
     duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
+    time_filter_applied, time_filter_column = _time_filter_metadata(body.dataset_id)
     logger.info(
         "picklist query executed",
         extra={
@@ -365,6 +385,8 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
             "cache_source": cache_source,
             "queue_wait_ms": round(queue_wait_ms, 2),
             "execution_ms": round(execution_ms, 2),
+            "time_filter_applied": time_filter_applied,
+            "time_filter_column": time_filter_column,
         },
     )
 

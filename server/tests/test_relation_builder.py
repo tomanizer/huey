@@ -1,12 +1,13 @@
-"""Tests for base relation builder (partition-aware)."""
+"""Tests for base relation builder (partition-aware and source-driven)."""
 
 from pathlib import Path
 
 import pytest
 
+from server import datasets
 from server.errors import PartitionNotFoundError
 from server.models import DateRangeRange, DateRangeSingle
-from server.relation_builder import BaseRelation, build_base_relation
+from server.relation_builder import BaseRelation, build_base_relation, required_relation_columns
 
 
 class DummySettings:
@@ -68,3 +69,99 @@ def test_partition_mode_missing_partition(monkeypatch, tmp_path: Path) -> None:
             DateRangeRange(type="range", start="2026-03-01", end="2026-03-02"),
             ["symbol", "date"],
         )
+
+
+def test_partition_mode_source_without_time_filter(monkeypatch, tmp_path: Path) -> None:
+    config = tmp_path / "datasets.yaml"
+    config.write_text(
+        """
+datasets:
+  - dataset_id: ds_no_time
+    source:
+      kind: parquet_scan
+      uris:
+        - s3://bucket/raw/*.parquet
+      read_options:
+        hive_partitioning: auto
+    fields:
+      - name: symbol
+        type: string
+        is_dimension: true
+""",
+        encoding="utf-8",
+    )
+
+    settings = DummySettings(
+        execution_mode="parquet_partitioned",
+        partition_base_path=None,
+        s3_bucket="legacy-bucket",
+    )
+    monkeypatch.setattr("server.relation_builder.get_settings", lambda: settings)
+    monkeypatch.setattr(
+        "server.datasets.get_settings",
+        lambda: DummySettings(datasets_config_path=str(config), schema_cache_ttl_seconds=0),
+    )
+    datasets.reset_cache()
+
+    rel = build_base_relation(
+        "ds_no_time",
+        DateRangeSingle(type="single", date="2026-03-01"),
+        ["symbol"],
+    )
+    assert "read_parquet(?)" in (rel.cte_sql or "")
+    assert 'WHERE "date"' not in (rel.cte_sql or "")
+    assert rel.params == ["s3://bucket/raw/*.parquet"]
+    assert rel.handles_date is False
+    assert rel.requires_time_filter is False
+    assert required_relation_columns("ds_no_time") == set()
+
+
+def test_partition_mode_source_with_time_filter(monkeypatch, tmp_path: Path) -> None:
+    config = tmp_path / "datasets.yaml"
+    config.write_text(
+        """
+datasets:
+  - dataset_id: ds_time
+    source:
+      kind: parquet_scan
+      uris:
+        - s3://bucket/trips/*.parquet
+      time_filter:
+        column: tpep_pickup_datetime
+        type: timestamp
+      read_options:
+        hive_partitioning: false
+    fields:
+      - name: tpep_pickup_datetime
+        type: string
+        is_dimension: true
+      - name: symbol
+        type: string
+        is_dimension: true
+""",
+        encoding="utf-8",
+    )
+
+    settings = DummySettings(
+        execution_mode="parquet_partitioned",
+        partition_base_path=None,
+        s3_bucket="legacy-bucket",
+    )
+    monkeypatch.setattr("server.relation_builder.get_settings", lambda: settings)
+    monkeypatch.setattr(
+        "server.datasets.get_settings",
+        lambda: DummySettings(datasets_config_path=str(config), schema_cache_ttl_seconds=0),
+    )
+    datasets.reset_cache()
+
+    rel = build_base_relation(
+        "ds_time",
+        DateRangeRange(type="range", start="2026-03-01", end="2026-03-02"),
+        ["symbol"],
+    )
+    cte = rel.cte_sql or ""
+    assert "CAST(\"tpep_pickup_datetime\" AS DATE) BETWEEN ? AND ?" in cte
+    assert rel.params[-2:] == ["2026-03-01", "2026-03-02"]
+    assert rel.handles_date is True
+    assert rel.requires_time_filter is True
+    assert required_relation_columns("ds_time") == {"tpep_pickup_datetime"}

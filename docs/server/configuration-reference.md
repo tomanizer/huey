@@ -97,3 +97,35 @@ Example: `QUERYSERVICE_PORT=8000` maps to `port` setting.
 - Empty strings for optional path/string settings are normalized to `None`.
 - `QUERYSERVICE_CORS_ORIGINS` accepts either CSV (`https://a,https://b`) or JSON array (`["https://a","https://b"]`).
 - Settings are cached in-process; test code may clear cache with `get_settings.cache_clear()` when mutating environment at runtime.
+
+## Dataset `source` Configuration (YAML)
+
+Datasets may define a per-dataset physical source block in `datasets.yaml` to override the legacy
+`<dataset_id>/date=YYYY-MM-DD/*.parquet` convention:
+
+```yaml
+datasets:
+  - dataset_id: nyc_taxi_yellow
+    source:
+      kind: parquet_scan
+      uris:
+        - s3://nyc-tlc/trip data/yellow_tripdata_*.parquet
+      read_options:
+        hive_partitioning: false   # true | false | auto
+        union_by_name: true
+        filename: false
+      time_filter:
+        column: tpep_pickup_datetime
+        type: timestamp            # date | timestamp | string
+      max_files: 5000
+    fields:
+      - name: VendorID
+        type: int64
+        is_dimension: true
+```
+
+Behavior:
+
+- If `source` is omitted, QueryService uses legacy partition behavior in `parquet_partitioned` mode.
+- If `source.time_filter` is omitted, the API still accepts `date_range` but does not apply a time predicate.
+- `read_options.hive_partitioning` supports non-Hive, single-Hive, or multi-Hive layouts.

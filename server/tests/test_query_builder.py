@@ -22,6 +22,7 @@ from server.query_builder import (
     build_tuples_count_sql,
     build_tuples_sql,
 )
+from server.relation_builder import BaseRelation
 
 SCHEMA_FIELDS = {"date", "symbol", "volume"}
 DR_SINGLE = DateRangeSingle(type="single", date="2026-03-01")
@@ -125,6 +126,23 @@ class TestBuildTuplesSql:
         assert '"date"' in sql
         assert '"symbol"' in sql
         assert "COUNT(*) OVER()" in sql
+
+    def test_date_clause_skipped_when_relation_disables_time_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        query = TuplesQueryBody(fields=[TupleFieldSpec(field="symbol")])
+
+        def _fake_base_relation(_dataset_id, _date_range, _required_columns):
+            return BaseRelation(
+                cte_sql="WITH base AS (SELECT \"symbol\" FROM read_parquet(?))",
+                from_sql="base",
+                params=["s3://bucket/data/*.parquet"],
+                handles_date=False,
+                requires_time_filter=False,
+            )
+
+        monkeypatch.setattr("server.query_builder.build_base_relation", _fake_base_relation)
+        sql, params = build_tuples_sql("any_ds", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"date" =' not in sql
+        assert params == ["s3://bucket/data/*.parquet"]
 
 
 class TestBuildTuplesCountSql:

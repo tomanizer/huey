@@ -38,6 +38,11 @@ Interactive OpenAPI:
 - Single day: `{"type": "single", "date": "YYYY-MM-DD"}`
 - Inclusive range: `{"type": "range", "start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}`
 
+`date_range` behavior by dataset:
+
+- If dataset source defines a time filter column, `date_range` is applied to that column.
+- If dataset source has no time filter, `date_range` is accepted but ignored.
+
 ### Common error envelope
 
 ```json

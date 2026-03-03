@@ -27,7 +27,11 @@ def test_sample_partition_read_local(tmp_path: Path) -> None:
     assert count == 1
 
 
-def test_sample_partition_read_if_configured_no_bucket() -> None:
+def test_sample_partition_read_if_configured_no_bucket(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "server.s3.get_settings",
+        lambda: type("S", (), {"s3_bucket": None, "s3_region": None})(),
+    )
     result = s3.sample_partition_read_if_configured("ds", "2026-01-01")
     assert result is None
 

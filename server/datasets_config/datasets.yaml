@@ -69,3 +69,55 @@ datasets:
       - name: merkle_root
         type: string
         is_dimension: true
+
+  - dataset_id: "nyc_taxi_yellow"
+    source:
+      kind: parquet_scan
+      uris:
+        - "s3://nyc-tlc/trip data/yellow_tripdata_*.parquet"
+      read_options:
+        hive_partitioning: false
+        union_by_name: true
+    fields:
+      - name: VendorID
+        type: int64
+        is_dimension: true
+      - name: tpep_pickup_datetime
+        type: string
+        is_dimension: true
+      - name: tpep_dropoff_datetime
+        type: string
+        is_dimension: true
+      - name: passenger_count
+        type: int64
+        is_measure: true
+      - name: trip_distance
+        type: float64
+        is_measure: true
+      - name: RatecodeID
+        type: int64
+        is_dimension: true
+      - name: payment_type
+        type: int64
+        is_dimension: true
+      - name: PULocationID
+        type: int64
+        is_dimension: true
+      - name: DOLocationID
+        type: int64
+        is_dimension: true
+      - name: fare_amount
+        type: float64
+        is_measure: true
+      - name: tip_amount
+        type: float64
+        is_measure: true
+      - name: tolls_amount
+        type: float64
+        is_measure: true
+      - name: congestion_surcharge
+        type: float64
+        is_measure: true
+      - name: total_amount
+        type: float64
+        is_measure: true

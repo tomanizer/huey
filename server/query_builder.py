@@ -20,7 +20,7 @@ from server.models import (
     TupleFilter,
     TuplesQueryBody,
 )
-from server.relation_builder import build_base_relation
+from server.relation_builder import build_base_relation, required_relation_columns
 from server.utils import quote_identifier as _quote
 
 
@@ -163,7 +163,7 @@ def build_tuples_sql(
     required_columns = {f.field for f in fields}
     if query.filters:
         required_columns.update(f.field for f in query.filters)
-    required_columns.add("date")
+    required_columns.update(required_relation_columns(dataset_id))
 
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
@@ -172,7 +172,7 @@ def build_tuples_sql(
     select_clause = ", ".join(select_cols)
     where_parts = []
 
-    if not base.handles_date:
+    if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
             where_parts.append(date_clause)
@@ -219,7 +219,7 @@ def build_tuples_count_sql(
     required_columns = {f.field for f in fields}
     if query.filters:
         required_columns.update(f.field for f in query.filters)
-    required_columns.add("date")
+    required_columns.update(required_relation_columns(dataset_id))
 
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
@@ -227,7 +227,7 @@ def build_tuples_count_sql(
     group_expr = ", ".join(select_cols)
     where_parts = []
 
-    if not base.handles_date:
+    if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
             where_parts.append(date_clause)
@@ -274,7 +274,7 @@ def build_cells_sql(
     required_columns.update(m.field for m in measures)
     if query.filters:
         required_columns.update(f.field for f in query.filters)
-    required_columns.add("date")
+    required_columns.update(required_relation_columns(dataset_id))
 
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
@@ -284,7 +284,7 @@ def build_cells_sql(
     select_clause = ", ".join(select_parts)
 
     where_parts: list[str] = []
-    if not base.handles_date:
+    if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
             where_parts.append(date_clause)
@@ -382,7 +382,8 @@ def build_picklist_sql(
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     col = _quote(field)
-    required_columns = {field, "date"}
+    required_columns = {field}
+    required_columns.update(required_relation_columns(dataset_id))
     if query.filters:
         required_columns.update(f.field for f in query.filters)
 
@@ -391,7 +392,7 @@ def build_picklist_sql(
     table = base.from_sql
     where_parts = []
 
-    if not base.handles_date:
+    if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
             where_parts.append(date_clause)
@@ -430,7 +431,8 @@ def build_picklist_count_sql(
         return "SELECT 0", []
 
     col = _quote(field)
-    required_columns = {field, "date"}
+    required_columns = {field}
+    required_columns.update(required_relation_columns(dataset_id))
     if query.filters:
         required_columns.update(f.field for f in query.filters)
 
@@ -439,7 +441,7 @@ def build_picklist_count_sql(
     table = base.from_sql
     where_parts = []
 
-    if not base.handles_date:
+    if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
             where_parts.append(date_clause)
@@ -492,7 +494,7 @@ def build_export_sql(
     required_columns.update(m.field for m in measures)
     if query.filters:
         required_columns.update(f.field for f in query.filters)
-    required_columns.add("date")
+    required_columns.update(required_relation_columns(dataset_id))
 
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
@@ -508,7 +510,7 @@ def build_export_sql(
         headers = dim_headers + agg_headers
 
     where_parts = []
-    if not base.handles_date:
+    if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
             where_parts.append(date_clause)
