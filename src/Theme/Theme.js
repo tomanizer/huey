@@ -75,12 +75,12 @@ Theme editor - put it on ice for now.
               <input type="text" id="monoFontFamily" value="Monospace" onchange="updateCssVariable(this)"/>
 
               <label for="foregroundColor">Foreground Color</label>
-              <input type="color" id="foregroundColor" data-css-let="huey-foreground-color" onchange="updateCssVariable(this)"/>
+              <input type="color" id="foregroundColor" data-css-var="huey-foreground-color" onchange="updateCssVariable(this)"/>
               <label for="placeholderColor">Placeholder Color</label>
-              <input type="color" id="placeholderColor" data-css-let="huey-placeholder-color" onchange="updateCssVariable(this)"/>
+              <input type="color" id="placeholderColor" data-css-var="huey-placeholder-color" onchange="updateCssVariable(this)"/>
               
               <label for="lightBackgroundColor">Light Background Color</label>
-              <input type="color" id="lightBackgroundColor" data-css-let="huey-icon-color-subtle" onchange="updateCssVariable(this)"/>
+              <input type="color" id="lightBackgroundColor" data-css-var="huey-icon-color-subtle" onchange="updateCssVariable(this)"/>
               <label for="mediumBackgroundColor">Medium Background Color</label>
               <input type="color" id="mediumBackgroundColor" onchange="updateCssVariable(this)"/>
               <label for="darkBackgroundColor">Dark Background Color</label>
@@ -99,5 +99,4 @@ Theme editor - put it on ice for now.
               <input type="color" id="iconColorHighlight" onchange="updateCssVariable(this)"/>
 
 */
-
 
