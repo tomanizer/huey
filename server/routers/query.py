@@ -13,7 +13,6 @@ from server.cache import build_cache_key, get_query_cache
 from server.config import get_settings
 from server.engine import db_manager
 from server.errors import CellsWindowTooLargeError, DatasetNotFoundError
-from server.main import limiter
 from server.models import (
     CellsResponse,
     PagingResponse,
@@ -33,6 +32,7 @@ from server.query_builder import (
     build_tuples_count_sql,
     build_tuples_sql,
 )
+from server.rate_limit import limiter
 from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.query")
