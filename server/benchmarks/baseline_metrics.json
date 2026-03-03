@@ -1,6 +1,6 @@
 {
   "profile": "small-fixture-initial-baseline",
-  "notes": "Initial placeholder baseline for benchmark harness validation. Replace with measured numbers from staging/prod-like hardware.",
+  "notes": "Initial placeholder baseline for benchmark harness validation using sample dataset trades_v1. Replace with measured numbers from staging/prod-like hardware.",
   "targets": {
     "workload_goal": "~50GB/date",
     "dataset_id": "trades_v1"

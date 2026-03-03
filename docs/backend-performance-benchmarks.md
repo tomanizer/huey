@@ -3,9 +3,9 @@
 ## One-command runner
 
 ```bash
-python /home/runner/work/huey/huey/scripts/backend_benchmark_runner.py \
+python scripts/backend_benchmark_runner.py \
   --base-url http://127.0.0.1:8000 \
-  --output-dir /home/runner/work/huey/huey/artifacts/benchmarks/latest
+  --output-dir artifacts/benchmarks/latest
 ```
 
 This runs benchmark workloads for:
@@ -37,6 +37,8 @@ Current mode is `warn` to support non-blocking trend tracking.
 2. Scale rows to hit approximately 50GB per date partition while keeping the same field cardinality shape as production.
 3. Keep at least one high-cardinality dimension (for tuples/picklist) and one heavy aggregation workload (for cells/export).
 4. Run the same benchmark command with fixed `--workers` and `--requests-per-endpoint` for comparable trend lines.
+
+`trades_v1` is the default sample dataset used by existing backend tests. For larger-scale runs, point `--dataset-id` to your synthetic 50GB/date dataset.
 
 ## Baseline tracking
 

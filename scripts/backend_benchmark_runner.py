@@ -71,7 +71,7 @@ def _request(base_url: str, workload: dict[str, Any], timeout: float) -> Request
             headers = response.headers
             return RequestResult(
                 endpoint=workload["name"],
-                ok=200 <= response.status < 500,
+                ok=200 <= response.status < 300,
                 latency_ms=latency_ms,
                 status_code=response.status,
                 response_bytes=len(payload),
@@ -138,13 +138,14 @@ def _summarize(
         success = sum(1 for item in results if item.ok)
         errors = total - success
         timeouts = sum(1 for item in results if item.timed_out)
-        timeout_error_rate = (timeouts + errors) / total if total else 0.0
+        non_timeout_errors = sum(1 for item in results if (not item.ok and not item.timed_out))
+        combined_failure_rate = (timeouts + non_timeout_errors) / total if total else 0.0
 
         metrics = {
             "requests": total,
             "success": success,
             "errors": errors,
-            "timeout_error_rate": timeout_error_rate,
+            "timeout_error_rate": combined_failure_rate,
             "throughput_rps": total / duration_seconds,
             "latency_ms": {
                 "p50": _percentile(latencies, 0.50),
