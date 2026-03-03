@@ -38,6 +38,8 @@ class AppError(Exception):
 
 
 class DatasetNotFoundError(AppError):
+    """Raised when a requested dataset_id is not registered in the service."""
+
     def __init__(self, dataset_id: str) -> None:
         super().__init__(
             code="DATASET_NOT_FOUND",
@@ -48,6 +50,8 @@ class DatasetNotFoundError(AppError):
 
 
 class ExportNotFoundError(AppError):
+    """Raised when an export job ID does not exist in the job store."""
+
     def __init__(self, export_id: str) -> None:
         super().__init__(
             code="EXPORT_NOT_FOUND",
@@ -58,6 +62,8 @@ class ExportNotFoundError(AppError):
 
 
 class ExportNotReadyError(AppError):
+    """Raised when a caller tries to download an export that is not complete."""
+
     def __init__(self, export_id: str, status: str) -> None:
         super().__init__(
             code="EXPORT_NOT_READY",
@@ -68,6 +74,8 @@ class ExportNotReadyError(AppError):
 
 
 class ExportFileNotFoundError(AppError):
+    """Raised when the export file expected on disk is missing."""
+
     def __init__(self, export_id: str) -> None:
         super().__init__(
             code="EXPORT_FILE_NOT_FOUND",
@@ -78,6 +86,8 @@ class ExportFileNotFoundError(AppError):
 
 
 class TooManyConcurrentExportsError(AppError):
+    """Raised when the export concurrency cap has been exceeded."""
+
     def __init__(self, max_concurrent: int) -> None:
         super().__init__(
             code="TOO_MANY_EXPORTS",

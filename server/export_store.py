@@ -60,6 +60,7 @@ class ExportJobStore:
     """
 
     def __init__(self, db_path: str = ":memory:") -> None:
+        """Configure the store with a database path but do not open it yet."""
         self._db_path = db_path
         self._lock = threading.Lock()
         self._conn: sqlite3.Connection | None = None
@@ -77,11 +78,13 @@ class ExportJobStore:
         self._conn.commit()
 
     def close(self) -> None:
+        """Close the SQLite connection if it has been opened."""
         if self._conn:
             self._conn.close()
             self._conn = None
 
     def _row_to_job(self, row: sqlite3.Row) -> ExportJob:
+        """Convert a sqlite3.Row into an ExportJob dataclass."""
         return ExportJob(**dict(row))
 
     def create(self, job_id: str, dataset_id: str) -> ExportJob:

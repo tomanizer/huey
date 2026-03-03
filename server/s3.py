@@ -14,6 +14,7 @@ _AWS_REGION_RE = re.compile(r"^[a-z]{2}-[a-z]+-\d+$")
 
 
 def _validate_region(region: str) -> str:
+    """Validate AWS region strings before passing them to DuckDB httpfs."""
     if not _AWS_REGION_RE.match(region):
         raise ValueError(f"Invalid AWS region format: {region}")
     return region

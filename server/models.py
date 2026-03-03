@@ -22,18 +22,23 @@ MAX_EXPORT_ROWS = 100000
 
 # --- Date range (envelope) ---
 class DateRangeSingle(BaseModel):
+    """Single-day date range used to scope queries."""
+
     type: Literal["single"]
     date: str
 
     @field_validator("date")
     @classmethod
     def validate_date_format(cls, v: str) -> str:
+        """Ensure date strings follow YYYY-MM-DD."""
         if not _DATE_RE.match(v):
             raise ValueError("Invalid date format, use YYYY-MM-DD")
         return v
 
 
 class DateRangeRange(BaseModel):
+    """Inclusive start/end date range used to scope queries."""
+
     type: Literal["range"]
     start: str
     end: str
@@ -41,12 +46,14 @@ class DateRangeRange(BaseModel):
     @field_validator("start", "end")
     @classmethod
     def validate_date_format(cls, v: str) -> str:
+        """Ensure start/end date strings follow YYYY-MM-DD."""
         if not _DATE_RE.match(v):
             raise ValueError("Invalid date format, use YYYY-MM-DD")
         return v
 
     @model_validator(mode="after")
     def check_start_before_end(self) -> "DateRangeRange":
+        """Validate that the range start is not after the end."""
         if self.start > self.end:
             raise ValueError("Date range start must be <= end")
         return self
@@ -60,6 +67,8 @@ DateRange = Annotated[
 
 # --- Common envelope ---
 class ClientContext(BaseModel):
+    """Optional client metadata propagated through logs and responses."""
+
     user_id: str | None = None
     request_id: str | None = None
     huey_version: str | None = None
@@ -67,6 +76,8 @@ class ClientContext(BaseModel):
 
 # --- Shared query components ---
 class TupleFieldSpec(BaseModel):
+    """Dimension or measure requested in tuple queries, with sort/totals flags."""
+
     field: str
     derivation: str | None = None  # reserved: tech spec derivation support
     sort: SortDirection | None = None
@@ -74,17 +85,23 @@ class TupleFieldSpec(BaseModel):
 
 
 class TupleFilter(BaseModel):
+    """Filter expression applied to tuple/cell queries."""
+
     field: str
     operator: FilterOperator
     values: list[Any]
 
 
 class PagingSpec(BaseModel):
+    """Client paging request with bounds to protect the engine."""
+
     limit: int = Field(default=100, ge=1, le=MAX_PAGE_LIMIT)
     offset: int = Field(default=0, ge=0)
 
 
 class PagingResponse(BaseModel):
+    """Paging metadata returned alongside tuple/picklist responses."""
+
     limit: int
     offset: int
     returned: int
@@ -92,6 +109,8 @@ class PagingResponse(BaseModel):
 
 # --- Typed query bodies ---
 class TuplesQueryBody(BaseModel):
+    """Body for /query/tuples supporting optional fields, filters, and paging."""
+
     axis: str | None = None  # reserved: tech spec multi-axis support
     fields: list[TupleFieldSpec] | None = None
     filters: list[TupleFilter] | None = None
@@ -99,6 +118,8 @@ class TuplesQueryBody(BaseModel):
 
 
 class CellsQueryBody(BaseModel):
+    """Body for /query/cells, driving aggregation axes and filters."""
+
     rows: dict[str, int] | None = None  # reserved: tech spec virtualized paging
     columns: dict[str, int] | None = None  # reserved: tech spec virtualized paging
     axes: dict[str, Any] | None = None
@@ -106,6 +127,8 @@ class CellsQueryBody(BaseModel):
 
 
 class PicklistQueryBody(BaseModel):
+    """Body for /query/picklist, selecting a field and optional search/paging."""
+
     field: str | None = None
     search: str | None = ""
     filters: list[TupleFilter] | None = None
@@ -113,6 +136,8 @@ class PicklistQueryBody(BaseModel):
 
 
 class ExportQueryBody(BaseModel):
+    """Body for /export, describing export format, filters, and bounds."""
+
     export_type: str | None = None
     axes: dict[str, Any] | None = None
     filters: list[TupleFilter] | None = None
@@ -159,32 +184,44 @@ class ExportRequest(BaseModel):
 
 # --- Response models ---
 class TupleItem(BaseModel):
+    """Single tuple row returned by /query/tuples."""
+
     values: list[Any]
     grouping_id: int | None = None  # reserved: tech spec grouping sets
 
 
 class TuplesResponse(BaseModel):
+    """Response envelope for /query/tuples including paging metadata."""
+
     total_count: int
     items: list[TupleItem]
     paging: PagingResponse
 
 
 class CellsResponse(BaseModel):
+    """Response envelope for /query/cells."""
+
     cells: list[dict[str, Any]]
 
 
 class PicklistResponse(BaseModel):
+    """Response envelope for /query/picklist including paging metadata."""
+
     total_count: int
     values: list[dict[str, str]]
     paging: PagingResponse
 
 
 class ExportResponse(BaseModel):
+    """Response returned immediately after submitting an export job."""
+
     export_id: str
     status: str
 
 
 class ExportStatusResponse(BaseModel):
+    """Status response for polling export progress and download URL."""
+
     export_id: str
     status: str
     download_url: str | None = None
