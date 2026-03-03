@@ -214,18 +214,34 @@ def build_cells_sql(
     select_parts = dim_cols + agg_exprs
     select_clause = ", ".join(select_parts)
 
-    where_parts = []
+    where_parts: list[str] = []
     if not base.handles_date:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
             where_parts.append(date_clause)
     where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
-    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
+    filters_where = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
     group_clause = (" GROUP BY " + ", ".join(dim_cols)) if dim_cols else ""
 
-    base_cte = f'base AS (SELECT * FROM {table}{where_clause})'
-    ctes = [base_cte]
+    # Build CTE chain starting from the base relation. When base.cte_sql is
+    # present (e.g., parquet_partitioned mode), reuse it so that any
+    # parameterised source (read_parquet with patterns/date params) is
+    # preserved and matches the params list.
+    ctes: list[str] = []
+    root_table = "base"
+    if base.cte_sql:
+        base_def = base.cte_sql.strip()
+        if base_def.upper().startswith("WITH "):
+            base_def = base_def[5:].strip()
+        ctes.append(base_def)
+        if filters_where:
+            # Apply additional filters on top of the base CTE.
+            ctes.append(f"filtered_base AS (SELECT * FROM base{filters_where})")
+            root_table = "filtered_base"
+    else:
+        # No existing CTE; construct base from the underlying table directly.
+        ctes.append(f"base AS (SELECT * FROM {table}{filters_where})")
 
     row_window = query.rows
     row_cte_name = None
@@ -241,7 +257,9 @@ def build_cells_sql(
                 row_limit = f" LIMIT {limit_val} OFFSET {offset_val}"
             elif offset_val:
                 row_limit = f" OFFSET {offset_val}"
-        ctes.append(f"{row_cte_name} AS (SELECT DISTINCT {row_select_cols} FROM base{row_order}{row_limit})")
+        ctes.append(
+            f"{row_cte_name} AS (SELECT DISTINCT {row_select_cols} FROM {root_table}{row_order}{row_limit})"
+        )
 
     col_window = query.columns
     col_cte_name = None
@@ -257,7 +275,9 @@ def build_cells_sql(
                 col_limit = f" LIMIT {limit_val} OFFSET {offset_val}"
             elif offset_val:
                 col_limit = f" OFFSET {offset_val}"
-        ctes.append(f"{col_cte_name} AS (SELECT DISTINCT {col_select_cols} FROM base{col_order}{col_limit})")
+        ctes.append(
+            f"{col_cte_name} AS (SELECT DISTINCT {col_select_cols} FROM {root_table}{col_order}{col_limit})"
+        )
 
     with_clause = f"WITH {', '.join(ctes)}"
 
@@ -267,7 +287,7 @@ def build_cells_sql(
     if col_cte_name:
         joins.append(f"INNER JOIN {col_cte_name} USING ({', '.join(_quote(f) for f in col_fields)})")
 
-    from_clause = " FROM base " + " ".join(joins)
+    from_clause = f" FROM {root_table} " + " ".join(joins)
 
     order_clause = (" ORDER BY " + ", ".join(dim_cols)) if dim_cols else ""
     limit_clause = f" LIMIT {max_cells}" if max_cells else ""
