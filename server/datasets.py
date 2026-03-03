@@ -7,6 +7,8 @@ Loads dataset and schema metadata from a YAML config file (e.g. dataset_id, fiel
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -51,27 +53,179 @@ def load_datasets_config() -> dict[str, Any]:
     return data
 
 
+class _DatasetSchemaCache:
+    """In-memory cache for dataset schema + derived metadata."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._schemas: dict[str, dict[str, Any] | None] = {}
+        self._schema_fields: dict[str, set[str]] = {}
+        self._partition_metadata: dict[str, Any] = {}
+        self._config_path: Optional[str] = None
+        self._config_mtime: Optional[float] = None
+        self._counters = {"cache_hit": 0, "cache_miss": 0, "refresh_count": 0}
+        self._ttl_seconds: Optional[float] = None
+        self._refresh_settings()
+
+    def _refresh_settings(self) -> None:
+        settings = get_settings()
+        ttl = getattr(settings, "schema_cache_ttl_seconds", None)
+        self._ttl_seconds = ttl if ttl and ttl > 0 else None
+
+    def _config_identity(self) -> tuple[str, Optional[float]]:
+        settings = get_settings()
+        cfg_path = settings.datasets_config_path
+        path = Path(cfg_path) if cfg_path else _default_config_path()
+        try:
+            mtime = path.stat().st_mtime
+        except FileNotFoundError:
+            mtime = None
+        return str(path), mtime
+
+    def _invalidate_if_config_changed_locked(self) -> None:
+        path, mtime = self._config_identity()
+        if self._config_path is None:
+            self._config_path = path
+            self._config_mtime = mtime
+            return
+        if path != self._config_path or mtime != self._config_mtime:
+            self._config_path = path
+            self._config_mtime = mtime
+            self._schemas.clear()
+            self._schema_fields.clear()
+            self._partition_metadata.clear()
+            self._counters["refresh_count"] += 1
+            logger.info(
+                "dataset cache refreshed (config change detected)",
+                extra={"cache_event": "refresh", "config_path": path},
+            )
+
+    def _is_expired(self, loaded_at: float) -> bool:
+        return bool(self._ttl_seconds and (time.monotonic() - loaded_at) > self._ttl_seconds)
+
+    def _store_schema_locked(self, dataset_id: str, schema: dict[str, Any] | None) -> None:
+        loaded_at = time.monotonic()
+        field_names = (
+            {f["name"] for f in schema.get("fields", []) if isinstance(f, dict) and "name" in f}
+            if schema
+            else set()
+        )
+        self._schemas[dataset_id] = {"schema": schema, "loaded_at": loaded_at}
+        self._schema_fields[dataset_id] = field_names
+
+    def get_schema(self, dataset_id: str) -> Optional[dict[str, Any]]:
+        """Return cached schema; refresh on miss/TTL/config change."""
+        with self._lock:
+            self._refresh_settings()
+            self._invalidate_if_config_changed_locked()
+            entry = self._schemas.get(dataset_id)
+            if entry and not self._is_expired(entry["loaded_at"]):
+                self._counters["cache_hit"] += 1
+                logger.debug(
+                    "dataset schema cache hit",
+                    extra={"cache_event": "hit", "dataset_id": dataset_id},
+                )
+                return entry["schema"]
+            if entry and self._is_expired(entry["loaded_at"]):
+                self._counters["refresh_count"] += 1
+            self._counters["cache_miss"] += 1
+
+            schema = None
+            config = load_datasets_config()
+            for ds in config.get("datasets", []):
+                if isinstance(ds, dict) and ds.get("dataset_id") == dataset_id:
+                    schema = {"dataset_id": dataset_id, "fields": ds.get("fields", [])}
+                    break
+
+            self._store_schema_locked(dataset_id, schema)
+            logger.info(
+                "dataset schema cached",
+                extra={
+                    "cache_event": "miss" if entry is None else "refresh",
+                    "dataset_id": dataset_id,
+                    "cache_hit": self._counters["cache_hit"],
+                    "cache_miss": self._counters["cache_miss"],
+                },
+            )
+            return schema
+
+    def get_schema_field_names(self, dataset_id: str) -> set[str]:
+        """Return cached field-name set for a dataset."""
+        schema = self.get_schema(dataset_id)
+        with self._lock:
+            if schema is None:
+                return set()
+            fields = self._schema_fields.get(dataset_id)
+            return set(fields) if fields is not None else set()
+
+    def set_partition_metadata(self, dataset_id: str, metadata: Any) -> None:
+        """Hook for partition-native execution metadata (prepared for future use)."""
+        with self._lock:
+            self._partition_metadata[dataset_id] = metadata
+
+    def get_partition_metadata(self, dataset_id: str) -> Any:
+        with self._lock:
+            return self._partition_metadata.get(dataset_id)
+
+    def clear_partition_metadata(self, dataset_id: Optional[str] = None) -> None:
+        with self._lock:
+            if dataset_id is None:
+                self._partition_metadata.clear()
+            else:
+                self._partition_metadata.pop(dataset_id, None)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._schemas.clear()
+            self._schema_fields.clear()
+            self._partition_metadata.clear()
+            self._counters = {"cache_hit": 0, "cache_miss": 0, "refresh_count": 0}
+            self._config_path = None
+            self._config_mtime = None
+            self._refresh_settings()
+
+    def stats(self) -> dict[str, int]:
+        with self._lock:
+            return dict(self._counters)
+
+
+_schema_cache = _DatasetSchemaCache()
+
+
 def get_schema(dataset_id: str) -> Optional[dict[str, Any]]:
     """
     Return schema for a dataset: { dataset_id, fields }.
     Returns None if dataset_id is not found.
     """
-    config = load_datasets_config()
-    for ds in config.get("datasets", []):
-        if isinstance(ds, dict) and ds.get("dataset_id") == dataset_id:
-            return {
-                "dataset_id": dataset_id,
-                "fields": ds.get("fields", []),
-            }
-    return None
+    return _schema_cache.get_schema(dataset_id)
 
 
 def get_schema_field_names(dataset_id: str) -> set[str]:
     """Return the set of field names defined in the schema for a dataset."""
-    schema = get_schema(dataset_id)
-    if not schema:
-        return set()
-    return {f["name"] for f in schema.get("fields", []) if isinstance(f, dict) and "name" in f}
+    return _schema_cache.get_schema_field_names(dataset_id)
+
+
+def get_partition_metadata(dataset_id: str) -> Any:
+    """Return cached partition metadata for dataset (reserved for partition-native mode)."""
+    return _schema_cache.get_partition_metadata(dataset_id)
+
+
+def set_partition_metadata(dataset_id: str, metadata: Any) -> None:
+    _schema_cache.set_partition_metadata(dataset_id, metadata)
+
+
+def clear_partition_metadata(dataset_id: Optional[str] = None) -> None:
+    _schema_cache.clear_partition_metadata(dataset_id)
+
+
+def reset_cache() -> None:
+    """Reset caches (used in tests or after config reload)."""
+    _schema_cache.reset()
+
+
+def get_cache_stats() -> dict[str, int]:
+    """Expose instrumentation counters."""
+    return _schema_cache.stats()
 
 
 _DUCKDB_TYPE_MAP = {

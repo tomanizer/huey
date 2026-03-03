@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     export_output_dir: str = "/tmp/huey-exports"
     export_db_path: str = "/tmp/huey-exports/jobs.db"
 
+    # Dataset metadata cache
+    schema_cache_ttl_seconds: int = 300  # 0 disables TTL-based refresh
+
     # Optional: S3 / engine config (for later issues)
     s3_bucket: Optional[str] = None
     s3_region: Optional[str] = None
