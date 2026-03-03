@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # Optional: path to datasets config YAML (for dataset/schema loader)
     datasets_config_path: Optional[str] = None
 
+    # DuckDB
+    data_dir: Optional[str] = None  # Path to DuckDB database file; None = in-memory
+
     # Optional: S3 / engine config (for later issues)
     s3_bucket: Optional[str] = None
     s3_region: Optional[str] = None
