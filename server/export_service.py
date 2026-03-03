@@ -161,13 +161,7 @@ class ExportService:
 
     def recover_stale_jobs(self) -> int:
         """Mark any active jobs as failed on startup (stale from crash/restart)."""
-        stale: list[ExportJob] = []
-        with self._store._lock:
-            cur = self._store._conn.execute(
-                "SELECT * FROM export_jobs WHERE status IN ('pending', 'processing')",
-            )
-            stale = [self._store._row_to_job(row) for row in cur.fetchall()]
-
+        stale = self._store.find_stale()
         count = 0
         for job in stale:
             self._store.update_status(

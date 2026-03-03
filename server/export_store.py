@@ -230,6 +230,14 @@ class ExportJobStore:
             )
             return cur.fetchone()[0]
 
+    def find_stale(self) -> list[ExportJob]:
+        """Return jobs in pending or processing state (presumed stale after restart)."""
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT * FROM export_jobs WHERE status IN ('pending', 'processing')",
+            )
+            return [self._row_to_job(row) for row in cur.fetchall()]
+
     def find_expired(self, ttl_seconds: int) -> list[ExportJob]:
         """Find jobs older than TTL that haven't been expired yet."""
         cutoff = time.time() - ttl_seconds
