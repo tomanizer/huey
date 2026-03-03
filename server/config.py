@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     # DuckDB
     data_dir: Optional[str] = None  # Path to DuckDB database file; None = in-memory
 
+    # Export
+    export_ttl_seconds: int = 3600
+    export_max_concurrent: int = 5
+    export_output_dir: str = "/tmp/huey-exports"
+
     # Optional: S3 / engine config (for later issues)
     s3_bucket: Optional[str] = None
     s3_region: Optional[str] = None
