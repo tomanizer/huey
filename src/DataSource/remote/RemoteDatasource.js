@@ -16,6 +16,18 @@
     return envelope;
   }
 
+  function buildHeaders(datasource, includeJson) {
+    var headers = {};
+    if (includeJson) {
+      headers['Content-Type'] = 'application/json';
+    }
+    var apiKey = datasource.getApiKey && datasource.getApiKey();
+    if (apiKey) {
+      headers['X-API-Key'] = apiKey;
+    }
+    return headers;
+  }
+
   function RemoteConnection(datasource) {
     this._datasource = datasource;
     this._abortController = null;
@@ -35,12 +47,7 @@
     var datasetId = this._datasource.getDatasetId();
     var url = baseUrl + '/schema?dataset_id=' + encodeURIComponent(datasetId);
     this._abortController = new AbortController();
-    var headers = {};
-    var apiKey = this._datasource.getApiKey();
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
-    }
-    return fetch(url, { signal: this._abortController.signal, headers: headers })
+    return fetch(url, { signal: this._abortController.signal, headers: buildHeaders(this._datasource, false) })
       .then(function (res) {
         if (!res.ok) {
           return res.json().then(function (body) {
@@ -60,14 +67,9 @@
     var datasetId = this._datasource.getDatasetId();
     var envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
     this._abortController = new AbortController();
-    var headers = { 'Content-Type': 'application/json' };
-    var apiKey = this._datasource.getApiKey();
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
-    }
     return fetch(baseUrl + '/query/tuples', {
       method: 'POST',
-      headers: headers,
+      headers: buildHeaders(this._datasource, true),
       body: JSON.stringify(envelope),
       signal: this._abortController.signal
     }).then(function (res) {
@@ -89,14 +91,9 @@
     var datasetId = this._datasource.getDatasetId();
     var envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
     this._abortController = new AbortController();
-    var headers = { 'Content-Type': 'application/json' };
-    var apiKey = this._datasource.getApiKey();
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
-    }
     return fetch(baseUrl + '/query/cells', {
       method: 'POST',
-      headers: headers,
+      headers: buildHeaders(this._datasource, true),
       body: JSON.stringify(envelope),
       signal: this._abortController.signal
     }).then(function (res) {
@@ -118,14 +115,9 @@
     var datasetId = this._datasource.getDatasetId();
     var envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
     this._abortController = new AbortController();
-    var headers = { 'Content-Type': 'application/json' };
-    var apiKey = this._datasource.getApiKey();
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
-    }
     return fetch(baseUrl + '/query/picklist', {
       method: 'POST',
-      headers: headers,
+      headers: buildHeaders(this._datasource, true),
       body: JSON.stringify(envelope),
       signal: this._abortController.signal
     }).then(function (res) {

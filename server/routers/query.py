@@ -43,7 +43,7 @@ def _apply_client_request_id(body, request: Request) -> None:
 
 
 @router.post("/tuples", response_model=TuplesResponse)
-async def post_query_tuples(body: QueryTuplesRequest, request: Request, api_key: str = Depends(require_api_key)) -> TuplesResponse:
+async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
@@ -92,7 +92,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, api_key:
 
 
 @router.post("/cells", response_model=CellsResponse)
-async def post_query_cells(body: QueryCellsRequest, request: Request, api_key: str = Depends(require_api_key)) -> CellsResponse:
+async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: str = Depends(require_api_key)) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
@@ -123,7 +123,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, api_key: s
 
 
 @router.post("/picklist", response_model=PicklistResponse)
-async def post_query_picklist(body: QueryPicklistRequest, request: Request, api_key: str = Depends(require_api_key)) -> PicklistResponse:
+async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
