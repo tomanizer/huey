@@ -52,3 +52,13 @@ def test_cors_origins_parse_csv() -> None:
 def test_cors_origins_parse_json_array() -> None:
     s = Settings(cors_origins='["https://app.example.com","https://admin.example.com"]')
     assert s.cors_origins == ["https://app.example.com", "https://admin.example.com"]
+
+
+def test_execution_mode_valid_values() -> None:
+    assert Settings(execution_mode="sample_table").execution_mode == "sample_table"
+    assert Settings(execution_mode="parquet_partitioned").execution_mode == "parquet_partitioned"
+
+
+def test_execution_mode_invalid_raises() -> None:
+    with pytest.raises(ValidationError):
+        Settings(execution_mode="unknown_mode")

@@ -6,6 +6,7 @@ Loads settings from environment variables and optional config file.
 
 import json
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -87,7 +88,7 @@ class Settings(BaseSettings):
     cache_sqlite_path: str | None = None
     cache_sqlite_max_bytes: int = 256 * 1024 * 1024
     # Query execution
-    execution_mode: str = "sample_table"  # "sample_table" | "parquet_partitioned"
+    execution_mode: Literal["sample_table", "parquet_partitioned"] = "sample_table"
     partition_base_path: str | None = None
 
     @property

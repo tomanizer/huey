@@ -39,6 +39,7 @@ Example: `QUERYSERVICE_PORT=8000` maps to `port` setting.
 | `QUERYSERVICE_QUERY_TIMEOUT_SECONDS` | `30.0` | float | Query timeout budget setting |
 | `QUERYSERVICE_MAX_CONCURRENT_QUERIES` | `8` | int | Concurrent query budget setting |
 | `QUERYSERVICE_MAX_QUERY_QUEUE_DEPTH` | `32` | int or empty | Queue depth budget setting |
+| `QUERYSERVICE_SHUTDOWN_DRAIN_SECONDS` | `10.0` | float | Max seconds to wait for in-flight queries on graceful shutdown |
 | `QUERYSERVICE_TUPLES_DEFAULT_LIMIT` | `200` | int | Default tuples page size |
 | `QUERYSERVICE_PICKLIST_DEFAULT_LIMIT` | `100` | int | Default picklist page size |
 | `QUERYSERVICE_MAX_CELLS_PER_RESPONSE` | `10000` | int | Max cells payload bound |
