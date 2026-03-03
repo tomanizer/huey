@@ -9,7 +9,6 @@ import csv
 import logging
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from server import datasets
 from server.config import get_settings
@@ -145,7 +144,7 @@ class ExportService:
         return count
 
 
-_export_service: Optional[ExportService] = None
+_export_service: ExportService | None = None
 
 
 def get_export_service() -> ExportService:

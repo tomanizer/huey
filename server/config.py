@@ -5,7 +5,6 @@ Loads settings from environment variables and optional config file.
 """
 
 from functools import lru_cache
-from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -27,13 +26,13 @@ class Settings(BaseSettings):
     log_format: str = "text"  # "text" for dev, "json" for production
 
     # Optional: path to datasets config YAML (for dataset/schema loader)
-    datasets_config_path: Optional[str] = None
+    datasets_config_path: str | None = None
 
     # Sample data seeding (disable in production)
     seed_sample_data: bool = True
 
     # DuckDB
-    data_dir: Optional[str] = None  # Path to DuckDB database file; None = in-memory
+    data_dir: str | None = None  # Path to DuckDB database file; None = in-memory
 
     # Export
     export_ttl_seconds: int = 3600
@@ -45,8 +44,8 @@ class Settings(BaseSettings):
     schema_cache_ttl_seconds: Optional[float] = 300  # Set to 0 or None to disable TTL-based refresh
 
     # Optional: S3 / engine config (for later issues)
-    s3_bucket: Optional[str] = None
-    s3_region: Optional[str] = None
+    s3_bucket: str | None = None
+    s3_region: str | None = None
 
 
 @lru_cache

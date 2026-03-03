@@ -64,3 +64,7 @@ config file changes on disk or when the TTL elapses. Use the TTL env var to tune
 refresh cadence for your deployment.
 
 Optional `.env` in the working directory is also loaded.
+
+## Try Huey with this backend (remote datasource)
+
+See [Try the remote feature](../docs/try-remote-feature.md): start this server, serve Huey, add a remote datasource in the browser console, then explore and run queries.

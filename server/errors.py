@@ -6,7 +6,7 @@ machine-readable `code`, human-readable `message`, optional `request_id`,
 and optional `details`.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -16,8 +16,8 @@ class ErrorResponse(BaseModel):
 
     code: str
     message: str
-    request_id: Optional[str] = None
-    details: Optional[dict[str, Any]] = None
+    request_id: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class AppError(Exception):

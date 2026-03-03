@@ -4,22 +4,18 @@ Dataset configuration loader.
 Loads dataset and schema metadata from a YAML config file (e.g. dataset_id, fields).
 """
 
-from __future__ import annotations
-
 import logging
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any
 
 import yaml
 
 from server.config import get_settings
+from server.engine import DuckDBManager
 from server.utils import quote_identifier
-
-if TYPE_CHECKING:
-    from server.engine import DuckDBManager
 
 logger = logging.getLogger("query_service.datasets")
 
@@ -68,10 +64,10 @@ class _DatasetSchemaCache:
         self._schemas: dict[str, _SchemaCacheEntry] = {}
         self._schema_fields: dict[str, set[str]] = {}
         self._partition_metadata: dict[str, Any] = {}
-        self._config_path: Optional[str] = None
-        self._config_mtime: Optional[float] = None
+        self._config_path: str | None = None
+        self._config_mtime: float | None = None
         self._counters = {"cache_hit": 0, "cache_miss": 0, "refresh_count": 0}
-        self._ttl_seconds: Optional[float] = None
+        self._ttl_seconds: float | None = None
         self._refresh_settings()
 
     def _refresh_settings(self) -> None:
@@ -82,7 +78,7 @@ class _DatasetSchemaCache:
             ttl = None
         self._ttl_seconds = ttl if (ttl is not None and ttl > 0) else None
 
-    def _config_identity(self) -> tuple[str, Optional[float]]:
+    def _config_identity(self) -> tuple[str, float | None]:
         settings = get_settings()
         cfg_path = settings.datasets_config_path
         path = Path(cfg_path) if cfg_path else _default_config_path()
@@ -131,7 +127,7 @@ class _DatasetSchemaCache:
         self._schemas[dataset_id] = _SchemaCacheEntry(schema=schema, loaded_at=loaded_at)
         self._schema_fields[dataset_id] = field_names
 
-    def get_schema(self, dataset_id: str) -> Optional[dict[str, Any]]:
+    def get_schema(self, dataset_id: str) -> dict[str, Any] | None:
         """
         Return cached schema for the given dataset.
 
@@ -147,7 +143,6 @@ class _DatasetSchemaCache:
                     "dataset schema cache hit",
                     extra={"cache_event": "hit", "dataset_id": dataset_id},
                 )
-                # Shared cached schema; treat as read-only.
                 return entry.schema
             if entry and self._is_expired(entry.loaded_at):
                 self._counters["refresh_count"] += 1
@@ -170,7 +165,6 @@ class _DatasetSchemaCache:
                     "cache_miss": self._counters["cache_miss"],
                 },
             )
-            # Shared cached schema; treat as read-only.
             return schema
 
     def get_schema_field_names(self, dataset_id: str) -> set[str]:
@@ -182,7 +176,6 @@ class _DatasetSchemaCache:
             fields = self._schema_fields.get(dataset_id)
             if fields is None:
                 return set()
-            # Return a new set to guard against accidental external mutation.
             return set(fields)
 
     def set_partition_metadata(self, dataset_id: str, metadata: Any) -> None:
@@ -194,7 +187,7 @@ class _DatasetSchemaCache:
         with self._lock:
             return self._partition_metadata.get(dataset_id)
 
-    def clear_partition_metadata(self, dataset_id: Optional[str] = None) -> None:
+    def clear_partition_metadata(self, dataset_id: str | None = None) -> None:
         with self._lock:
             if dataset_id is None:
                 self._partition_metadata.clear()
@@ -219,7 +212,7 @@ class _DatasetSchemaCache:
 _schema_cache = _DatasetSchemaCache()
 
 
-def get_schema(dataset_id: str) -> Optional[dict[str, Any]]:
+def get_schema(dataset_id: str) -> dict[str, Any] | None:
     """
     Return schema for a dataset: { dataset_id, fields }.
     Returns None if dataset_id is not found. The returned object is shared and should be treated as read-only.
@@ -241,7 +234,7 @@ def set_partition_metadata(dataset_id: str, metadata: Any) -> None:
     _schema_cache.set_partition_metadata(dataset_id, metadata)
 
 
-def clear_partition_metadata(dataset_id: Optional[str] = None) -> None:
+def clear_partition_metadata(dataset_id: str | None = None) -> None:
     _schema_cache.clear_partition_metadata(dataset_id)
 
 
