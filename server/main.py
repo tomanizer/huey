@@ -50,9 +50,12 @@ async def lifespan(app: FastAPI):
     export_store = ExportJobStore(settings.export_db_path)
     export_store.initialize()
     svc = init_export_service(export_store)
-    recovered = svc.recover_stale_jobs()
-    if recovered:
-        logger.info("Recovered stale export jobs", extra={"count": recovered})
+    try:
+        recovered = svc.recover_stale_jobs()
+        if recovered:
+            logger.info("Recovered stale export jobs", extra={"count": recovered})
+    except Exception:
+        logger.exception("Stale-job recovery failed; continuing startup")
 
     yield
 
