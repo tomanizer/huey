@@ -5,13 +5,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from server.main import app
 from server.routers import export as export_module
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
@@ -121,3 +115,43 @@ def test_ttl_cleanup(client: TestClient, tmp_path) -> None:
     assert r.status_code == 200
     assert "exp-old" not in export_module._exports
     assert not expired_file.exists()
+
+
+def test_download_for_failed_export(client: TestClient) -> None:
+    """GET /export/{id}/download for a failed export returns 409."""
+    export_module._exports["exp-fail"] = {
+        "status": "failed",
+        "created_at": time.time(),
+    }
+    r = client.get("/export/exp-fail/download")
+    assert r.status_code == 409
+
+
+def test_download_file_missing_on_disk(client: TestClient) -> None:
+    """GET /export/{id}/download when file was deleted returns 404."""
+    export_module._exports["exp-gone"] = {
+        "status": "complete",
+        "created_at": time.time(),
+        "file_path": "/tmp/nonexistent-file.csv",
+        "download_url": "/export/exp-gone/download",
+    }
+    r = client.get("/export/exp-gone/download")
+    assert r.status_code == 404
+
+
+def test_ttl_preserves_active_exports(client: TestClient) -> None:
+    """TTL cleanup does not remove recent exports."""
+    export_module._exports["exp-recent"] = {
+        "status": "complete",
+        "created_at": time.time(),
+    }
+    r = client.post("/export", json=_valid_body())
+    assert r.status_code == 200
+    assert "exp-recent" in export_module._exports
+
+
+def test_multiple_exports_unique_ids(client: TestClient) -> None:
+    """Multiple POSTs create distinct export IDs."""
+    r1 = client.post("/export", json=_valid_body())
+    r2 = client.post("/export", json=_valid_body())
+    assert r1.json()["export_id"] != r2.json()["export_id"]

@@ -1,14 +1,6 @@
 """Tests for POST /query/cells API."""
 
-import pytest
 from fastapi.testclient import TestClient
-
-from server.main import app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 def test_query_cells_ok(client: TestClient) -> None:
