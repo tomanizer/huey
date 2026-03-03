@@ -86,3 +86,52 @@ def test_query_cells_dataset_not_found(client: TestClient) -> None:
     body = {"dataset_id": "nonexistent", "date_range": {"type": "single", "date": "2026-03-01"}, "query": {}}
     r = client.post("/query/cells", json=body)
     assert r.status_code == 404
+
+
+def test_query_cells_row_window_limits_results(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "rows": {"start_index": 0, "count": 1},
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            },
+        },
+    }
+    r = client.post("/query/cells", json=body)
+    assert r.status_code == 200
+    cells = r.json()["cells"]
+    assert len(cells) == 1
+    # Ordered ascending, first symbol should be AAPL from sample data
+    assert cells[0]["values"]["0"] == "AAPL"
+
+
+def test_query_cells_window_too_large_returns_error(client: TestClient) -> None:
+    from server.config import get_settings
+
+    settings = get_settings()
+    original_max = settings.max_cells_per_response
+    try:
+        settings.max_cells_per_response = 1
+        body = {
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "rows": {"start_index": 0, "count": 2},
+                "columns": {"start_index": 0, "count": 2},
+                "axes": {
+                    "rows": [{"field": "symbol"}],
+                    "columns": [{"field": "date"}],
+                    "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+                },
+            },
+        }
+        r = client.post("/query/cells", json=body)
+        assert r.status_code == 400
+        data = r.json()
+        assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
+    finally:
+        settings.max_cells_per_response = original_max

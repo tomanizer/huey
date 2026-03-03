@@ -95,3 +95,15 @@ class TooManyConcurrentExportsError(AppError):
             status_code=429,
             details={"max_concurrent": max_concurrent},
         )
+
+
+class CellsWindowTooLargeError(AppError):
+    """Raised when requested cells window exceeds configured bounds."""
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
+        super().__init__(
+            code="CELLS_WINDOW_TOO_LARGE",
+            message=message,
+            status_code=400,
+            details=details,
+        )
