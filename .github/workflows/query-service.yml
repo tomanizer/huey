@@ -30,8 +30,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r server/requirements.txt
 
-      - name: Run unit tests
-        run: PYTHONPATH=. python -m pytest server/tests -v
+      - name: Run unit tests with coverage
+        run: |
+          PYTHONPATH=. python -m pytest server/tests -v \
+            --cov=server \
+            --cov-config=server/pyproject.toml \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=80
 
   lint:
     runs-on: ubuntu-latest
