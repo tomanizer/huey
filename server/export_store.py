@@ -10,7 +10,6 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -22,10 +21,10 @@ class ExportJob:
     dataset_id: str
     created_at: float
     updated_at: float
-    file_path: Optional[str] = None
-    download_url: Optional[str] = None
-    row_count: Optional[int] = None
-    error_message: Optional[str] = None
+    file_path: str | None = None
+    download_url: str | None = None
+    row_count: int | None = None
+    error_message: str | None = None
 
 
 VALID_STATUSES = frozenset({"pending", "processing", "complete", "failed", "expired"})
@@ -64,7 +63,7 @@ class ExportJobStore:
         """Configure the store with a database path but do not open it yet."""
         self._db_path = db_path
         self._lock = threading.Lock()
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
 
     def initialize(self) -> None:
         """Open the database connection and create the schema."""
@@ -103,7 +102,7 @@ class ExportJobStore:
             created_at=now, updated_at=now,
         )
 
-    def get(self, job_id: str) -> Optional[ExportJob]:
+    def get(self, job_id: str) -> ExportJob | None:
         """Fetch a single job by ID, or None if not found."""
         with self._lock:
             cur = self._conn.execute(
@@ -117,11 +116,11 @@ class ExportJobStore:
         job_id: str,
         status: str,
         *,
-        file_path: Optional[str] = None,
-        download_url: Optional[str] = None,
-        row_count: Optional[int] = None,
-        error_message: Optional[str] = None,
-    ) -> Optional[ExportJob]:
+        file_path: str | None = None,
+        download_url: str | None = None,
+        row_count: int | None = None,
+        error_message: str | None = None,
+    ) -> ExportJob | None:
         """Transition a job to a new status with optional metadata updates.
 
         Returns the updated job, or None if the job doesn't exist.

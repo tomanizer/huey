@@ -8,8 +8,9 @@ The manager is initialized at application startup and shut down on exit.
 import asyncio
 import logging
 import threading
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any
 
 import duckdb
 

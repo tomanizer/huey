@@ -6,7 +6,7 @@ so invalid requests fail fast with clear 422 errors.
 """
 
 import re
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -60,7 +60,7 @@ class DateRangeRange(BaseModel):
 
 
 DateRange = Annotated[
-    Union[DateRangeSingle, DateRangeRange],
+    DateRangeSingle | DateRangeRange,
     Field(discriminator="type"),
 ]
 
@@ -69,9 +69,9 @@ DateRange = Annotated[
 class ClientContext(BaseModel):
     """Optional client metadata propagated through logs and responses."""
 
-    user_id: Optional[str] = None
-    request_id: Optional[str] = None
-    huey_version: Optional[str] = None
+    user_id: str | None = None
+    request_id: str | None = None
+    huey_version: str | None = None
 
 
 # --- Shared query components ---
@@ -79,9 +79,9 @@ class TupleFieldSpec(BaseModel):
     """Dimension or measure requested in tuple queries, with sort/totals flags."""
 
     field: str
-    derivation: Optional[str] = None  # reserved: tech spec derivation support
-    sort: Optional[SortDirection] = None
-    include_totals: Optional[bool] = None  # reserved: tech spec totals support
+    derivation: str | None = None  # reserved: tech spec derivation support
+    sort: SortDirection | None = None
+    include_totals: bool | None = None  # reserved: tech spec totals support
 
 
 class TupleFilter(BaseModel):
@@ -111,36 +111,36 @@ class PagingResponse(BaseModel):
 class TuplesQueryBody(BaseModel):
     """Body for /query/tuples supporting optional fields, filters, and paging."""
 
-    axis: Optional[str] = None  # reserved: tech spec multi-axis support
-    fields: Optional[list[TupleFieldSpec]] = None
-    filters: Optional[list[TupleFilter]] = None
-    paging: Optional[PagingSpec] = None
+    axis: str | None = None  # reserved: tech spec multi-axis support
+    fields: list[TupleFieldSpec] | None = None
+    filters: list[TupleFilter] | None = None
+    paging: PagingSpec | None = None
 
 
 class CellsQueryBody(BaseModel):
     """Body for /query/cells, driving aggregation axes and filters."""
 
-    rows: Optional[dict[str, int]] = None  # reserved: tech spec virtualized paging
-    columns: Optional[dict[str, int]] = None  # reserved: tech spec virtualized paging
-    axes: Optional[dict[str, Any]] = None
-    filters: Optional[list[TupleFilter]] = None
+    rows: dict[str, int] | None = None  # reserved: tech spec virtualized paging
+    columns: dict[str, int] | None = None  # reserved: tech spec virtualized paging
+    axes: dict[str, Any] | None = None
+    filters: list[TupleFilter] | None = None
 
 
 class PicklistQueryBody(BaseModel):
     """Body for /query/picklist, selecting a field and optional search/paging."""
 
-    field: Optional[str] = None
-    search: Optional[str] = ""
-    filters: Optional[list[TupleFilter]] = None
-    paging: Optional[PagingSpec] = None
+    field: str | None = None
+    search: str | None = ""
+    filters: list[TupleFilter] | None = None
+    paging: PagingSpec | None = None
 
 
 class ExportQueryBody(BaseModel):
     """Body for /export, describing export format, filters, and bounds."""
 
-    export_type: Optional[str] = None
-    axes: Optional[dict[str, Any]] = None
-    filters: Optional[list[TupleFilter]] = None
+    export_type: str | None = None
+    axes: dict[str, Any] | None = None
+    filters: list[TupleFilter] | None = None
     max_rows: int = Field(default=10000, ge=1, le=MAX_EXPORT_ROWS)
     format: ExportFormat = "csv"
 
@@ -152,7 +152,7 @@ class QueryTuplesRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: TuplesQueryBody = TuplesQueryBody()
-    client_context: Optional[ClientContext] = None
+    client_context: ClientContext | None = None
 
 
 class QueryCellsRequest(BaseModel):
@@ -161,7 +161,7 @@ class QueryCellsRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: CellsQueryBody = CellsQueryBody()
-    client_context: Optional[ClientContext] = None
+    client_context: ClientContext | None = None
 
 
 class QueryPicklistRequest(BaseModel):
@@ -170,7 +170,7 @@ class QueryPicklistRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: PicklistQueryBody = PicklistQueryBody()
-    client_context: Optional[ClientContext] = None
+    client_context: ClientContext | None = None
 
 
 class ExportRequest(BaseModel):
@@ -179,7 +179,7 @@ class ExportRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: ExportQueryBody = ExportQueryBody()
-    client_context: Optional[ClientContext] = None
+    client_context: ClientContext | None = None
 
 
 # --- Response models ---
@@ -187,7 +187,7 @@ class TupleItem(BaseModel):
     """Single tuple row returned by /query/tuples."""
 
     values: list[Any]
-    grouping_id: Optional[int] = None  # reserved: tech spec grouping sets
+    grouping_id: int | None = None  # reserved: tech spec grouping sets
 
 
 class TuplesResponse(BaseModel):
@@ -224,4 +224,4 @@ class ExportStatusResponse(BaseModel):
 
     export_id: str
     status: str
-    download_url: Optional[str] = None
+    download_url: str | None = None

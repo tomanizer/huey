@@ -6,7 +6,6 @@ using DuckDB with the httpfs extension.
 """
 
 import re
-from typing import Optional
 
 from server.config import get_settings
 from server.engine import get_connection
@@ -38,8 +37,8 @@ def sample_partition_read(
     dataset_id: str,
     date_str: str,
     *,
-    region: Optional[str] = None,
-    path_override: Optional[str] = None,
+    region: str | None = None,
+    path_override: str | None = None,
 ) -> int:
     """
     Run a sample read over a partition: COUNT(*) from parquet at the partition path.
@@ -71,7 +70,7 @@ def sample_partition_read(
 def sample_partition_read_if_configured(
     dataset_id: str,
     date_str: str,
-) -> Optional[int]:
+) -> int | None:
     """
     Run sample_partition_read if S3 is configured (bucket set).
     Returns count or None if bucket not configured.

@@ -120,6 +120,7 @@ class TestBuildTuplesSql:
         sql, _ = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert '"date"' in sql
         assert '"symbol"' in sql
+        assert "COUNT(*) OVER()" in sql
 
 
 class TestBuildTuplesCountSql:
@@ -236,6 +237,7 @@ class TestBuildPicklistSql:
         assert "DISTINCT" in sql
         assert '"symbol"' in sql
         assert "LIMIT 50" in sql
+        assert "COUNT(*) OVER()" in sql
 
     def test_search_wildcard(self) -> None:
         query = PicklistQueryBody(field="symbol", search="AA*")

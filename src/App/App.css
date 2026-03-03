@@ -92,7 +92,11 @@ body {
       
       > label[for=loadFromUrl]::before {
         content: var( --icon-cloud-upload );
-      }  
+      }
+
+      > label[for=addRemoteDatasource]::before {
+        content: var( --icon-database );
+      }
 
       > label[for=cloneHueySession]::before {
         content: var( --icon-copy );
