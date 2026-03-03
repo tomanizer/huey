@@ -229,6 +229,23 @@ class TestBuildCellsSql:
         sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "nonexistent" not in sql
 
+    def test_windows_pushdown(self) -> None:
+        query = CellsQueryBody(
+            rows={"start_index": 1, "count": 2},
+            columns={"start_index": 0, "count": 1},
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [{"field": "date"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
+            },
+        )
+        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS, max_cells=50)
+        assert "row_window" in sql
+        assert "LIMIT 2 OFFSET 1" in sql
+        assert "col_window" in sql
+        assert "LIMIT 1" in sql
+        assert "LIMIT 50" in sql
+
 
 class TestBuildPicklistSql:
     def test_basic_distinct(self) -> None:

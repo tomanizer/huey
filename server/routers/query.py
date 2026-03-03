@@ -11,7 +11,7 @@ from server import datasets
 from server.config import get_settings
 from server.auth import require_api_key
 from server.engine import db_manager
-from server.errors import DatasetNotFoundError
+from server.errors import CellsWindowTooLargeError, DatasetNotFoundError
 from server.models import (
     CellsResponse,
     PagingResponse,
@@ -30,6 +30,7 @@ from server.query_builder import (
     build_tuples_count_sql,
     build_tuples_sql,
 )
+from server.config import get_settings
 from server.query_budget import get_query_budget
 from server.request_context import set_request_id
 
@@ -122,6 +123,45 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
+    settings = get_settings()
+
+    row_window = body.query.rows
+    col_window = body.query.columns
+
+    row_count = row_window.count if row_window else None
+    col_count = col_window.count if col_window else None
+
+    if row_count and row_count > settings.max_axis_cardinality:
+        raise CellsWindowTooLargeError(
+            "Row window exceeds maximum axis cardinality",
+            {"max_axis_cardinality": settings.max_axis_cardinality, "requested_rows": row_count},
+        )
+    if col_count and col_count > settings.max_axis_cardinality:
+        raise CellsWindowTooLargeError(
+            "Column window exceeds maximum axis cardinality",
+            {"max_axis_cardinality": settings.max_axis_cardinality, "requested_columns": col_count},
+        )
+
+    # Guard oversize single-axis requests even when only one dimension is supplied.
+    if row_count and row_count > settings.max_cells_per_response:
+        raise CellsWindowTooLargeError(
+            "Requested row window exceeds maximum cells per response",
+            {"max_cells_per_response": settings.max_cells_per_response, "requested_rows": row_count},
+        )
+    if col_count and col_count > settings.max_cells_per_response:
+        raise CellsWindowTooLargeError(
+            "Requested column window exceeds maximum cells per response",
+            {"max_cells_per_response": settings.max_cells_per_response, "requested_columns": col_count},
+        )
+    if row_count and col_count and (row_count * col_count) > settings.max_cells_per_response:
+        raise CellsWindowTooLargeError(
+            "Requested cells window exceeds maximum cells per response",
+            {
+                "max_cells_per_response": settings.max_cells_per_response,
+                "requested_rows": row_count,
+                "requested_columns": col_count,
+            },
+        )
 
     start = time.perf_counter()
     sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)

@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     # Dataset metadata cache
     schema_cache_ttl_seconds: float | None = 300  # Set to 0 or None to disable TTL-based refresh
 
+    # Cells/query limits
+    max_cells_per_response: int = 10000
+    max_axis_cardinality: int = 5000
+
     # Optional: S3 / engine config (for later issues)
     s3_bucket: str | None = None
     s3_region: str | None = None
