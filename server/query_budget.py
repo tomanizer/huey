@@ -61,6 +61,11 @@ class QueryBudget:
                 self._active = max(0, self._active - 1)
             self._semaphore.release()
 
+    @property
+    def active_count(self) -> int:
+        """Return the current number of in-flight queries holding a semaphore slot."""
+        return self._active
+
     async def run_with_budget(
         self,
         request: Request,

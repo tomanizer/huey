@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     query_timeout_seconds: float = 30.0
     max_concurrent_queries: int = 8
     max_query_queue_depth: int | None = 32
+    shutdown_drain_seconds: float = 10.0  # Max wait for in-flight queries on shutdown
 
     # Endpoint defaults
     tuples_default_limit: int = 200

@@ -5,6 +5,7 @@ FastAPI application with health endpoints, config loader, and structured logging
 """
 # ruff: noqa: E402
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -30,6 +31,7 @@ from server.export_service import init_export_service
 from server.export_store import ExportJobStore
 from server.logging_config import setup_logging
 from server.middleware import AccessLogMiddleware, CorrelationIdMiddleware
+from server.query_budget import get_query_budget
 from server.rate_limit import get_real_ip
 from server.request_context import get_request_id
 
@@ -60,9 +62,23 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    drain_seconds = settings.shutdown_drain_seconds
+    logger.info("QueryService draining in-flight queries", extra={"drain_seconds": drain_seconds})
+    budget = get_query_budget()
+    deadline = asyncio.get_event_loop().time() + drain_seconds
+    while budget.active_count > 0:
+        remaining = deadline - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            logger.warning(
+                "Shutdown drain timeout — forcing close with active queries",
+                extra={"active_queries": budget.active_count},
+            )
+            break
+        await asyncio.sleep(0.1)
+
     export_store.close()
     db_manager.shutdown()
-    logger.info("QueryService shutting down")
+    logger.info("QueryService shutdown complete")
 
 
 app = FastAPI(
