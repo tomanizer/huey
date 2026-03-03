@@ -88,13 +88,7 @@ class ExportService:
             )
             query_params = tuple(params) if params else None
 
-            count_sql = f"SELECT COUNT(*) FROM ({sql}) AS export_rows"
-            count_rows = db_manager.execute_sql(
-                count_sql,
-                query_params,
-                dataset_id=body.dataset_id,
-            )
-            row_count = int(count_rows[0][0]) if count_rows else 0
+            row_count = None
 
             escaped_path = _escape_sql_string(str(file_path))
             if fmt == "parquet":

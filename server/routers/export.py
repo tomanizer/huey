@@ -62,6 +62,7 @@ async def get_export_status(export_id: str, _api_key: str = Depends(require_api_
         export_id=job.id,
         status=job.status,
         download_url=job.download_url,
+        row_count=job.row_count,
     )
 
 

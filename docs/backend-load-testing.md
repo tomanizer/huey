@@ -31,6 +31,16 @@ Options:
 
 Output: success count, failure count, and latency percentiles (p50, p90, p99) per endpoint.
 
+## Export scan benchmark
+
+To compare prior dual-scan export execution (`COUNT(*)` + `COPY`) with single-scan (`COPY` only):
+
+```bash
+python scripts/benchmark_export_scan_strategies.py --rows 2000000
+```
+
+The script prints elapsed seconds for both approaches and the percentage improvement for the single-scan path.
+
 ## Interpreting results
 
 - **Success rate:** Should be 100% under normal load; drops indicate errors or timeouts.

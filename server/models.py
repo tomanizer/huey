@@ -237,3 +237,4 @@ class ExportStatusResponse(BaseModel):
     export_id: str
     status: str
     download_url: str | None = None
+    row_count: int | None = None
