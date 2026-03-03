@@ -7,10 +7,10 @@ falls back to the seeded sample tables.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-import re
 from typing import Any, Iterable
 
 from server import datasets
