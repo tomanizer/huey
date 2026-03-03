@@ -20,6 +20,7 @@ class RequestIdFilter(logging.Filter):
     """Inject the current correlation ID into every log record."""
 
     def filter(self, record: logging.LogRecord) -> bool:
+        """Attach request_id (if any) so formatters can include it."""
         record.request_id = get_request_id()  # type: ignore[attr-defined]
         return True
 

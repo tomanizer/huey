@@ -1,1 +1,1 @@
-# Routers package
+"""FastAPI routers for QueryService endpoints."""

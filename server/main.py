@@ -31,6 +31,7 @@ logger = logging.getLogger("query_service")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Initialize engine and export store on startup, cleanly shut them down on exit."""
     logger.info("QueryService starting", extra={"host": settings.host, "port": settings.port})
     db_manager.initialize()
     load_sample_data(db_manager)
@@ -74,6 +75,7 @@ app.include_router(schema.router)
 
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """Map domain errors to structured HTTP responses with consistent codes."""
     body = ErrorResponse(
         code=exc.code,
         message=exc.message,
@@ -90,6 +92,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Normalize FastAPI validation errors into the ErrorResponse envelope."""
     clean_errors = []
     for err in exc.errors():
         entry = {
@@ -109,6 +112,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch-all handler to avoid leaking stack traces to clients."""
     logger.exception("Unhandled exception")
     body = ErrorResponse(
         code="INTERNAL_ERROR",

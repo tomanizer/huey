@@ -31,10 +31,12 @@ class ExportService:
     """Orchestrates export job lifecycle: submit, process, poll, download, cleanup."""
 
     def __init__(self, store: ExportJobStore) -> None:
+        """Bind the service to a durable ExportJobStore implementation."""
         self._store = store
 
     @property
     def store(self) -> ExportJobStore:
+        """Return the underlying ExportJobStore (primarily for tests)."""
         return self._store
 
     def submit(self, body: ExportRequest) -> ExportJob:
