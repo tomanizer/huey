@@ -13,8 +13,8 @@ from pathlib import Path
 import re
 from typing import Any, Iterable
 
-from server.config import get_settings
 from server import datasets
+from server.config import get_settings
 from server.errors import DatasetConfigError, PartitionConfigError, PartitionNotFoundError
 from server.models import DateRange, DateRangeRange, DateRangeSingle
 from server.s3 import build_partition_path
