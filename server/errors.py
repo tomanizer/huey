@@ -37,6 +37,18 @@ class AppError(Exception):
         super().__init__(message)
 
 
+class ValidationAppError(AppError):
+    """Raised when request body contains unknown or invalid fields (422)."""
+
+    def __init__(self, errors: list[dict[str, Any]]) -> None:
+        super().__init__(
+            code="VALIDATION_ERROR",
+            message="Request validation failed",
+            status_code=422,
+            details={"errors": errors},
+        )
+
+
 class DatasetNotFoundError(AppError):
     """Raised when a requested dataset_id is not registered in the service."""
 

@@ -8,22 +8,18 @@ Background processing is dispatched via FastAPI BackgroundTasks.
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Request, Response
-from fastapi.responses import FileResponse
-
-from server import datasets
-from server.config import get_settings
-from server.errors import DatasetNotFoundError
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from fastapi.responses import FileResponse
 
 from server import datasets
 from server.auth import require_api_key
+from server.config import get_settings
 from server.engine import db_manager
 from server.errors import DatasetNotFoundError, DatasetUnavailableError
 from server.export_service import get_export_service
 from server.main import limiter
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
+from server.query_builder import validate_export_query_fields
 from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.export")
@@ -49,6 +45,7 @@ async def post_export(
         raise DatasetNotFoundError(body.dataset_id)
     if not db_manager.table_exists(body.dataset_id):
         raise DatasetUnavailableError(body.dataset_id)
+    validate_export_query_fields(body.query, datasets.get_schema_field_names(body.dataset_id))
 
     service = get_export_service()
     job = service.submit(body)

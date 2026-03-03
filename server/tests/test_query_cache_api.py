@@ -42,9 +42,9 @@ def test_tuples_cache_hit(monkeypatch, client: TestClient) -> None:
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
-    async def counted(sql, params=None):
+    async def counted(*args, **kwargs):
         call_count["n"] += 1
-        return await original(sql, params)
+        return await original(*args, **kwargs)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
@@ -65,9 +65,9 @@ def test_picklist_cache_hit(monkeypatch, client: TestClient) -> None:
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
-    async def counted(sql, params=None):
+    async def counted(*args, **kwargs):
         call_count["n"] += 1
-        return await original(sql, params)
+        return await original(*args, **kwargs)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
@@ -88,9 +88,9 @@ def test_cells_not_cached_when_too_large(monkeypatch, client: TestClient) -> Non
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
-    async def counted(sql, params=None):
+    async def counted(*args, **kwargs):
         call_count["n"] += 1
-        return await original(sql, params)
+        return await original(*args, **kwargs)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 

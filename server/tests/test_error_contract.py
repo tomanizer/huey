@@ -138,6 +138,16 @@ class TestErrorResponseSchema:
             "get_schema_field_names",
             lambda _dataset_id: {"symbol", "date", "volume"},
         )
+        original_execute = query_router.db_manager.execute_sql_async
+
+        async def execute_raise_unavailable(*args, **kwargs):
+            # Router may pass (sql, params) or (sql, params, dataset_id=...); detect dataset from SQL/params
+            call_str = str(args) + str(kwargs)
+            if "not_materialized_ds" in call_str:
+                raise DatasetUnavailableError("not_materialized_ds")
+            return await original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(query_router.db_manager, "execute_sql_async", execute_raise_unavailable)
 
         body = _query_body(dataset_id="not_materialized_ds")
         if endpoint == "/query/tuples":
