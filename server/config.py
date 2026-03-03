@@ -4,6 +4,7 @@ QueryService configuration loader.
 Loads settings from environment variables and optional config file.
 """
 
+import json
 from functools import lru_cache
 
 from pydantic import Field, field_validator
@@ -25,12 +26,13 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: str = "INFO"
     log_format: str = "text"  # "text" for dev, "json" for production
+    cors_origins: list[str] = Field(default_factory=list)
 
     # Optional: path to datasets config YAML (for dataset/schema loader)
     datasets_config_path: str | None = None
 
     # Sample data seeding (disable in production)
-    seed_sample_data: bool = True
+    seed_sample_data: bool = False
 
     # DuckDB
     data_dir: str | None = None  # Path to DuckDB database file; None = in-memory
@@ -62,6 +64,29 @@ class Settings(BaseSettings):
         if value == "":
             return None
         return value
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, v: object) -> list[str]:
+        """Accept CSV or JSON-array input for CORS origins."""
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(item).strip() for item in v if str(item).strip()]
+        if isinstance(v, str):
+            raw = v.strip()
+            if raw == "":
+                return []
+            if raw.startswith("["):
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    raise ValueError("Invalid JSON for cors_origins") from exc
+                if not isinstance(parsed, list):
+                    raise ValueError("cors_origins JSON must be an array")
+                return [str(item).strip() for item in parsed if str(item).strip()]
+            return [item.strip() for item in raw.split(",") if item.strip()]
+        raise ValueError("cors_origins must be a list or comma-separated string")
 
 
 @lru_cache

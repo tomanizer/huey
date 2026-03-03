@@ -2,7 +2,9 @@
 
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
+from server.config import get_settings
 from server.datasets import load_sample_data
 from server.engine import db_manager
 from server.export_service import init_export_service
@@ -14,7 +16,13 @@ from server.main import app
 def _init_test_db():
     """Initialize DuckDB and export service once for the entire test session."""
     db_manager.initialize()
-    load_sample_data(db_manager)
+    settings = get_settings()
+    with patch("server.datasets.get_settings") as mock_settings:
+        mock_settings.return_value = type("S", (), {
+            "datasets_config_path": settings.datasets_config_path,
+            "seed_sample_data": True,
+        })()
+        load_sample_data(db_manager)
 
     store = ExportJobStore(":memory:")
     store.initialize()

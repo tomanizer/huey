@@ -307,7 +307,7 @@ def generate_sample_rows(fields: list[dict[str, Any]]) -> list[tuple]:
 def load_sample_data(db_manager: DuckDBManager) -> None:
     """Create tables with schema-aware sample data for each configured dataset.
 
-    Controlled by the QUERYSERVICE_SEED_SAMPLE_DATA setting (default True).
+    Controlled by the QUERYSERVICE_SEED_SAMPLE_DATA setting (default False).
     In production, set to False so startup has no seeding side effects.
     """
     settings = get_settings()
