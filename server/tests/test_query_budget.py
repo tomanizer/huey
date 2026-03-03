@@ -3,7 +3,6 @@
 import asyncio
 import os
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
