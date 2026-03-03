@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -62,30 +63,38 @@ def test_queue_depth_rejects_overflow(
     client: TestClient, settings_override, monkeypatch
 ) -> None:
     """When queue depth is exceeded, subsequent requests fail fast."""
-    settings_override(max_concurrent_queries=1, max_query_queue_depth=0, query_timeout_seconds=2)
+    settings_override(max_concurrent_queries=1, max_query_queue_depth=0, query_timeout_seconds=5)
 
     original_execute = db_manager.execute_sql_async
+    # Signal set when the first request has entered execute_sql_async, meaning
+    # the budget semaphore is already acquired and held.
+    in_execute = threading.Event()
 
     async def slow_execute(sql, params=None, **kwargs):
-        await asyncio.sleep(0.1)
+        in_execute.set()  # budget is held at this point
+        await asyncio.sleep(1)
         return await original_execute(sql, params, **kwargs)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", slow_execute)
 
-    def slow_request():
-        return client.post(
-            "/query/cells",
-            json={
-                "dataset_id": "trades_v1",
-                "date_range": {"type": "single", "date": "2026-03-01"},
-                "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]}, "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL"]}]},
-            },
-        )
+    request_body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]}},
+    }
+
+    def first_request():
+        return client.post("/query/cells", json=request_body)
+
+    def second_request():
+        # Wait until the first request has definitely acquired the budget slot
+        # before sending the second, so the queue overflow is guaranteed.
+        in_execute.wait(timeout=5)
+        return client.post("/query/cells", json=request_body)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(slow_request)
-        time.sleep(0.01)
-        second = pool.submit(slow_request)
+        first = pool.submit(first_request)
+        second = pool.submit(second_request)
         first_result = first.result(timeout=10)
         second_result = second.result(timeout=10)
 
