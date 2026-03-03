@@ -14,7 +14,7 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
 SortDirection = Literal["ASC", "DESC"]
-ExportFormat = Literal["csv"]
+ExportFormat = Literal["parquet", "csv"]
 
 MAX_PAGE_LIMIT = 10000
 MAX_EXPORT_ROWS = 100000
@@ -142,7 +142,7 @@ class ExportQueryBody(BaseModel):
     axes: dict[str, Any] | None = None
     filters: list[TupleFilter] | None = None
     max_rows: int = Field(default=10000, ge=1, le=MAX_EXPORT_ROWS)
-    format: ExportFormat = "csv"
+    format: ExportFormat = "parquet"
 
 
 # --- Request models ---

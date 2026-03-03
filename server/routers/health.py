@@ -6,6 +6,7 @@ Health check endpoints for QueryService.
 """
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from server.engine import db_manager
 
@@ -19,8 +20,8 @@ async def liveness() -> dict:
 
 
 @router.get("/readiness")
-async def readiness() -> dict:
+async def readiness() -> JSONResponse:
     """Readiness: service is ready to accept traffic (engine must be healthy)."""
     if not db_manager.health_check():
-        return {"status": "unavailable"}
-    return {"status": "ok"}
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
+    return JSONResponse(status_code=200, content={"status": "ok"})

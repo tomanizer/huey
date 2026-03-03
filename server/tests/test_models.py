@@ -128,7 +128,7 @@ class TestExportQueryBody:
     def test_defaults(self) -> None:
         eq = ExportQueryBody()
         assert eq.max_rows == 10000
-        assert eq.format == "csv"
+        assert eq.format == "parquet"
 
     def test_valid_max_rows(self) -> None:
         eq = ExportQueryBody(max_rows=1)
@@ -233,7 +233,7 @@ class TestExportRequest:
             date_range={"type": "single", "date": "2026-03-01"},
         )
         assert req.query.max_rows == 10000
-        assert req.query.format == "csv"
+        assert req.query.format == "parquet"
 
 
 class TestPagingModels:

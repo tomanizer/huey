@@ -6,6 +6,7 @@ Background processing is dispatched via FastAPI BackgroundTasks.
 """
 
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse
@@ -60,8 +61,15 @@ async def download_export(export_id: str, _api_key: str = Depends(require_api_ke
     """GET /export/{id}/download: download the completed export file."""
     service = get_export_service()
     file_path = service.get_download_path(export_id)
+    suffix = Path(file_path).suffix.lower()
+    if suffix == ".parquet":
+        media_type = "application/octet-stream"
+        filename = f"{export_id}.parquet"
+    else:
+        media_type = "text/csv"
+        filename = f"{export_id}.csv"
     return FileResponse(
         path=file_path,
-        filename=f"{export_id}.csv",
-        media_type="text/csv",
+        filename=filename,
+        media_type=media_type,
     )

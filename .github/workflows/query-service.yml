@@ -28,13 +28,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify Python version requirement
+        run: python -c "import sys; assert sys.version_info >= (3, 11), f'Python 3.11+ required, got {sys.version_info.major}.{sys.version_info.minor}'"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -63,13 +69,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
+
+      - name: Verify Python version requirement
+        run: python -c "import sys; assert sys.version_info >= (3, 11), f'Python 3.11+ required, got {sys.version_info.major}.{sys.version_info.minor}'"
 
       - name: Install ruff
         run: pip install ruff
 
-    - name: Lint
-      run: ruff check server/
+      - name: Lint
+        run: ruff check server/
 
   frontend-unit-tests:
     runs-on: ubuntu-latest
@@ -86,3 +95,22 @@ jobs:
 
       - name: Run frontend unit tests
         run: npm run test:unit
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright UI tests
+        run: npm run test:ui
