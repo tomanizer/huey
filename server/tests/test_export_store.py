@@ -106,9 +106,29 @@ class TestCountActive:
         assert store.count_active() == 0
 
 
+class TestAtomicCreateAndClaim:
+    def test_create_if_capacity_creates_when_slot_available(self, store: ExportJobStore) -> None:
+        job = store.create_if_capacity("exp-1", "ds1", max_concurrent=1)
+        assert job is not None
+        assert job.status == "pending"
+
+    def test_create_if_capacity_returns_none_when_full(self, store: ExportJobStore) -> None:
+        store.create("exp-1", "ds1")
+        job = store.create_if_capacity("exp-2", "ds1", max_concurrent=1)
+        assert job is None
+
+    def test_claim_pending_transitions_once(self, store: ExportJobStore) -> None:
+        store.create("exp-1", "ds1")
+        assert store.claim_pending("exp-1") is True
+        assert store.claim_pending("exp-1") is False
+        assert store.get("exp-1").status == "processing"
+
+
 class TestFindExpired:
     def test_finds_old_jobs(self, store: ExportJobStore) -> None:
         store.create("exp-old", "ds1")
+        store.update_status("exp-old", "processing")
+        store.update_status("exp-old", "complete", file_path="/tmp/exp-old.csv")
         with store._lock:
             store._conn.execute(
                 "UPDATE export_jobs SET created_at = ? WHERE id = ?",
@@ -116,6 +136,7 @@ class TestFindExpired:
             )
             store._conn.commit()
         store.create("exp-new", "ds1")
+        store.update_status("exp-new", "processing")
 
         expired = store.find_expired(3600)
         ids = [j.id for j in expired]
@@ -133,6 +154,18 @@ class TestFindExpired:
             )
             store._conn.commit()
 
+        expired = store.find_expired(3600)
+        assert len(expired) == 0
+
+    def test_excludes_active_jobs(self, store: ExportJobStore) -> None:
+        store.create("exp-active", "ds1")
+        store.update_status("exp-active", "processing")
+        with store._lock:
+            store._conn.execute(
+                "UPDATE export_jobs SET created_at = ? WHERE id = ?",
+                (time.time() - 7200, "exp-active"),
+            )
+            store._conn.commit()
         expired = store.find_expired(3600)
         assert len(expired) == 0
 

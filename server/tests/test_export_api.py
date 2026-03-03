@@ -87,6 +87,30 @@ class TestExportLifecycle:
         assert lookup["AAPL"] == 1500
         assert lookup["GOOG"] == 2200
 
+    def test_default_export_format_is_parquet(self, client: TestClient) -> None:
+        body = _valid_body()
+        del body["query"]["format"]
+
+        r = client.post("/export", json=body)
+        assert r.status_code == 200
+        export_id = r.json()["export_id"]
+
+        for _ in range(20):
+            status_r = client.get(f"/export/{export_id}")
+            assert status_r.status_code == 200
+            if status_r.json()["status"] == "complete":
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail("Export did not complete in time")
+
+        dl = client.get(f"/export/{export_id}/download")
+        assert dl.status_code == 200
+        assert dl.headers["content-type"].startswith("application/octet-stream")
+        assert "filename=\"exp-" in dl.headers.get("content-disposition", "")
+        assert ".parquet" in dl.headers.get("content-disposition", "")
+        assert len(dl.content) > 0
+
 
 class TestExportWithFilters:
     def test_include_filter(self, client: TestClient) -> None:

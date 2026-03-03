@@ -102,6 +102,60 @@ class ExportJobStore:
             created_at=now, updated_at=now,
         )
 
+    def create_if_capacity(
+        self,
+        job_id: str,
+        dataset_id: str,
+        *,
+        max_concurrent: int,
+    ) -> ExportJob | None:
+        """Atomically create a pending job when active jobs are below capacity.
+
+        Returns the created job or None if the concurrency limit has been reached.
+        """
+        now = time.time()
+        with self._lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                cur = self._conn.execute(
+                    "SELECT COUNT(*) FROM export_jobs WHERE status IN ('pending', 'processing')",
+                )
+                active = int(cur.fetchone()[0])
+                if active >= max_concurrent:
+                    self._conn.rollback()
+                    return None
+
+                self._conn.execute(
+                    "INSERT INTO export_jobs (id, status, dataset_id, created_at, updated_at) "
+                    "VALUES (?, 'pending', ?, ?, ?)",
+                    (job_id, dataset_id, now, now),
+                )
+                self._conn.commit()
+            except Exception:
+                self._conn.rollback()
+                raise
+
+        return ExportJob(
+            id=job_id,
+            status="pending",
+            dataset_id=dataset_id,
+            created_at=now,
+            updated_at=now,
+        )
+
+    def claim_pending(self, job_id: str) -> bool:
+        """Claim a pending job for processing; returns False if already claimed."""
+        now = time.time()
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE export_jobs "
+                "SET status = 'processing', updated_at = ? "
+                "WHERE id = ? AND status = 'pending'",
+                (now, job_id),
+            )
+            self._conn.commit()
+            return cur.rowcount > 0
+
     def get(self, job_id: str) -> ExportJob | None:
         """Fetch a single job by ID, or None if not found."""
         with self._lock:
@@ -181,7 +235,8 @@ class ExportJobStore:
         cutoff = time.time() - ttl_seconds
         with self._lock:
             cur = self._conn.execute(
-                "SELECT * FROM export_jobs WHERE created_at < ? AND status != 'expired'",
+                "SELECT * FROM export_jobs "
+                "WHERE created_at < ? AND status IN ('complete', 'failed')",
                 (cutoff,),
             )
             return [self._row_to_job(row) for row in cur.fetchall()]
