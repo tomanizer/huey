@@ -5,10 +5,11 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from server import datasets
 from server.engine import db_manager
+from server.errors import DatasetNotFoundError
 from server.models import (
     CellsResponse,
     PagingResponse,
@@ -46,7 +47,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request) -> Tuple
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
+        raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging
@@ -87,7 +88,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request) -> CellsRe
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
+        raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
 
@@ -118,7 +119,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request) -> P
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
+        raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging

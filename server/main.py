@@ -8,13 +8,18 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from server.config import get_settings
 from server.datasets import load_sample_data
 from server.engine import db_manager
+from server.errors import AppError, ErrorResponse
 from server.logging_config import setup_logging
 from server.middleware import AccessLogMiddleware, CorrelationIdMiddleware
+from server.request_context import get_request_id
 from server.routers import export, health, query, schema
 
 settings = get_settings()
@@ -53,6 +58,52 @@ app.include_router(export.router)
 app.include_router(health.router)
 app.include_router(query.router)
 app.include_router(schema.router)
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    body = ErrorResponse(
+        code=exc.code,
+        message=exc.message,
+        request_id=get_request_id() or None,
+        details=exc.details,
+    )
+    logger.warning(
+        "Domain error: %s",
+        exc.code,
+        extra={"error_code": exc.code, "status_code": exc.status_code},
+    )
+    return JSONResponse(status_code=exc.status_code, content=body.model_dump(exclude_none=True))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    clean_errors = []
+    for err in exc.errors():
+        entry = {
+            "loc": list(err.get("loc", [])),
+            "msg": err.get("msg", ""),
+            "type": err.get("type", ""),
+        }
+        clean_errors.append(entry)
+    body = ErrorResponse(
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+        request_id=get_request_id() or None,
+        details={"errors": clean_errors},
+    )
+    return JSONResponse(status_code=422, content=body.model_dump(exclude_none=True))
+
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception")
+    body = ErrorResponse(
+        code="INTERNAL_ERROR",
+        message="An unexpected error occurred",
+        request_id=get_request_id() or None,
+    )
+    return JSONResponse(status_code=500, content=body.model_dump(exclude_none=True))
 
 
 if __name__ == "__main__":

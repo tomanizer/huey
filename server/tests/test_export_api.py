@@ -191,7 +191,7 @@ class TestExportConcurrencyAndTtl:
             export_module._exports[f"exp-active-{i}"] = {"status": "processing", "created_at": time.time()}
         r = client.post("/export", json=_valid_body())
         assert r.status_code == 429
-        assert "concurrent" in r.json()["detail"].lower()
+        assert r.json()["code"] == "TOO_MANY_EXPORTS"
 
     def test_ttl_cleanup(self, client: TestClient, tmp_path) -> None:
         expired_file = tmp_path / "exp-old.csv"
