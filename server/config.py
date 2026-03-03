@@ -70,6 +70,14 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
     s3_region: str | None = None
 
+    # Query result cache
+    cache_enabled: bool = False
+    cache_ttl_seconds: int = 120
+    cache_max_bytes: int = 64 * 1024 * 1024
+    cache_max_item_bytes: int = 1 * 1024 * 1024
+    cache_admission_min_duration_ms: float = 0.0
+    cache_sqlite_path: str | None = None
+    cache_sqlite_max_bytes: int = 256 * 1024 * 1024
     # Query execution
     execution_mode: str = "sample_table"  # "sample_table" | "parquet_partitioned"
     partition_base_path: str | None = None
