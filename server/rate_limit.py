@@ -31,4 +31,4 @@ def _make_limiter() -> Limiter:
     )
 
 
-limiter = _make_limiter()
+limiter = _make_limiter()  # module-level singleton
