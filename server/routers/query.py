@@ -5,9 +5,10 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 
 from server import datasets
+from server.config import get_settings
 from server.engine import db_manager
 from server.errors import DatasetNotFoundError
 from server.models import (
@@ -28,6 +29,7 @@ from server.query_builder import (
     build_tuples_count_sql,
 )
 from server.request_context import set_request_id
+from server.main import limiter
 
 logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
@@ -42,7 +44,8 @@ def _apply_client_request_id(body, request: Request) -> None:
 
 
 @router.post("/tuples", response_model=TuplesResponse)
-async def post_query_tuples(body: QueryTuplesRequest, request: Request) -> TuplesResponse:
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def post_query_tuples(request: Request, body: QueryTuplesRequest, response: Response) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
@@ -91,7 +94,8 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request) -> Tuple
 
 
 @router.post("/cells", response_model=CellsResponse)
-async def post_query_cells(body: QueryCellsRequest, request: Request) -> CellsResponse:
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def post_query_cells(request: Request, body: QueryCellsRequest, response: Response) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
@@ -122,7 +126,8 @@ async def post_query_cells(body: QueryCellsRequest, request: Request) -> CellsRe
 
 
 @router.post("/picklist", response_model=PicklistResponse)
-async def post_query_picklist(body: QueryPicklistRequest, request: Request) -> PicklistResponse:
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def post_query_picklist(request: Request, body: QueryPicklistRequest, response: Response) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)

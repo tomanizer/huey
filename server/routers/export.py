@@ -7,12 +7,14 @@ Background processing is dispatched via FastAPI BackgroundTasks.
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Request, Response
 from fastapi.responses import FileResponse
 
 from server import datasets
+from server.config import get_settings
 from server.errors import DatasetNotFoundError
 from server.export_service import get_export_service
+from server.main import limiter
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
 from server.request_context import set_request_id
 
@@ -22,9 +24,11 @@ router = APIRouter(prefix="/export", tags=["export"])
 
 
 @router.post("", response_model=ExportResponse)
+@limiter.limit(lambda: get_settings().rate_limit_export)
 async def post_export(
-    body: ExportRequest,
     request: Request,
+    body: ExportRequest,
+    response: Response,
     background_tasks: BackgroundTasks,
 ) -> ExportResponse:
     """POST /export: submit export job with background processing."""

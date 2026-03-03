@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
     s3_region: str | None = None
 
+    # Rate limiting
+    rate_limit_query: str = "100/minute"
+    rate_limit_export: str = "10/minute"
+    rate_limit_enabled: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -12,6 +12,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from server.config import get_settings
 from server.datasets import load_sample_data
@@ -22,11 +26,16 @@ from server.export_store import ExportJobStore
 from server.logging_config import setup_logging
 from server.middleware import AccessLogMiddleware, CorrelationIdMiddleware
 from server.request_context import get_request_id
-from server.routers import export, health, query, schema
 
 settings = get_settings()
 setup_logging(settings.log_level, settings.log_format)
 logger = logging.getLogger("query_service")
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    enabled=settings.rate_limit_enabled,
+    headers_enabled=True,
+)
 
 
 @asynccontextmanager
@@ -59,6 +68,7 @@ app = FastAPI(
 
 app.add_middleware(AccessLogMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8765", "http://127.0.0.1:8765", "http://localhost:8080", "http://127.0.0.1:8080"],
@@ -66,6 +76,10 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+from server.routers import export, health, query, schema  # noqa: E402
 
 app.include_router(export.router)
 app.include_router(health.router)
