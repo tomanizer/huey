@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from server.config import get_settings
+from server.datasets import load_sample_data
 from server.engine import db_manager
 from server.routers import export, health, query, schema
 
@@ -35,6 +36,7 @@ logger = logging.getLogger("query_service")
 async def lifespan(app: FastAPI):
     logger.info("QueryService starting", extra={"host": settings.host, "port": settings.port})
     db_manager.initialize()
+    load_sample_data(db_manager)
     yield
     db_manager.shutdown()
     logger.info("QueryService shutting down")

@@ -12,18 +12,35 @@ def client() -> TestClient:
 
 
 def test_query_picklist_ok(client: TestClient) -> None:
-    """POST /query/picklist with valid envelope returns 200 and picklist shape."""
+    """POST /query/picklist with valid envelope returns distinct values."""
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "search": "AA*", "filters": [], "paging": {"limit": 100, "offset": 0}},
+        "query": {"field": "symbol", "search": "", "filters": [], "paging": {"limit": 100, "offset": 0}},
     }
     r = client.post("/query/picklist", json=body)
     assert r.status_code == 200
     data = r.json()
-    assert data["total_count"] == 0
-    assert data["values"] == []
-    assert data["paging"]["returned"] == 0
+    assert data["total_count"] > 0
+    assert len(data["values"]) > 0
+    values = [v["value"] for v in data["values"]]
+    assert "AAPL" in values
+
+
+def test_query_picklist_search(client: TestClient) -> None:
+    """POST /query/picklist with search wildcard filters values."""
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"field": "symbol", "search": "A*", "filters": [], "paging": {"limit": 100, "offset": 0}},
+    }
+    r = client.post("/query/picklist", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    values = [v["value"] for v in data["values"]]
+    assert all(v.startswith("A") for v in values)
+    assert "AAPL" in values
+    assert "AMZN" in values
 
 
 def test_query_picklist_dataset_not_found(client: TestClient) -> None:
