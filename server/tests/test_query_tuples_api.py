@@ -1,14 +1,13 @@
-"""Tests for POST /query/tuples API."""
+"""Tests for POST /query/tuples API — functional / happy-path tests."""
 
 from fastapi.testclient import TestClient
 
 
-def test_query_tuples_ok(client: TestClient) -> None:
-    """POST /query/tuples with valid envelope returns real tuple results."""
+def test_query_tuples_returns_results(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"axis": "rows", "fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
     }
     r = client.post("/query/tuples", json=body)
     assert r.status_code == 200
@@ -20,13 +19,11 @@ def test_query_tuples_ok(client: TestClient) -> None:
     assert "AAPL" in symbols
 
 
-def test_query_tuples_with_filter(client: TestClient) -> None:
-    """POST /query/tuples with INCLUDE filter returns filtered results."""
+def test_query_tuples_with_include_filter(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {
-            "axis": "rows",
             "fields": [{"field": "symbol"}],
             "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL", "GOOG"]}],
             "paging": {"limit": 10, "offset": 0},
@@ -40,12 +37,29 @@ def test_query_tuples_with_filter(client: TestClient) -> None:
     assert symbols == {"AAPL", "GOOG"}
 
 
+def test_query_tuples_with_exclude_filter(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "fields": [{"field": "symbol"}],
+            "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
+            "paging": {"limit": 10, "offset": 0},
+        },
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    symbols = {item["values"][0] for item in data["items"]}
+    assert "AAPL" not in symbols
+    assert data["total_count"] == 4
+
+
 def test_query_tuples_date_range(client: TestClient) -> None:
-    """POST /query/tuples with date range returns tuples across dates."""
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
-        "query": {"axis": "rows", "fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
     }
     r = client.post("/query/tuples", json=body)
     assert r.status_code == 200
@@ -54,11 +68,10 @@ def test_query_tuples_date_range(client: TestClient) -> None:
 
 
 def test_query_tuples_paging(client: TestClient) -> None:
-    """POST /query/tuples with paging limits results."""
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"axis": "rows", "fields": [{"field": "symbol"}], "paging": {"limit": 2, "offset": 0}},
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 2, "offset": 0}},
     }
     r = client.post("/query/tuples", json=body)
     assert r.status_code == 200
@@ -67,8 +80,33 @@ def test_query_tuples_paging(client: TestClient) -> None:
     assert data["total_count"] == 5
 
 
+def test_query_tuples_paging_offset(client: TestClient) -> None:
+    body_page1 = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 2, "offset": 0}},
+    }
+    body_page2 = {**body_page1, "query": {**body_page1["query"], "paging": {"limit": 2, "offset": 2}}}
+    r1 = client.post("/query/tuples", json=body_page1)
+    r2 = client.post("/query/tuples", json=body_page2)
+    page1_symbols = {item["values"][0] for item in r1.json()["items"]}
+    page2_symbols = {item["values"][0] for item in r2.json()["items"]}
+    assert page1_symbols.isdisjoint(page2_symbols)
+
+
+def test_query_tuples_sort_desc(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol", "sort": "DESC"}], "paging": {"limit": 10, "offset": 0}},
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 200
+    symbols = [item["values"][0] for item in r.json()["items"]]
+    assert symbols == sorted(symbols, reverse=True)
+
+
 def test_query_tuples_dataset_not_found(client: TestClient) -> None:
-    """POST /query/tuples with unknown dataset_id returns 404."""
     body = {
         "dataset_id": "nonexistent",
         "date_range": {"type": "single", "date": "2026-03-01"},
@@ -76,36 +114,3 @@ def test_query_tuples_dataset_not_found(client: TestClient) -> None:
     }
     r = client.post("/query/tuples", json=body)
     assert r.status_code == 404
-
-
-def test_query_tuples_bad_date_range(client: TestClient) -> None:
-    """POST /query/tuples with missing date_range type returns 422."""
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {},
-        "query": {},
-    }
-    r = client.post("/query/tuples", json=body)
-    assert r.status_code == 422
-
-
-def test_query_tuples_bad_date_format(client: TestClient) -> None:
-    """POST /query/tuples with malformed date returns 422."""
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "not-a-date"},
-        "query": {},
-    }
-    r = client.post("/query/tuples", json=body)
-    assert r.status_code == 422
-
-
-def test_query_tuples_range_inverted(client: TestClient) -> None:
-    """POST /query/tuples with start > end returns 422."""
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "range", "start": "2026-12-01", "end": "2026-01-01"},
-        "query": {},
-    }
-    r = client.post("/query/tuples", json=body)
-    assert r.status_code == 422

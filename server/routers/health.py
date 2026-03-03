@@ -2,10 +2,12 @@
 Health check endpoints for QueryService.
 
 - /health/liveness: basic "up" check for process and load balancers.
-- /health/readiness: readiness for traffic (engine/S3 checks added in later issues).
+- /health/readiness: readiness for traffic (verifies DuckDB engine connectivity).
 """
 
 from fastapi import APIRouter
+
+from server.engine import db_manager
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -18,5 +20,7 @@ async def liveness() -> dict:
 
 @router.get("/readiness")
 async def readiness() -> dict:
-    """Readiness: service is ready to accept traffic. Engine/S3 checks TBD in later issues."""
+    """Readiness: service is ready to accept traffic (engine must be healthy)."""
+    if not db_manager.health_check():
+        return {"status": "unavailable"}
     return {"status": "ok"}

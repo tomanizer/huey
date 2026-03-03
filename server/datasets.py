@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import yaml
 
 from server.config import get_settings
+from server.utils import quote_identifier
 
 if TYPE_CHECKING:
     from server.engine import DuckDBManager
@@ -98,7 +99,7 @@ def load_sample_data(db_manager: DuckDBManager) -> None:
         if not dataset_id or not fields:
             continue
 
-        quoted_id = '"' + dataset_id.replace('"', '""') + '"'
+        quoted_id = quote_identifier(dataset_id)
         existing = db_manager.execute_sql(
             "SELECT count(*) FROM information_schema.tables WHERE table_name = ?",
             (dataset_id,),

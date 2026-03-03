@@ -2,7 +2,7 @@
 
 import pytest
 
-from server.engine import DuckDBManager, execute_sql, get_connection
+from server.engine import DuckDBManager, get_connection
 
 
 class TestDuckDBManager:
@@ -59,13 +59,17 @@ class TestDuckDBManager:
             with mgr.cursor():
                 pass
 
-    def test_health_check(self) -> None:
+    def test_health_check_healthy(self) -> None:
         mgr = DuckDBManager()
         mgr.initialize()
         try:
             assert mgr.health_check() is True
         finally:
             mgr.shutdown()
+
+    def test_health_check_unhealthy(self) -> None:
+        mgr = DuckDBManager()
+        assert mgr.health_check() is False
 
     @pytest.mark.anyio
     async def test_execute_sql_async(self) -> None:
@@ -78,17 +82,8 @@ class TestDuckDBManager:
             mgr.shutdown()
 
 
-class TestBackwardCompatibility:
-    def test_execute_sql_module_level(self) -> None:
-        """Module-level execute_sql auto-initializes and works."""
-        rows = execute_sql("SELECT 1 AS x")
-        assert rows == [[1]]
-
-    def test_execute_sql_with_params(self) -> None:
-        rows = execute_sql("SELECT ?::int AS v", (42,))
-        assert rows == [[42]]
-
-    def test_get_connection(self) -> None:
+class TestGetConnection:
+    def test_returns_standalone_connection(self) -> None:
         conn = get_connection()
         try:
             r = conn.execute("SELECT 2").fetchone()

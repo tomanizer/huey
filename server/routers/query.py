@@ -8,8 +8,6 @@ from server import datasets
 from server.engine import db_manager
 from server.models import (
     CellsResponse,
-    DateRangeRange,
-    DateRangeSingle,
     PagingResponse,
     PicklistResponse,
     QueryCellsRequest,
@@ -27,13 +25,6 @@ from server.query_builder import (
 )
 
 router = APIRouter(prefix="/query", tags=["query"])
-
-
-def _get_date_str(date_range: DateRangeSingle | DateRangeRange) -> str:
-    """Extract a single date string for partition path."""
-    if isinstance(date_range, DateRangeSingle):
-        return date_range.date
-    return date_range.start
 
 
 @router.post("/tuples", response_model=TuplesResponse)

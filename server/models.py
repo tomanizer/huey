@@ -58,9 +58,9 @@ class ClientContext(BaseModel):
 # --- Shared query components ---
 class TupleFieldSpec(BaseModel):
     field: str
-    derivation: Optional[str] = None
+    derivation: Optional[str] = None  # reserved: tech spec derivation support
     sort: Optional[str] = None
-    include_totals: Optional[bool] = None
+    include_totals: Optional[bool] = None  # reserved: tech spec totals support
 
 
 class TupleFilter(BaseModel):
@@ -82,15 +82,15 @@ class PagingResponse(BaseModel):
 
 # --- Typed query bodies ---
 class TuplesQueryBody(BaseModel):
-    axis: Optional[str] = None
+    axis: Optional[str] = None  # reserved: tech spec multi-axis support
     fields: Optional[list[TupleFieldSpec]] = None
     filters: Optional[list[TupleFilter]] = None
     paging: Optional[PagingSpec] = None
 
 
 class CellsQueryBody(BaseModel):
-    rows: Optional[dict[str, int]] = None
-    columns: Optional[dict[str, int]] = None
+    rows: Optional[dict[str, int]] = None  # reserved: tech spec virtualized paging
+    columns: Optional[dict[str, int]] = None  # reserved: tech spec virtualized paging
     axes: Optional[dict[str, Any]] = None
     filters: Optional[list[TupleFilter]] = None
 
@@ -150,7 +150,7 @@ class ExportRequest(BaseModel):
 # --- Response models ---
 class TupleItem(BaseModel):
     values: list[Any]
-    grouping_id: Optional[int] = None
+    grouping_id: Optional[int] = None  # reserved: tech spec grouping sets
 
 
 class TuplesResponse(BaseModel):
