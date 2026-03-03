@@ -1,7 +1,5 @@
 """Unit tests for request validators (date-range guardrails)."""
 
-import pytest
-
 from server.validators import validate_date_range
 
 
