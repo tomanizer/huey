@@ -11,12 +11,12 @@ router = APIRouter(prefix="/health", tags=["health"])
 
 
 @router.get("/liveness")
-def liveness() -> dict:
+async def liveness() -> dict:
     """Basic liveness: process is running."""
     return {"status": "ok"}
 
 
 @router.get("/readiness")
-def readiness() -> dict:
+async def readiness() -> dict:
     """Readiness: service is ready to accept traffic. Engine/S3 checks TBD in later issues."""
     return {"status": "ok"}

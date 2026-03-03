@@ -15,7 +15,7 @@ _exports: dict[str, dict] = {}
 
 
 @router.post("", response_model=ExportResponse)
-def post_export(body: ExportRequest) -> ExportResponse:
+async def post_export(body: ExportRequest) -> ExportResponse:
     """
     POST /export: submit export job. MVP returns pending; no background processing.
     """
@@ -28,7 +28,7 @@ def post_export(body: ExportRequest) -> ExportResponse:
 
 
 @router.get("/{export_id}", response_model=ExportStatusResponse)
-def get_export_status(export_id: str) -> ExportStatusResponse:
+async def get_export_status(export_id: str) -> ExportStatusResponse:
     """GET /export/{id}: return export job status (and download_url when complete)."""
     if export_id not in _exports:
         raise HTTPException(status_code=404, detail="Export not found")
