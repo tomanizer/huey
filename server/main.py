@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="QueryService",
-    description="Huey OLAP query service for S3-backed parquet datasets",
+    description="Huey OLAP query service for S3-backed parquet datasets. Set X-API-Key header when authentication is enabled.",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -66,7 +66,7 @@ app.add_middleware(AccessLogMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8765", "http://127.0.0.1:8765", "http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],

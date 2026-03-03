@@ -7,9 +7,11 @@ The manager is initialized at application startup and shut down on exit.
 
 import asyncio
 import logging
+import os
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 
 import duckdb
@@ -41,7 +43,64 @@ class DuckDBManager:
         data_dir = getattr(settings, "data_dir", None)
         db_path = data_dir if data_dir else database
         self._conn = duckdb.connect(db_path)
+        self._apply_runtime_tuning(self._conn, settings)
         logger.info("DuckDB connection opened", extra={"database": db_path})
+
+    @staticmethod
+    def _resolved_default_threads() -> int:
+        """Choose a conservative thread default to avoid CPU oversubscription."""
+        cpu_count = max(1, os.cpu_count() or 1)
+        try:
+            workers = int(os.environ.get("UVICORN_WORKERS", "1"))
+        except ValueError:
+            workers = 1
+        workers = max(1, workers)
+        return max(1, min(4, cpu_count // workers))
+
+    def _apply_runtime_tuning(self, conn: duckdb.DuckDBPyConnection, settings: Any) -> None:
+        """Apply startup/session settings for DuckDB runtime performance."""
+        threads = getattr(settings, "duckdb_threads", None)
+        if threads is None:
+            threads = self._resolved_default_threads()
+        conn.execute("SET threads = ?", [threads])
+
+        memory_limit = getattr(settings, "duckdb_memory_limit", None)
+        if memory_limit:
+            conn.execute("SET memory_limit = ?", [memory_limit])
+
+        temp_directory = getattr(settings, "duckdb_temp_directory", None)
+        if temp_directory:
+            Path(temp_directory).mkdir(parents=True, exist_ok=True)
+            conn.execute("SET temp_directory = ?", [temp_directory])
+
+        object_cache = getattr(settings, "duckdb_enable_object_cache", True)
+        conn.execute("SET enable_object_cache = ?", [bool(object_cache)])
+
+        with self._lock:
+            cur = conn.cursor()
+        try:
+            active_threads = int(cur.execute("SELECT current_setting('threads')").fetchone()[0])
+            active_memory_limit = str(
+                cur.execute("SELECT current_setting('memory_limit')").fetchone()[0]
+            )
+            active_temp_directory = str(
+                cur.execute("SELECT current_setting('temp_directory')").fetchone()[0]
+            )
+            active_object_cache = bool(
+                cur.execute("SELECT current_setting('enable_object_cache')").fetchone()[0]
+            )
+        finally:
+            cur.close()
+
+        logger.info(
+            "DuckDB runtime tuning applied",
+            extra={
+                "duckdb_threads": active_threads,
+                "duckdb_memory_limit": active_memory_limit,
+                "duckdb_temp_directory": active_temp_directory,
+                "duckdb_enable_object_cache": active_object_cache,
+            },
+        )
 
     def shutdown(self) -> None:
         """Close the persistent connection."""

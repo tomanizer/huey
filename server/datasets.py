@@ -88,8 +88,7 @@ class _DatasetSchemaCache:
             mtime = None
         return str(path), mtime
 
-    def _invalidate_if_config_changed_locked(self) -> None:
-        path, mtime = self._config_identity()
+    def _invalidate_if_config_changed_locked(self, path: str, mtime: float | None) -> None:
         if self._config_path is None:
             self._config_path = path
             self._config_mtime = mtime
@@ -133,9 +132,12 @@ class _DatasetSchemaCache:
 
         Refreshes on cache miss, TTL expiry, or config change. The returned schema is shared and must be treated as read-only.
         """
+        # Resolve config identity before acquiring the lock so file stat I/O
+        # doesn't block unrelated cache operations.
+        identity = self._config_identity()
         with self._lock:
             self._refresh_settings()
-            self._invalidate_if_config_changed_locked()
+            self._invalidate_if_config_changed_locked(*identity)
             entry = self._schemas.get(dataset_id)
             if entry and not self._is_expired(entry.loaded_at):
                 self._counters["cache_hit"] += 1
@@ -144,17 +146,33 @@ class _DatasetSchemaCache:
                     extra={"cache_event": "hit", "dataset_id": dataset_id},
                 )
                 return entry.schema
+
+        # YAML parsing can be expensive; do it outside the lock.
+        schema = None
+        config = load_datasets_config()
+        for ds in config.get("datasets", []):
+            if isinstance(ds, dict) and ds.get("dataset_id") == dataset_id:
+                schema = {"dataset_id": dataset_id, "fields": ds.get("fields", [])}
+                break
+
+        # Double-check once more to avoid overwriting a fresh cache entry that
+        # may have been populated by another thread while we were loading YAML.
+        identity = self._config_identity()
+        with self._lock:
+            self._refresh_settings()
+            self._invalidate_if_config_changed_locked(*identity)
+            entry = self._schemas.get(dataset_id)
+            if entry and not self._is_expired(entry.loaded_at):
+                self._counters["cache_hit"] += 1
+                logger.debug(
+                    "dataset schema cache hit (post-load)",
+                    extra={"cache_event": "hit", "dataset_id": dataset_id},
+                )
+                return entry.schema
+
             if entry and self._is_expired(entry.loaded_at):
                 self._counters["refresh_count"] += 1
             self._counters["cache_miss"] += 1
-
-            schema = None
-            config = load_datasets_config()
-            for ds in config.get("datasets", []):
-                if isinstance(ds, dict) and ds.get("dataset_id") == dataset_id:
-                    schema = {"dataset_id": dataset_id, "fields": ds.get("fields", [])}
-                    break
-
             self._store_schema_locked(dataset_id, schema)
             logger.info(
                 "dataset schema cached",
@@ -289,7 +307,7 @@ def generate_sample_rows(fields: list[dict[str, Any]]) -> list[tuple]:
 def load_sample_data(db_manager: DuckDBManager) -> None:
     """Create tables with schema-aware sample data for each configured dataset.
 
-    Controlled by the QUERYSERVICE_SEED_SAMPLE_DATA setting (default True).
+    Controlled by the QUERYSERVICE_SEED_SAMPLE_DATA setting (default False).
     In production, set to False so startup has no seeding side effects.
     """
     settings = get_settings()

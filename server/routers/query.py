@@ -5,10 +5,11 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
 from server import datasets
 from server.config import get_settings
+from server.auth import require_api_key
 from server.engine import db_manager
 from server.errors import DatasetNotFoundError
 from server.models import (
@@ -53,7 +54,7 @@ async def _execute_with_budget(request: Request, coro):
 
 
 @router.post("/tuples", response_model=TuplesResponse)
-async def post_query_tuples(body: QueryTuplesRequest, request: Request) -> TuplesResponse:
+async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
     settings = get_settings()
@@ -110,7 +111,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request) -> Tuple
 
 
 @router.post("/cells", response_model=CellsResponse)
-async def post_query_cells(body: QueryCellsRequest, request: Request) -> CellsResponse:
+async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: str = Depends(require_api_key)) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
@@ -145,7 +146,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request) -> CellsRe
 
 
 @router.post("/picklist", response_model=PicklistResponse)
-async def post_query_picklist(body: QueryPicklistRequest, request: Request) -> PicklistResponse:
+async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
     settings = get_settings()
