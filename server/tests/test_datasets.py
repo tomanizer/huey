@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from server import datasets
+from server.errors import DatasetConfigError
 
 
 def test_load_datasets_config_missing_file(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -60,4 +61,67 @@ def test_get_schema_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
         )
         assert datasets.get_schema("missing") is None
     finally:
+        Path(path).unlink()
+
+
+def test_get_dataset_source_parsed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """source block is parsed into typed metadata for relation planning."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        f.write("""
+datasets:
+  - dataset_id: ds_source
+    source:
+      kind: parquet_scan
+      uris:
+        - s3://bucket/path/*.parquet
+      read_options:
+        hive_partitioning: false
+        union_by_name: true
+    fields:
+      - name: symbol
+        type: string
+        is_dimension: true
+""")
+        path = f.name
+    try:
+        monkeypatch.setattr(
+            "server.datasets.get_settings",
+            lambda: type("S", (), {"datasets_config_path": path})(),
+        )
+        datasets.reset_cache()
+        source = datasets.get_dataset_source("ds_source")
+        assert source is not None
+        assert source.kind == "parquet_scan"
+        assert source.normalized_uris() == ["s3://bucket/path/*.parquet"]
+        assert source.read_options.union_by_name is True
+    finally:
+        datasets.reset_cache()
+        Path(path).unlink()
+
+
+def test_invalid_dataset_source_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """invalid source config fails deterministically with DatasetConfigError."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        f.write("""
+datasets:
+  - dataset_id: bad_source
+    source:
+      kind: parquet_scan
+      uris: []
+    fields:
+      - name: symbol
+        type: string
+        is_dimension: true
+""")
+        path = f.name
+    try:
+        monkeypatch.setattr(
+            "server.datasets.get_settings",
+            lambda: type("S", (), {"datasets_config_path": path})(),
+        )
+        datasets.reset_cache()
+        with pytest.raises(DatasetConfigError):
+            datasets.get_dataset_source("bad_source")
+    finally:
+        datasets.reset_cache()
         Path(path).unlink()

@@ -1,3 +1,4 @@
+
 ## Huey Large-Scale OLAP – Technical Specification
 
 This specification defines how Huey will integrate with a server-side query service to support large S3-backed parquet datasets (50 GB per day, multi-year history).

@@ -57,6 +57,9 @@ def _init_test_db(_tmp_export_dir):
 def _disable_auth(monkeypatch):
     """Disable authentication by default for tests."""
     monkeypatch.setenv("QUERYSERVICE_AUTH_ENABLED", "false")
+    monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "sample_table")
+    monkeypatch.delenv("QUERYSERVICE_S3_BUCKET", raising=False)
+    monkeypatch.delenv("QUERYSERVICE_PARTITION_BASE_PATH", raising=False)
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

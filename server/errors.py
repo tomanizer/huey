@@ -73,6 +73,21 @@ class DatasetUnavailableError(AppError):
         )
 
 
+class DatasetConfigError(AppError):
+    """Raised when a dataset entry is invalid or missing required source settings."""
+
+    def __init__(self, dataset_id: str, message: str, details: dict[str, Any] | None = None) -> None:
+        payload = {"dataset_id": dataset_id}
+        if details:
+            payload.update(details)
+        super().__init__(
+            code="DATASET_CONFIG_ERROR",
+            message=message,
+            status_code=500,
+            details=payload,
+        )
+
+
 class ExportNotFoundError(AppError):
     """Raised when an export job ID does not exist in the job store."""
 

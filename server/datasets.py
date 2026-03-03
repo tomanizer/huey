@@ -9,12 +9,14 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from server.config import get_settings
 from server.engine import DuckDBManager
+from server.errors import DatasetConfigError
 from server.utils import quote_identifier
 
 logger = logging.getLogger("query_service.datasets")
@@ -24,6 +26,60 @@ logger = logging.getLogger("query_service.datasets")
 class _SchemaCacheEntry:
     schema: dict[str, Any] | None
     loaded_at: float
+
+
+class DatasetSourceReadOptions(BaseModel):
+    """Typed options for DuckDB read_parquet()."""
+
+    hive_partitioning: Literal["auto"] | bool = "auto"
+    union_by_name: bool = False
+    filename: bool = False
+    hive_types: dict[str, str] | None = None
+
+
+class DatasetPartitionKey(BaseModel):
+    """Optional metadata about partition keys in the physical source."""
+
+    name: str
+    role: Literal["date", "business_date", "none"] = "none"
+    type: str | None = None
+
+
+class DatasetTimeFilter(BaseModel):
+    """Optional time filter mapping from API date_range to a source column."""
+
+    column: str
+    type: Literal["date", "timestamp", "string"] = "date"
+
+
+class DatasetSourceConfig(BaseModel):
+    """Per-dataset physical source definition for parquet_scan relation planning."""
+
+    kind: Literal["parquet_scan"] = "parquet_scan"
+    uris: str | list[str]
+    read_options: DatasetSourceReadOptions = Field(default_factory=DatasetSourceReadOptions)
+    partitions: list[DatasetPartitionKey] = Field(default_factory=list)
+    time_filter: DatasetTimeFilter | None = None
+    max_files: int | None = Field(default=None, ge=1)
+
+    @field_validator("uris")
+    @classmethod
+    def _validate_uris(cls, value: str | list[str]) -> str | list[str]:
+        if isinstance(value, str):
+            if value.strip() == "":
+                raise ValueError("source.uris must not be empty")
+            return value
+        if not value:
+            raise ValueError("source.uris must include at least one path")
+        cleaned = [u for u in value if isinstance(u, str) and u.strip()]
+        if not cleaned:
+            raise ValueError("source.uris must include at least one non-empty path")
+        return cleaned
+
+    def normalized_uris(self) -> list[str]:
+        if isinstance(self.uris, str):
+            return [self.uris]
+        return list(self.uris)
 
 
 def _default_config_path() -> Path:
@@ -63,6 +119,8 @@ class _DatasetSchemaCache:
         self._lock = threading.RLock()
         self._schemas: dict[str, _SchemaCacheEntry] = {}
         self._schema_fields: dict[str, set[str]] = {}
+        self._dataset_entries: dict[str, dict[str, Any] | None] = {}
+        self._dataset_sources: dict[str, DatasetSourceConfig | None] = {}
         self._partition_metadata: dict[str, Any] = {}
         self._config_path: str | None = None
         self._config_mtime: float | None = None
@@ -98,6 +156,8 @@ class _DatasetSchemaCache:
             self._config_mtime = mtime
             self._schemas.clear()
             self._schema_fields.clear()
+            self._dataset_entries.clear()
+            self._dataset_sources.clear()
             self._partition_metadata.clear()
             self._counters["refresh_count"] += 1
             logger.info(
@@ -120,11 +180,40 @@ class _DatasetSchemaCache:
             if isinstance(f, dict) and "name" in f
         }
 
-    def _store_schema_locked(self, dataset_id: str, schema: dict[str, Any] | None) -> None:
+    @staticmethod
+    def _parse_dataset_source(dataset_id: str, dataset_entry: dict[str, Any] | None) -> DatasetSourceConfig | None:
+        if not dataset_entry:
+            return None
+        source_value = dataset_entry.get("source")
+        if source_value is None:
+            return None
+        if not isinstance(source_value, dict):
+            raise DatasetConfigError(
+                dataset_id,
+                "Dataset source must be an object",
+                {"field": "source"},
+            )
+        try:
+            return DatasetSourceConfig.model_validate(source_value)
+        except ValidationError as exc:
+            raise DatasetConfigError(
+                dataset_id,
+                "Dataset source validation failed",
+                {"field": "source", "errors": exc.errors()},
+            ) from exc
+
+    def _store_schema_locked(
+        self,
+        dataset_id: str,
+        schema: dict[str, Any] | None,
+        dataset_entry: dict[str, Any] | None = None,
+    ) -> None:
         loaded_at = time.monotonic()
         field_names = self._extract_field_names(schema)
         self._schemas[dataset_id] = _SchemaCacheEntry(schema=schema, loaded_at=loaded_at)
         self._schema_fields[dataset_id] = field_names
+        self._dataset_entries[dataset_id] = dataset_entry
+        self._dataset_sources[dataset_id] = self._parse_dataset_source(dataset_id, dataset_entry)
 
     def get_schema(self, dataset_id: str) -> dict[str, Any] | None:
         """
@@ -149,9 +238,11 @@ class _DatasetSchemaCache:
 
         # YAML parsing can be expensive; do it outside the lock.
         schema = None
+        dataset_entry = None
         config = load_datasets_config()
         for ds in config.get("datasets", []):
             if isinstance(ds, dict) and ds.get("dataset_id") == dataset_id:
+                dataset_entry = ds
                 schema = {"dataset_id": dataset_id, "fields": ds.get("fields", [])}
                 break
 
@@ -173,7 +264,7 @@ class _DatasetSchemaCache:
             if entry and self._is_expired(entry.loaded_at):
                 self._counters["refresh_count"] += 1
             self._counters["cache_miss"] += 1
-            self._store_schema_locked(dataset_id, schema)
+            self._store_schema_locked(dataset_id, schema, dataset_entry)
             logger.info(
                 "dataset schema cached",
                 extra={
@@ -196,6 +287,19 @@ class _DatasetSchemaCache:
                 return set()
             return set(fields)
 
+    def get_dataset_entry(self, dataset_id: str) -> dict[str, Any] | None:
+        """Return raw dataset entry from config for a dataset_id."""
+        self.get_schema(dataset_id)
+        with self._lock:
+            entry = self._dataset_entries.get(dataset_id)
+            return dict(entry) if entry else None
+
+    def get_dataset_source(self, dataset_id: str) -> DatasetSourceConfig | None:
+        """Return parsed source metadata for a dataset, if present."""
+        self.get_schema(dataset_id)
+        with self._lock:
+            return self._dataset_sources.get(dataset_id)
+
     def set_partition_metadata(self, dataset_id: str, metadata: Any) -> None:
         """Store per-dataset partition metadata (e.g., shard descriptors) for partition-native execution."""
         with self._lock:
@@ -216,6 +320,8 @@ class _DatasetSchemaCache:
         with self._lock:
             self._schemas.clear()
             self._schema_fields.clear()
+            self._dataset_entries.clear()
+            self._dataset_sources.clear()
             self._partition_metadata.clear()
             self._counters = {"cache_hit": 0, "cache_miss": 0, "refresh_count": 0}
             self._config_path = None
@@ -241,6 +347,16 @@ def get_schema(dataset_id: str) -> dict[str, Any] | None:
 def get_schema_field_names(dataset_id: str) -> set[str]:
     """Return the set of field names defined in the schema for a dataset."""
     return _schema_cache.get_schema_field_names(dataset_id)
+
+
+def get_dataset_entry(dataset_id: str) -> dict[str, Any] | None:
+    """Return the raw dataset config entry for a dataset_id."""
+    return _schema_cache.get_dataset_entry(dataset_id)
+
+
+def get_dataset_source(dataset_id: str) -> DatasetSourceConfig | None:
+    """Return parsed per-dataset source metadata, if configured."""
+    return _schema_cache.get_dataset_source(dataset_id)
 
 
 def get_partition_metadata(dataset_id: str) -> Any:
