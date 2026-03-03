@@ -13,3 +13,59 @@ datasets:
       - name: volume
         type: int64
         is_measure: true
+
+  - dataset_id: "v1.0/btc/blocks"
+    fields:
+      - name: date
+        type: date
+        is_dimension: true
+      - name: number
+        type: int64
+        is_dimension: true
+      - name: hash
+        type: string
+        is_dimension: true
+      - name: previousblockhash
+        type: string
+        is_dimension: true
+      - name: mediantime
+        type: string
+        is_dimension: true
+      - name: timestamp
+        type: string
+        is_dimension: true
+      - name: last_modified
+        type: string
+        is_dimension: true
+      - name: version
+        type: int64
+        is_dimension: true
+      - name: bits
+        type: string
+        is_dimension: true
+      - name: difficulty
+        type: float64
+        is_measure: true
+      - name: chainwork
+        type: string
+        is_dimension: true
+      - name: nonce
+        type: int64
+      - name: size
+        type: int64
+        is_measure: true
+      - name: stripped_size
+        type: int64
+        is_measure: true
+      - name: weight
+        type: int64
+        is_measure: true
+      - name: transaction_count
+        type: int64
+        is_measure: true
+      - name: coinbase_param
+        type: string
+        is_dimension: true
+      - name: merkle_root
+        type: string
+        is_dimension: true

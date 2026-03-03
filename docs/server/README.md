@@ -1,0 +1,304 @@
+# QueryService Backend Documentation
+
+This documentation set covers the Huey backend service (`server/`), called **QueryService**. It is the API layer used by the frontend (or other clients) to fetch schema metadata, run OLAP-style queries, and generate exports.
+
+## Documentation Map
+
+- [API Reference](./api-reference.md)
+- [Configuration Reference](./configuration-reference.md)
+- [Troubleshooting and FAQ](./troubleshooting.md)
+- [Architecture Walkthrough](../../server/docs/architecture.md)
+
+## 1. Overview and Description
+
+QueryService is a Python FastAPI service that runs analytical SQL against DuckDB and exposes HTTP endpoints for:
+
+- Dataset schema discovery (`/schema`)
+- Distinct tuples, picklists, and aggregated cells (`/query/*`)
+- Async export jobs (`/export*`) with durable job state in SQLite
+- Health probes (`/health/*`)
+
+In the Huey architecture, this service is the backend execution layer behind the frontend query UI.
+
+## 2. Purpose and Use Cases
+
+Primary problems this service solves:
+
+- Centralized query execution over configured datasets
+- Safe, schema-aware SQL generation for frontend-driven analytics
+- Async export generation for large result sets
+- Standardized machine-readable error responses for integration
+
+Typical users:
+
+- Frontend/client engineers integrating analytics calls
+- Backend/integration engineers consuming APIs from other services
+- Ops/SRE teams deploying and operating the service
+
+Typical workflows:
+
+1. Discover dataset schema with `GET /schema`.
+2. Build interactive queries with `POST /query/tuples`, `POST /query/cells`, `POST /query/picklist`.
+3. Trigger async export with `POST /export`, poll with `GET /export/{export_id}`, then download.
+
+## 3. Installation and Setup
+
+### Prerequisites
+
+- Python `3.11+` (enforced at runtime)
+- `pip`
+- Optional: Docker
+- Optional for S3 partition execution: AWS credentials + network access to S3
+
+### Local setup
+
+From repo root:
+
+```bash
+python3 -m venv .venv-server
+./.venv-server/bin/pip install -r server/requirements.txt
+```
+
+Dataset configuration defaults to [`server/datasets_config/datasets.yaml`](../../server/datasets_config/datasets.yaml). Override via `QUERYSERVICE_DATASETS_CONFIG_PATH`.
+
+Environment variables are loaded from `.env` in the working directory (optional).
+
+For all environment variables and defaults, see [Configuration Reference](./configuration-reference.md).
+
+### Local development vs production
+
+- Local dev defaults to in-memory DuckDB when `QUERYSERVICE_DATA_DIR` is unset.
+- Production should set explicit persistent paths for:
+  - `QUERYSERVICE_DATA_DIR` (if you need persistent DuckDB database file)
+  - `QUERYSERVICE_EXPORT_OUTPUT_DIR`
+  - `QUERYSERVICE_EXPORT_DB_PATH`
+
+## 4. Running the Server
+
+### Development
+
+From repo root:
+
+```bash
+./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000
+```
+
+Or:
+
+```bash
+PYTHONPATH=. ./.venv-server/bin/python -m server.main
+```
+
+### Production
+
+Container option:
+
+```bash
+docker build -f server/Dockerfile -t query-service .
+docker run -p 8000:8000 \
+  -e UVICORN_WORKERS=1 \
+  query-service
+```
+
+Non-container option (example process manager pattern):
+
+```bash
+PYTHONPATH=. ./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+### Network and ports
+
+- Default bind host: `0.0.0.0`
+- Default port: `8000`
+- CORS is controlled by `QUERYSERVICE_CORS_ORIGINS`
+
+## 5. Usage and Integration Guide
+
+### Authentication model
+
+- Auth is disabled by default (`QUERYSERVICE_AUTH_ENABLED=false`)
+- When enabled, clients must send `X-API-Key`
+- Health endpoints remain accessible without API key
+
+### Request conventions
+
+- Query/export requests use an envelope with `dataset_id`, `date_range`, and `query`
+- `date_range` supports:
+  - `{"type": "single", "date": "YYYY-MM-DD"}`
+  - `{"type": "range", "start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}`
+- Date parsing is strict (real calendar dates only)
+
+### Error handling conventions
+
+Domain + validation errors use this envelope:
+
+```json
+{
+  "code": "DATASET_NOT_FOUND",
+  "message": "Dataset not found: trades_v1",
+  "request_id": "...",
+  "details": {"dataset_id": "trades_v1"}
+}
+```
+
+Important API error codes:
+
+- `DATASET_NOT_FOUND` (`404`)
+- `DATASET_UNAVAILABLE` (`409`)
+- `EXPORT_NOT_FOUND` (`404`)
+- `EXPORT_NOT_READY` (`409`)
+- `EXPORT_FILE_NOT_FOUND` (`404`)
+- `TOO_MANY_EXPORTS` (`429`)
+- `VALIDATION_ERROR` (`422`)
+- `INTERNAL_ERROR` (`500`)
+
+Notes:
+
+- Auth failures return `401` using FastAPI `HTTPException` shape (`{"detail": ...}`)
+- If rate limiting is enabled, `429` responses include `Retry-After`
+
+## 6. API Documentation
+
+See [API Reference](./api-reference.md) for full endpoint-by-endpoint request/response schemas, status codes, and examples.
+
+Built-in interactive docs:
+
+- `/docs` (Swagger UI)
+- `/redoc`
+- `/openapi.json`
+
+## 7. Examples and Recipes
+
+### Recipe: start service + run a schema/query/export flow
+
+Start service:
+
+```bash
+./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000
+```
+
+Check schema:
+
+```bash
+curl 'http://localhost:8000/schema?dataset_id=trades_v1'
+```
+
+Run tuples query:
+
+```bash
+curl -X POST 'http://localhost:8000/query/tuples' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "dataset_id": "trades_v1",
+    "date_range": {"type": "single", "date": "2026-03-01"},
+    "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 10, "offset": 0}}
+  }'
+```
+
+Create export (default format is parquet):
+
+```bash
+curl -X POST 'http://localhost:8000/export' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "dataset_id": "trades_v1",
+    "date_range": {"type": "single", "date": "2026-03-01"},
+    "query": {
+      "axes": {
+        "rows": [{"field": "symbol"}],
+        "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}]
+      },
+      "max_rows": 1000
+    }
+  }'
+```
+
+Poll + download:
+
+```bash
+curl 'http://localhost:8000/export/<export_id>'
+curl -OJ 'http://localhost:8000/export/<export_id>/download'
+```
+
+### Example environment profiles
+
+Local:
+
+```env
+QUERYSERVICE_LOG_LEVEL=INFO
+QUERYSERVICE_LOG_FORMAT=text
+QUERYSERVICE_SEED_SAMPLE_DATA=true
+```
+
+Staging:
+
+```env
+QUERYSERVICE_LOG_FORMAT=json
+QUERYSERVICE_AUTH_ENABLED=true
+QUERYSERVICE_API_KEYS=staging-key-1,staging-key-2
+QUERYSERVICE_RATE_LIMIT_ENABLED=true
+QUERYSERVICE_DATA_DIR=/var/lib/queryservice/query.duckdb
+QUERYSERVICE_EXPORT_OUTPUT_DIR=/var/lib/queryservice/exports
+QUERYSERVICE_EXPORT_DB_PATH=/var/lib/queryservice/exports/jobs.db
+```
+
+Production baseline:
+
+```env
+QUERYSERVICE_LOG_FORMAT=json
+QUERYSERVICE_AUTH_ENABLED=true
+QUERYSERVICE_RATE_LIMIT_ENABLED=true
+QUERYSERVICE_DUCKDB_THREADS=4
+QUERYSERVICE_DUCKDB_MEMORY_LIMIT=8GB
+QUERYSERVICE_DUCKDB_TEMP_DIRECTORY=/tmp/huey-duckdb-tmp
+QUERYSERVICE_EXPORT_OUTPUT_DIR=/srv/queryservice/exports
+QUERYSERVICE_EXPORT_DB_PATH=/srv/queryservice/exports/jobs.db
+```
+
+## 8. Operational Considerations
+
+### Logging and monitoring
+
+- JSON/text logging controlled by `QUERYSERVICE_LOG_FORMAT`
+- Access logs include method/path/status/duration
+- Query logs include endpoint-level timing and row counts
+- Correlation IDs are supported through `X-Request-ID`
+
+### Health checks
+
+- `GET /health/liveness`: process is up
+- `GET /health/readiness`: backend ready (DuckDB health check)
+
+### Scaling and performance
+
+- DuckDB tuning settings:
+  - `QUERYSERVICE_DUCKDB_THREADS`
+  - `QUERYSERVICE_DUCKDB_MEMORY_LIMIT`
+  - `QUERYSERVICE_DUCKDB_TEMP_DIRECTORY`
+  - `QUERYSERVICE_DUCKDB_ENABLE_OBJECT_CACHE`
+- Keep total execution threads aligned with available CPU when using multiple workers
+- Export capacity is bounded by `QUERYSERVICE_EXPORT_MAX_CONCURRENT`
+
+### Backup/restore and retention
+
+- Export job metadata is in SQLite (`QUERYSERVICE_EXPORT_DB_PATH`)
+- Export artifacts are files in `QUERYSERVICE_EXPORT_OUTPUT_DIR`
+- Completed/failed exports are marked expired and cleaned up after `QUERYSERVICE_EXPORT_TTL_SECONDS`
+- If retention/compliance is strict, run external backup/retention controls on these paths
+
+### Migrations
+
+- No dedicated schema migration framework is currently used for the export SQLite DB
+- Validate compatibility before manual DB schema changes
+
+## 9. Security and Compliance
+
+- API keys are configured via env (`QUERYSERVICE_API_KEYS`) when auth is enabled
+- CORS is explicitly configured via `QUERYSERVICE_CORS_ORIGINS`
+- TLS termination is expected to be handled by ingress/proxy (not built into app)
+- Do not commit secrets to repo; provide via runtime environment/secret manager
+- Review dataset content classification before enabling exports in regulated environments
+
+## 10. Troubleshooting and FAQ
+
+See [Troubleshooting and FAQ](./troubleshooting.md) for common failures and debugging commands.
