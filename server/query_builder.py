@@ -46,19 +46,18 @@ def _build_filter_clauses(
         if f.field not in schema_fields:
             continue
         col = _quote(f.field)
-        op = f.operator.upper()
-        if op == "INCLUDE" and f.values:
+        if f.operator == "INCLUDE" and f.values:
             placeholders = ", ".join("?" for _ in f.values)
             clauses.append(f"{col} IN ({placeholders})")
             params.extend(f.values)
-        elif op == "EXCLUDE" and f.values:
+        elif f.operator == "EXCLUDE" and f.values:
             placeholders = ", ".join("?" for _ in f.values)
             clauses.append(f"{col} NOT IN ({placeholders})")
             params.extend(f.values)
-        elif op == "LIKE" and f.values:
+        elif f.operator == "LIKE" and f.values:
             clauses.append(f"{col} LIKE ?")
             params.append(f.values[0])
-        elif op == "BETWEEN" and len(f.values) >= 2:
+        elif f.operator == "BETWEEN" and len(f.values) >= 2:
             clauses.append(f"{col} BETWEEN ? AND ?")
             params.extend(f.values[:2])
     return clauses
@@ -107,8 +106,7 @@ def build_tuples_sql(
     for f in fields:
         if f.field in schema_fields:
             col = _quote(f.field)
-            direction = "DESC" if f.sort and f.sort.upper() == "DESC" else "ASC"
-            order_parts.append(f"{col} {direction}")
+            order_parts.append(f"{col} {f.sort or 'ASC'}")
     order_clause = (" ORDER BY " + ", ".join(order_parts)) if order_parts else ""
 
     paging = query.paging
@@ -289,7 +287,7 @@ def build_export_sql(
     params: list[Any] = []
     table = _quote(dataset_id)
     axes = query.axes or {}
-    max_rows = min(query.max_rows or 10000, 100000)
+    max_rows = query.max_rows
 
     row_fields = [
         f["field"]
