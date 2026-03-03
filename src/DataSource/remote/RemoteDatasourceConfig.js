@@ -10,7 +10,7 @@
  */
 var RemoteDatasourceConfig = (function () {
   var REMOTE_DATASOURCE_TYPE = 'remote';
-  var REMOTE_CONFIG_KEYS = ['type', 'baseUrl', 'datasetId'];
+  var REMOTE_CONFIG_KEYS = ['type', 'baseUrl', 'datasetId', 'apiKey'];
 
   function createRemoteDatasourceConfig(opts) {
     var baseUrl = opts && opts.baseUrl;
@@ -27,6 +27,9 @@ var RemoteDatasourceConfig = (function () {
       baseUrl: baseUrl.replace(/\/$/, ''),
       datasetId: datasetId.trim()
     };
+    if (opts && typeof opts.apiKey === 'string' && opts.apiKey.trim()) {
+      config.apiKey = opts.apiKey.trim();
+    }
     if (id != null && String(id).trim()) {
       config.id = String(id).trim();
     }

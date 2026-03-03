@@ -7,10 +7,11 @@ Background processing is dispatched via FastAPI BackgroundTasks.
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse
 
 from server import datasets
+from server.auth import require_api_key
 from server.errors import DatasetNotFoundError
 from server.export_service import get_export_service
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
@@ -26,6 +27,7 @@ async def post_export(
     body: ExportRequest,
     request: Request,
     background_tasks: BackgroundTasks,
+    api_key: str = Depends(require_api_key),
 ) -> ExportResponse:
     """POST /export: submit export job with background processing."""
     if body.client_context and body.client_context.request_id:
@@ -42,7 +44,7 @@ async def post_export(
 
 
 @router.get("/{export_id}", response_model=ExportStatusResponse)
-async def get_export_status(export_id: str) -> ExportStatusResponse:
+async def get_export_status(export_id: str, api_key: str = Depends(require_api_key)) -> ExportStatusResponse:
     """GET /export/{id}: return export job status (and download_url when complete)."""
     service = get_export_service()
     job = service.get_status(export_id)
@@ -54,7 +56,7 @@ async def get_export_status(export_id: str) -> ExportStatusResponse:
 
 
 @router.get("/{export_id}/download")
-async def download_export(export_id: str) -> FileResponse:
+async def download_export(export_id: str, api_key: str = Depends(require_api_key)) -> FileResponse:
     """GET /export/{id}/download: download the completed export file."""
     service = get_export_service()
     file_path = service.get_download_path(export_id)

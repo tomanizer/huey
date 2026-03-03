@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="QueryService",
-    description="Huey OLAP query service for S3-backed parquet datasets",
+    description="Huey OLAP query service for S3-backed parquet datasets. Set X-API-Key header when authentication is enabled.",
     version="0.1.0",
     lifespan=lifespan,
 )
