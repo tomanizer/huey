@@ -39,11 +39,33 @@ def test_query_tuples_dataset_not_found(client: TestClient) -> None:
 
 
 def test_query_tuples_bad_date_range(client: TestClient) -> None:
-    """POST /query/tuples with invalid date_range returns 400."""
+    """POST /query/tuples with missing date_range type returns 422."""
     body = {
         "dataset_id": "trades_v1",
         "date_range": {},
         "query": {},
     }
     r = client.post("/query/tuples", json=body)
-    assert r.status_code == 400
+    assert r.status_code == 422
+
+
+def test_query_tuples_bad_date_format(client: TestClient) -> None:
+    """POST /query/tuples with malformed date returns 422."""
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "not-a-date"},
+        "query": {},
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 422
+
+
+def test_query_tuples_range_inverted(client: TestClient) -> None:
+    """POST /query/tuples with start > end returns 422."""
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "range", "start": "2026-12-01", "end": "2026-01-01"},
+        "query": {},
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 422
