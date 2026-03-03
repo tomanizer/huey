@@ -1,6 +1,12 @@
 # QueryService venv
 .venv-server/
 
+# Node (UI tests)
+node_modules/
+test-results/
+playwright-report/
+.playwright/
+
 # Python
 __pycache__/
 *.py[cod]
