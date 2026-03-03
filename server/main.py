@@ -14,7 +14,7 @@ from server.config import get_settings
 from server.datasets import load_sample_data
 from server.engine import db_manager
 from server.logging_config import setup_logging
-from server.middleware import AccessLogMiddleware
+from server.middleware import AccessLogMiddleware, CorrelationIdMiddleware
 from server.routers import export, health, query, schema
 
 settings = get_settings()
@@ -40,6 +40,7 @@ app = FastAPI(
 )
 
 app.add_middleware(AccessLogMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8765", "http://127.0.0.1:8765", "http://localhost:8080", "http://127.0.0.1:8080"],

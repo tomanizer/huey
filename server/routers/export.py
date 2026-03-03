@@ -11,7 +11,7 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from server import datasets
@@ -19,6 +19,7 @@ from server.config import get_settings
 from server.engine import db_manager
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
 from server.query_builder import build_export_sql
+from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.export")
 
@@ -89,9 +90,14 @@ def _process_export(export_id: str, body: ExportRequest) -> None:
 @router.post("", response_model=ExportResponse)
 async def post_export(
     body: ExportRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
 ) -> ExportResponse:
     """POST /export: submit export job with background processing."""
+    if body.client_context and body.client_context.request_id:
+        rid = body.client_context.request_id
+        set_request_id(rid)
+        request.state.request_id = rid
     if datasets.get_schema(body.dataset_id) is None:
         raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
 

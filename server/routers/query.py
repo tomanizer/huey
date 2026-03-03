@@ -5,7 +5,7 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from server import datasets
 from server.engine import db_manager
@@ -26,14 +26,24 @@ from server.query_builder import (
     build_tuples_count_sql,
     build_tuples_sql,
 )
+from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
 
 
+def _apply_client_request_id(body, request: Request) -> None:
+    """Override correlation ID with client_context.request_id when provided."""
+    if body.client_context and body.client_context.request_id:
+        rid = body.client_context.request_id
+        set_request_id(rid)
+        request.state.request_id = rid
+
+
 @router.post("/tuples", response_model=TuplesResponse)
-async def post_query_tuples(body: QueryTuplesRequest) -> TuplesResponse:
+async def post_query_tuples(body: QueryTuplesRequest, request: Request) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
+    _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
         raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
@@ -72,8 +82,9 @@ async def post_query_tuples(body: QueryTuplesRequest) -> TuplesResponse:
 
 
 @router.post("/cells", response_model=CellsResponse)
-async def post_query_cells(body: QueryCellsRequest) -> CellsResponse:
+async def post_query_cells(body: QueryCellsRequest, request: Request) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
+    _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
         raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
@@ -102,8 +113,9 @@ async def post_query_cells(body: QueryCellsRequest) -> CellsResponse:
 
 
 @router.post("/picklist", response_model=PicklistResponse)
-async def post_query_picklist(body: QueryPicklistRequest) -> PicklistResponse:
+async def post_query_picklist(body: QueryPicklistRequest, request: Request) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
+    _apply_client_request_id(body, request)
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
         raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
