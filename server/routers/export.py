@@ -17,7 +17,7 @@ from server.config import get_settings
 from server.engine import db_manager
 from server.errors import DatasetNotFoundError, DatasetUnavailableError
 from server.export_service import get_export_service
-from server.main import limiter
+from server.rate_limit import limiter
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
 from server.query_builder import validate_export_query_fields
 from server.request_context import set_request_id

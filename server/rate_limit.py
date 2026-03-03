@@ -1,6 +1,9 @@
 """Rate limiting helpers for QueryService."""
 
+from slowapi import Limiter
 from starlette.requests import Request
+
+from server.config import get_settings
 
 
 def get_real_ip(request: Request) -> str:
@@ -17,3 +20,15 @@ def get_real_ip(request: Request) -> str:
         return real_ip.strip()
     client = request.client
     return client.host if client else "unknown"
+
+
+def _make_limiter() -> Limiter:
+    settings = get_settings()
+    return Limiter(
+        key_func=get_real_ip,
+        enabled=settings.rate_limit_enabled,
+        headers_enabled=True,
+    )
+
+
+limiter = _make_limiter()

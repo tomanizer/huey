@@ -13,7 +13,7 @@ from server.cache import build_cache_key, get_query_cache
 from server.config import get_settings
 from server.engine import db_manager
 from server.errors import CellsWindowTooLargeError, DatasetNotFoundError
-from server.main import limiter
+from server.rate_limit import limiter
 from server.models import (
     CellsResponse,
     PagingResponse,
