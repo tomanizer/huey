@@ -8,21 +8,21 @@
  * - datasetId: string (logical dataset id, e.g. 'trades_v1')
  * - id: string (optional; stable id for this datasource instance in the UI)
  */
-var RemoteDatasourceConfig = (function () {
-  var REMOTE_DATASOURCE_TYPE = 'remote';
-  var REMOTE_CONFIG_KEYS = ['type', 'baseUrl', 'datasetId'];
+const RemoteDatasourceConfig = (function () {
+  const REMOTE_DATASOURCE_TYPE = 'remote';
+  const REMOTE_CONFIG_KEYS = ['type', 'baseUrl', 'datasetId'];
 
   function createRemoteDatasourceConfig(opts) {
-    var baseUrl = opts && opts.baseUrl;
-    var datasetId = opts && opts.datasetId;
-    var id = opts && opts.id;
+    const baseUrl = opts && opts.baseUrl;
+    const datasetId = opts && opts.datasetId;
+    const id = opts && opts.id;
     if (typeof baseUrl !== 'string' || !baseUrl.trim()) {
       throw new Error('Remote datasource config requires baseUrl');
     }
     if (typeof datasetId !== 'string' || !datasetId.trim()) {
       throw new Error('Remote datasource config requires datasetId');
     }
-    var config = {
+    const config = {
       type: REMOTE_DATASOURCE_TYPE,
       baseUrl: baseUrl.replace(/\/$/, ''),
       datasetId: datasetId.trim()

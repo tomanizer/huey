@@ -1,5 +1,5 @@
 function initAboutDialog(){
-  var el;
+  let el;
 
   el = byId('logoVersion');
   el.textContent = `v ${hueyVersionNumber} (${hueyVersionName})` ;

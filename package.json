@@ -2,9 +2,12 @@
   "name": "huey",
   "private": true,
   "scripts": {
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "lint:js": "eslint src/"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.49.0",
+    "eslint": "^10.0.2"
   }
 }

@@ -28,12 +28,12 @@ class PivotTableUi extends EventEmitter {
 
     this.#initSettings(config.settings);
 
-    var queryModel = config.queryModel;
+    const queryModel = config.queryModel;
     this.#queryModel = queryModel;
 
-    var columnsTupleSet = new TupleSet(this.#queryModel, QueryModel.AXIS_COLUMNS, this.#settings);
+    const columnsTupleSet = new TupleSet(this.#queryModel, QueryModel.AXIS_COLUMNS, this.#settings);
     this.#columnsTupleSet = columnsTupleSet;
-    var rowsTupleSet = new TupleSet(this.#queryModel, QueryModel.AXIS_ROWS, this.#settings);
+    const rowsTupleSet = new TupleSet(this.#queryModel, QueryModel.AXIS_ROWS, this.#settings);
     this.#rowsTupleSet = rowsTupleSet;
 
     this.#cellsSet = new CellSet(
@@ -52,9 +52,9 @@ class PivotTableUi extends EventEmitter {
   }
 
   #initDom(config) {
-    var dom = instantiateTemplate(PivotTableUi.#templateId, config.id)
+    const dom = instantiateTemplate(PivotTableUi.#templateId, config.id)
 
-    var container = config.container;
+    let container = config.container;
     switch (typeof container){
       case 'string':
         container = byId(config.container);
@@ -64,8 +64,8 @@ class PivotTableUi extends EventEmitter {
   }
 
   #getTotalsString(axisItem){
-    var generalSettings = this.#settings.getSettings('pivotSettings');
-    var totalsString = generalSettings.totalsString;
+    const generalSettings = this.#settings.getSettings('pivotSettings');
+    const totalsString = generalSettings.totalsString;
     return totalsString;
   }
 
@@ -82,7 +82,7 @@ class PivotTableUi extends EventEmitter {
   }
 
   async #cancelQueryButtonClicked(event){
-    var cancelResults = await Promise.all([
+    const cancelResults = await Promise.all([
       this.#columnsTupleSet.cancelPendingQuery(),
       this.#rowsTupleSet.cancelPendingQuery(),
       this.#cellsSet.cancelPendingQuery()
@@ -92,9 +92,9 @@ class PivotTableUi extends EventEmitter {
   }
 
   #initQueryModelChangeHandler(){
-    var queryModel = this.getQueryModel();
-    var timeoutCallback = function(){
-      var timeoutValue;
+    const queryModel = this.getQueryModel();
+    const timeoutCallback = () =>{
+      let timeoutValue;
       if (this.#settings){
         if (typeof this.#settings.getSettings === 'function'){
           timeoutValue = this.#settings.getSettings(['querySettings', 'autoRunQueryTimeout']);
@@ -107,7 +107,7 @@ class PivotTableUi extends EventEmitter {
         }
       };
       return timeoutValue;
-    }.bind(this);
+    };
 
     bufferEvents(
       queryModel,
@@ -126,7 +126,7 @@ class PivotTableUi extends EventEmitter {
   }
 
   #initScrollHandler(){
-    var container = this.#getInnerContainerDom();
+    const container = this.#getInnerContainerDom();
     bufferEvents(
       container,
       'scroll',
@@ -137,11 +137,11 @@ class PivotTableUi extends EventEmitter {
   }
 
   #initResizeObserver(){
-    var dom = this.getDom();
+    const dom = this.getDom();
 
-    this.#resizeObserver = new ResizeObserver(function(entries){
-      for (var entry of entries){
-        var target = entry.target;
+    this.#resizeObserver = new ResizeObserver((entries) =>{
+      for (const entry of entries){
+        const target = entry.target;
         if (target === dom) {
           this.#handleDomResized();
         }
@@ -150,28 +150,28 @@ class PivotTableUi extends EventEmitter {
           this.#handleColumnHeaderResized(entry);
         }
       }
-    }.bind(this));
+    });
 
     this.#resizeObserver.observe(dom);
   }
 
   #toggleObserveColumnsResizing(onOff){
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var headerRows = tableHeaderDom.childNodes;
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const headerRows = tableHeaderDom.childNodes;
     if (!headerRows.length){
       return;
     }
 
-    var methodName = 'observe';
+    let methodName = 'observe';
     if (onOff === false) {
       methodName = 'un' + methodName;
     }
-    var method = this.#resizeObserver[methodName];
+    const method = this.#resizeObserver[methodName];
 
-    var headerRow = headerRows.item(0);
-    var columns = headerRow.childNodes;
-    for (var i = 0; i < columns.length; i++){
-      var column = columns.item(i);
+    const headerRow = headerRows.item(0);
+    const columns = headerRow.childNodes;
+    for (let i = 0; i < columns.length; i++){
+      const column = columns.item(i);
       if (!hasClass(column, 'pivotTableUiHeaderCell')){
         continue;
       }
@@ -187,10 +187,10 @@ class PivotTableUi extends EventEmitter {
       clearTimeout(this.#resizeTimeoutId);
       this.#resizeTimeoutId = undefined;
     }
-    this.#resizeTimeoutId = setTimeout(async function(){
+    this.#resizeTimeoutId = setTimeout(async () =>{
       // we have to check whether it's safe and appropriate to update
       // - if we're already busy, then it's not safe and we shouldn't
-      var isSafe = !this.#getBusy();
+      const isSafe = !this.#getBusy();
       // - if autoUpdate is true, it's appropriate
       // - if autoUpdate is not true, and the request was due to a model change then update is not appropriate
       if (isSafe && this.#autoUpdate) {
@@ -201,24 +201,24 @@ class PivotTableUi extends EventEmitter {
       }
       clearTimeout(this.#resizeTimeoutId);
       this.#resizeTimeoutId = undefined;
-    }.bind(this), this.#resizeTimeout);
+    }, this.#resizeTimeout);
   }
 
   // this takes a column axis header cell and calculates the corresponding tuple index and cell axis item index
   #getColumnHeaderTupleAndCellAxisInfo(columnHeader){
-    var physicalTupleIndices = this.#getPhysicalTupleIndices();
+    const physicalTupleIndices = this.#getPhysicalTupleIndices();
 
-    var physicalColumnsAxisTupleIndex = physicalTupleIndices.physicalColumnsAxisTupleIndex;
-    var axisId = QueryModel.AXIS_COLUMNS;
-    var tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalColumnsAxisTupleIndex);
+    const physicalColumnsAxisTupleIndex = physicalTupleIndices.physicalColumnsAxisTupleIndex;
+    const axisId = QueryModel.AXIS_COLUMNS;
+    const tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalColumnsAxisTupleIndex);
 
-    var columnsAxisSizeInfo = physicalTupleIndices.columnsAxisSizeInfo;
-    var headerCount = columnsAxisSizeInfo.headers.columnCount;
+    const columnsAxisSizeInfo = physicalTupleIndices.columnsAxisSizeInfo;
+    const headerCount = columnsAxisSizeInfo.headers.columnCount;
 
-    var headerRow = columnHeader.parentNode;
-    var siblings = headerRow.childNodes;
-    var physicalColumnIndex;
-    for (var i = headerCount; i < siblings.length; i++) {
+    const headerRow = columnHeader.parentNode;
+    const siblings = headerRow.childNodes;
+    let physicalColumnIndex;
+    for (let i = headerCount; i < siblings.length; i++) {
       if (siblings.item(i) === columnHeader){
         physicalColumnIndex = i;
         break;
@@ -235,17 +235,17 @@ class PivotTableUi extends EventEmitter {
       clearTimeout(this.#columnHeaderResizeTimeoutId);
       this.#columnHeaderResizeTimeoutId = undefined;
     }
-    this.#columnHeaderResizeTimeoutId = setTimeout(function(){
-      var target = resizeEntry.target;
-      var width = target.style.width;
+    this.#columnHeaderResizeTimeoutId = setTimeout(() =>{
+      const target = resizeEntry.target;
+      const width = target.style.width;
       if (width.endsWith('px')) {
         // user changed column width - this is where we should store the width in the corresponding column tuple.
-        var info = this.#getColumnHeaderTupleAndCellAxisInfo(target);
+        const info = this.#getColumnHeaderTupleAndCellAxisInfo(target);
         //debugger;
       }
       clearTimeout(this.#columnHeaderResizeTimeoutId);
       this.#columnHeaderResizeTimeoutId = undefined;
-    }.bind(this), this.#columnHeaderResizeTimeout);
+    }, this.#columnHeaderResizeTimeout);
   }
 
   #initSettings(settings){
@@ -253,8 +253,8 @@ class PivotTableUi extends EventEmitter {
   }
 
   get #autoUpdate(){
-    var autoUpdate;
-    var settings = this.#settings || {};
+    let autoUpdate;
+    let settings = this.#settings || {};
     if (settings && typeof settings.getSettings === 'function'){
       settings = settings.getSettings('querySettings');
     }
@@ -268,7 +268,7 @@ class PivotTableUi extends EventEmitter {
   }
 
   #setNeedsUpdate(needsUpdate){
-    var dom = this.getDom();
+    const dom = this.getDom();
     dom.setAttribute('data-needs-update', String(Boolean(needsUpdate)));
   }
 
@@ -278,7 +278,7 @@ class PivotTableUi extends EventEmitter {
     if (count !== 0) {
       return;
     }
-    var queryModelState = this.#queryModel.getState({includeItemIndices: true});
+    const queryModelState = this.#queryModel.getState({includeItemIndices: true});
     this.#queryModelStateBeforeChange = JSON.stringify(queryModelState);
     this.#queryModelFilterConditionBeforeChange = this.#queryModel.getFilterConditionSql(false);
   }
@@ -287,25 +287,25 @@ class PivotTableUi extends EventEmitter {
     if (count !== undefined) {
       return;
     }
-    var stateBefore = this.#queryModelStateBeforeChange;
+    const stateBefore = this.#queryModelStateBeforeChange;
 
-    var queryModelStateAfterChange = this.#queryModel.getState({includeItemIndices: true});
-    var stateAfter = JSON.stringify(queryModelStateAfterChange);
+    const queryModelStateAfterChange = this.#queryModel.getState({includeItemIndices: true});
+    const stateAfter = JSON.stringify(queryModelStateAfterChange);
     if (stateBefore === stateAfter){
       this.#queryModelStateBeforeChange = undefined;
       return;
     }
-    var queryModelStateBeforeChange = JSON.parse(stateBefore);
+    const queryModelStateBeforeChange = JSON.parse(stateBefore);
 
-    var needsClearing = false;
-    var needsUpdate = false;
+    let needsClearing = false;
+    let needsUpdate = false;
 
-    var clearRowsTupleSet = false;
-    var clearColumnsTupleSet = false;
-    var clearCellsSet = false;
+    let clearRowsTupleSet = false;
+    let clearColumnsTupleSet = false;
+    let clearCellsSet = false;
 
-    var stateChange = QueryModel.compareStates(queryModelStateBeforeChange, queryModelStateAfterChange);
-    var axesChangedInfo = stateChange.axesChanged;
+    const stateChange = QueryModel.compareStates(queryModelStateBeforeChange, queryModelStateAfterChange);
+    const axesChangedInfo = stateChange.axesChanged;
     if (axesChangedInfo){
 
       if (axesChangedInfo[QueryModel.AXIS_ROWS] !== undefined) {
@@ -328,7 +328,7 @@ class PivotTableUi extends EventEmitter {
       }
 
       if (axesChangedInfo[QueryModel.AXIS_FILTERS]) {
-        var filterConditionSql = this.#queryModel.getFilterConditionSql(false);
+        const filterConditionSql = this.#queryModel.getFilterConditionSql(false);
         if (filterConditionSql !== this.#queryModelFilterConditionBeforeChange) {
           needsUpdate = true;
           clearCellsSet = clearColumnsTupleSet = clearRowsTupleSet = true;
@@ -337,7 +337,7 @@ class PivotTableUi extends EventEmitter {
     }
 
     if (stateChange.propertiesChanged){
-      var propertiesChangedInfo = stateChange.propertiesChanged;
+      const propertiesChangedInfo = stateChange.propertiesChanged;
 
       if (propertiesChangedInfo.datasource || propertiesChangedInfo.datasourceId) {
         clearCellsSet = clearRowsTupleSet = clearColumnsTupleSet = true;
@@ -353,33 +353,33 @@ class PivotTableUi extends EventEmitter {
 
     // only clear tuple sets or cellset if the change requires it.
     if (clearColumnsTupleSet) {
-      var columnsTupleSet = this.#columnsTupleSet;
+      const columnsTupleSet = this.#columnsTupleSet;
       columnsTupleSet.clear();
       needsUpdate = true;
     }
 
     if (clearRowsTupleSet === true) {
-      var rowsTupleSet = this.#rowsTupleSet;
+      const rowsTupleSet = this.#rowsTupleSet;
       rowsTupleSet.clear();
       needsUpdate = true;
     }
 
     if (clearCellsSet === true) {
-      var cellsSet = this.#cellsSet;
+      const cellsSet = this.#cellsSet;
       cellsSet.clear();
       needsUpdate = true;
     }
 
-    var countQueryAxisItems = [
+    const countQueryAxisItems = [
       QueryModel.AXIS_ROWS,
       QueryModel.AXIS_COLUMNS,
       QueryModel.AXIS_CELLS
-    ].reduce(function(acc, curr){
-      var queryModel = this.getQueryModel();
-      var queryAxis = queryModel.getQueryAxis(curr);
-      var queryAxisItems = queryAxis.getItems();
+    ].reduce((acc, curr) =>{
+      const queryModel = this.getQueryModel();
+      const queryAxis = queryModel.getQueryAxis(curr);
+      const queryAxisItems = queryAxis.getItems();
       return acc + queryAxisItems.length;
-    }.bind(this), 0);
+    }, 0);
 
     if (countQueryAxisItems === 0) {
       needsClearing = true;
@@ -403,7 +403,7 @@ class PivotTableUi extends EventEmitter {
   }
 
   #setBusy(busy){
-    var dom = this.getDom();
+    const dom = this.getDom();
     dom.setAttribute('aria-busy', String(Boolean(busy)));
     this.fireEvent('busy', {
       busy: Boolean(busy)
@@ -411,22 +411,22 @@ class PivotTableUi extends EventEmitter {
   }
 
   #getBusy(){
-    var dom = this.getDom();
+    const dom = this.getDom();
     return dom.getAttribute('aria-busy') === 'true';
   }
 
   #fireUpdatedSuccess(){
-    var tupleCounts = {};
+    const tupleCounts = {};
     tupleCounts[QueryModel.AXIS_ROWS] = this.#rowsTupleSet.getTupleCountSync();
     tupleCounts[QueryModel.AXIS_COLUMNS] = this.#columnsTupleSet.getTupleCountSync();
     
-    var queryModel = this.getQueryModel();
+    const queryModel = this.getQueryModel();
     tupleCounts[QueryModel.AXIS_CELLS] = {
       axis: queryModel.getCellHeadersAxis(),
       count: queryModel.getCellsAxis().getItems().length
     };
     
-    var status = {
+    const status = {
       status: 'success',
       tupleCounts: tupleCounts
     }
@@ -464,27 +464,27 @@ class PivotTableUi extends EventEmitter {
   }
 
   #getPhysicalTupleIndices(){
-    var innerContainer = this.#getInnerContainerDom();
+    const innerContainer = this.#getInnerContainerDom();
 
     //
-    var scrollWidth = innerContainer.scrollWidth;
-    var left = innerContainer.scrollLeft;
+    const scrollWidth = innerContainer.scrollWidth;
+    const left = innerContainer.scrollLeft;
 
-    var columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
-    var headersWidth = columnsAxisSizeInfo ? columnsAxisSizeInfo.headers.width : 0;
-    var horizontallyScrolledFraction = left / (scrollWidth - headersWidth);
-    var numberOfPhysicalColumnsAxisTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_COLUMNS);
-    var physicalColumnsAxisTupleIndex = Math.ceil(numberOfPhysicalColumnsAxisTuples * horizontallyScrolledFraction);
+    const columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
+    const headersWidth = columnsAxisSizeInfo ? columnsAxisSizeInfo.headers.width : 0;
+    const horizontallyScrolledFraction = left / (scrollWidth - headersWidth);
+    const numberOfPhysicalColumnsAxisTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_COLUMNS);
+    const physicalColumnsAxisTupleIndex = Math.ceil(numberOfPhysicalColumnsAxisTuples * horizontallyScrolledFraction);
 
     //
-    var scrollHeight = innerContainer.scrollHeight;
-    var top = innerContainer.scrollTop;
+    const scrollHeight = innerContainer.scrollHeight;
+    const top = innerContainer.scrollTop;
 
-    var rowsAxisSizeInfo = this.#getRowsAxisSizeInfo();
-    var headersHeight = rowsAxisSizeInfo.headers.height;
-    var verticallyScrolledFraction = top / (scrollHeight - headersHeight);
-    var numberOfPhysicalRowsAxisTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_ROWS);
-    var physicalRowsAxisTupleIndex = Math.ceil(numberOfPhysicalRowsAxisTuples * verticallyScrolledFraction);
+    const rowsAxisSizeInfo = this.#getRowsAxisSizeInfo();
+    const headersHeight = rowsAxisSizeInfo.headers.height;
+    const verticallyScrolledFraction = top / (scrollHeight - headersHeight);
+    const numberOfPhysicalRowsAxisTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_ROWS);
+    const physicalRowsAxisTupleIndex = Math.ceil(numberOfPhysicalRowsAxisTuples * verticallyScrolledFraction);
 
     return {
       columnsAxisSizeInfo: columnsAxisSizeInfo,
@@ -495,45 +495,45 @@ class PivotTableUi extends EventEmitter {
   }
 
   async #updateDataToScrollPosition(){
-    var physicalTupleIndices = this.#getPhysicalTupleIndices();
+    const physicalTupleIndices = this.#getPhysicalTupleIndices();
 
-    var physicalColumnsAxisTupleIndex = physicalTupleIndices.physicalColumnsAxisTupleIndex;
+    let physicalColumnsAxisTupleIndex = physicalTupleIndices.physicalColumnsAxisTupleIndex;
     
     // ensure we don't overshoot 
-    var tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_COLUMNS, physicalColumnsAxisTupleIndex);
-    var columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
+    const tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_COLUMNS, physicalColumnsAxisTupleIndex);
+    const columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
     if (!columnsAxisSizeInfo){
       return;
     }
     
-    var count = columnsAxisSizeInfo.columns ? columnsAxisSizeInfo.columns.columnCount : 0;
-    var tupleCount = Math.ceil(count / tupleIndexInfo.factor);
+    const count = columnsAxisSizeInfo.columns ? columnsAxisSizeInfo.columns.columnCount : 0;
+    let tupleCount = Math.ceil(count / tupleIndexInfo.factor);
     if (tupleIndexInfo.cellsAxisItemIndex){
       tupleCount += 1;
     }
-    var allTupleCount = this.#columnsTupleSet.getTupleCountSync();
+    const allTupleCount = this.#columnsTupleSet.getTupleCountSync();
     if (tupleIndexInfo.tupleIndex + tupleCount >= allTupleCount) {
-      var maxPhysicalColumn = allTupleCount * tupleIndexInfo.factor;
+      const maxPhysicalColumn = allTupleCount * tupleIndexInfo.factor;
       physicalColumnsAxisTupleIndex = maxPhysicalColumn - count;
     }
     
-    var physicalRowsAxisTupleIndex = physicalTupleIndices.physicalRowsAxisTupleIndex;
+    const physicalRowsAxisTupleIndex = physicalTupleIndices.physicalRowsAxisTupleIndex;
 
-    var columnAxisPromise = this.#updateColumnsAxisTupleData(physicalColumnsAxisTupleIndex);
-    var rowAxisPromise = this.#updateRowsAxisTupleData(physicalRowsAxisTupleIndex);
+    const columnAxisPromise = this.#updateColumnsAxisTupleData(physicalColumnsAxisTupleIndex);
+    const rowAxisPromise = this.#updateRowsAxisTupleData(physicalRowsAxisTupleIndex);
 
     await Promise.all([columnAxisPromise, rowAxisPromise]);
     await this.#updateCellData(physicalColumnsAxisTupleIndex, physicalRowsAxisTupleIndex);
   }
 
   #getTupleIndexForPhysicalIndex(axisId, physicalIndex){
-    var queryModel = this.getQueryModel();
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
-    var factor;
+    const queryModel = this.getQueryModel();
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
+    let factor;
     if (cellHeadersAxis === axisId){
-      var cellsAxis = queryModel.getCellsAxis();
-      var cellsAxisItems = cellsAxis.getItems();
-      var numCellsAxisItems = cellsAxisItems.length;
+      const cellsAxis = queryModel.getCellsAxis();
+      const cellsAxisItems = cellsAxis.getItems();
+      const numCellsAxisItems = cellsAxisItems.length;
       if (numCellsAxisItems === 0) {
         factor = 1;
       }
@@ -544,10 +544,10 @@ class PivotTableUi extends EventEmitter {
     else {
       factor = 1;
     }
-    var fractionalIndex = physicalIndex / factor;
-    var tupleIndex = Math.floor(fractionalIndex);
-    var fraction = fractionalIndex - tupleIndex;
-    var cellsAxisItemIndex = Math.round(fraction * factor);
+    const fractionalIndex = physicalIndex / factor;
+    const tupleIndex = Math.floor(fractionalIndex);
+    const fraction = fractionalIndex - tupleIndex;
+    const cellsAxisItemIndex = Math.round(fraction * factor);
 
     return {
       physicalIndex: physicalIndex,
@@ -561,7 +561,7 @@ class PivotTableUi extends EventEmitter {
   // get the indices of all totals items.
   // this is a helper for #isTotalsMember
   static #getTotalsItemsIndices(queryAxisItems){
-    return queryAxisItems && queryAxisItems.length ? queryAxisItems.reduce(function(acc, curr, index){
+    return queryAxisItems && queryAxisItems.length ? queryAxisItems.reduce((acc, curr, index) =>{
       if (curr.includeTotals) {
         acc.unshift(index);
       }
@@ -585,7 +585,7 @@ class PivotTableUi extends EventEmitter {
       return Infinity;
     }
 
-    var i = BigInt(totalsItemsIndices.length - 1);
+    let i = BigInt(totalsItemsIndices.length - 1);
     while (i >= 0n && !(groupingId & (1n << i)))  {
       i -= 1n;
     }
@@ -602,87 +602,87 @@ class PivotTableUi extends EventEmitter {
     if (isNaN(physicalColumnsAxisTupleIndex)) {
       return;
     }
-    var repeatingValuesIndex;
-    var hideRepeatingAxisValues = this.#getHideRepeatingAxisValues();
-    var dittoMark = hideRepeatingAxisValues ? this.#getDittoMark() : '';
+    let repeatingValuesIndex;
+    const hideRepeatingAxisValues = this.#getHideRepeatingAxisValues();
+    const dittoMark = hideRepeatingAxisValues ? this.#getDittoMark() : '';
 
-    var axisId = QueryModel.AXIS_COLUMNS;
-    var tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalColumnsAxisTupleIndex);
-    var columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
-    var count = columnsAxisSizeInfo.columns.columnCount;
-    var maxColumnIndex = columnsAxisSizeInfo.headers.columnCount + count;
-    var tupleCount = Math.ceil(count / tupleIndexInfo.factor);
+    const axisId = QueryModel.AXIS_COLUMNS;
+    const tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalColumnsAxisTupleIndex);
+    const columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
+    const count = columnsAxisSizeInfo.columns.columnCount;
+    const maxColumnIndex = columnsAxisSizeInfo.headers.columnCount + count;
+    let tupleCount = Math.ceil(count / tupleIndexInfo.factor);
     if (tupleIndexInfo.cellsAxisItemIndex) {
       tupleCount += 1;
     }
-    var tupleSet = this.#columnsTupleSet;
-    var lastTupleIndex = tupleSet.getTupleCountSync() - 1;
+    const tupleSet = this.#columnsTupleSet;
+    const lastTupleIndex = tupleSet.getTupleCountSync() - 1;
 
-    var queryModel = this.getQueryModel();
-    var queryAxis = queryModel.getColumnsAxis();
-    var queryAxisItems = queryAxis.getItems();
-    var totalsItemsIndices = PivotTableUi.#getTotalsItemsIndices(queryAxisItems);
+    const queryModel = this.getQueryModel();
+    const queryAxis = queryModel.getColumnsAxis();
+    const queryAxisItems = queryAxis.getItems();
+    const totalsItemsIndices = PivotTableUi.#getTotalsItemsIndices(queryAxisItems);
 
-    var tupleValueFields = tupleSet.getTupleValueFields();
-    var tupleValueField;
+    const tupleValueFields = tupleSet.getTupleValueFields();
+    let tupleValueField;
 
-    var tuples = await tupleSet.getTuples(tupleCount, tupleIndexInfo.tupleIndex);
+    const tuples = await tupleSet.getTuples(tupleCount, tupleIndexInfo.tupleIndex);
     // local tuple index in our array of tuples
-    var tupleIndex = 0;
+    let tupleIndex = 0;
 
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
-    var cellsAxisItems, numCellsAxisItems;
-    var doCellHeaders = (cellHeadersAxis === axisId);
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
+    let cellsAxisItems, numCellsAxisItems;
+    let doCellHeaders = (cellHeadersAxis === axisId);
     if (doCellHeaders) {
-      var cellsAxis = queryModel.getCellsAxis();
+      const cellsAxis = queryModel.getCellsAxis();
       cellsAxisItems = cellsAxis.getItems();
       if (cellsAxisItems.length === 0){
         doCellHeaders = false;
       }
     }
 
-    var cellsAxisItemIndex = tupleIndexInfo.cellsAxisItemIndex;
+    let cellsAxisItemIndex = tupleIndexInfo.cellsAxisItemIndex;
 
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var rows = tableHeaderDom.childNodes;
-    var numRows = rows.length;
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const rows = tableHeaderDom.childNodes;
+    const numRows = rows.length;
 
     // for each tuple
-    var columnsOffset = columnsAxisSizeInfo.headers.columnCount;
-    for (var i = columnsOffset; i < maxColumnIndex; i++){
-      var tuple = tuples[tupleIndex];
-      var prevTuple = tuples[tupleIndex - 1];
+    const columnsOffset = columnsAxisSizeInfo.headers.columnCount;
+    for (let i = columnsOffset; i < maxColumnIndex; i++){
+      const tuple = tuples[tupleIndex];
+      const prevTuple = tuples[tupleIndex - 1];
       repeatingValuesIndex = undefined;
 
-      var groupingId = this.#getTupleGroupingId(tuple);
+      const groupingId = this.#getTupleGroupingId(tuple);
 
       //for each header row
-      for (var j = 0; j < numRows; j++){
-        var queryAxisItem = queryAxisItems[j];
+      for (let j = 0; j < numRows; j++){
+        const queryAxisItem = queryAxisItems[j];
 
-        var row = rows.item(j);
-        var cells = row.childNodes;
-        var cell = cells.item(i);
+        const row = rows.item(j);
+        const cells = row.childNodes;
+        const cell = cells.item(i);
         cell.setAttribute('data-column-index', tupleIndex);
         cell.setAttribute('data-column-tuple-index', tupleIndexInfo.tupleIndex + tupleIndex);
         cell.setAttribute('data-is-last-column-tuple', (tupleIndexInfo.tupleIndex + tupleIndex) === lastTupleIndex);
         
-        var label = getChildWithClassName(cell, 'pivotTableUiCellLabel');
-        var isTotalsMember = PivotTableUi.#isTotalsMember(groupingId, totalsItemsIndices, queryAxisItem ? j : numRows - 1);
+        const label = getChildWithClassName(cell, 'pivotTableUiCellLabel');
+        const isTotalsMember = PivotTableUi.#isTotalsMember(groupingId, totalsItemsIndices, queryAxisItem ? j : numRows - 1);
         cell.setAttribute('data-totals', isTotalsMember <= j);
         cell.setAttribute('data-totals-origin', isTotalsMember === j);
         if (doCellHeaders){
           cell.setAttribute('data-cells-axis-item-index', cellsAxisItemIndex);
         }
 
-        var labelText = undefined;
-        var titleText = undefined;
-        var tupleValue;
+        let labelText = undefined;
+        let titleText = undefined;
+        let tupleValue;
         if (tuple && j < tuple.values.length){
           tupleValueField = tupleValueFields[j];
           tupleValue = tuple.values[j];
           if (hideRepeatingAxisValues && prevTuple && (repeatingValuesIndex === undefined || repeatingValuesIndex === j - 1)){
-            var prevTupleValue = prevTuple.values[j];
+            const prevTupleValue = prevTuple.values[j];
             if ( 
               tupleValue !== null && tupleValue === prevTupleValue ||
               tupleValue === null && prevTupleValue === null && 
@@ -726,7 +726,7 @@ class PivotTableUi extends EventEmitter {
           titleText = `${QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem)} (${tupleIndex + 1}): ${titleText}`;
 
           if (hideRepeatingAxisValues){
-            var isRepeatingValue;
+            let isRepeatingValue;
             if (
               repeatingValuesIndex === j || 
               doCellHeaders && cellsAxisItems.length && (cellsAxisItemIndex > 0 && i !== columnsOffset)
@@ -745,7 +745,7 @@ class PivotTableUi extends EventEmitter {
         }
         else
         if (doCellHeaders && cellsAxisItems.length) {
-          var cellsAxisItem = cellsAxisItems[cellsAxisItemIndex];
+          const cellsAxisItem = cellsAxisItems[cellsAxisItemIndex];
           this.#setCellItemId(cell, cellsAxisItem, cellsAxisItemIndex);
           titleText = labelText = QueryAxisItem.getCaptionForQueryAxisItem(cellsAxisItem);
         }
@@ -759,9 +759,9 @@ class PivotTableUi extends EventEmitter {
 
         if (j === 0){
           if (tuple && tuple.widths) {
-            var cellsAxisItem = cellsAxisItems.length === 0 ? null : cellsAxisItems[cellsAxisItemIndex];
-            var cellsAxisItemLabel = cellsAxisItems.length === 0 ? '' : QueryAxisItem.getIdForQueryAxisItem(cellsAxisItem);
-            var width = tuple.widths[cellsAxisItemLabel];
+            const cellsAxisItem = cellsAxisItems.length === 0 ? null : cellsAxisItems[cellsAxisItemIndex];
+            const cellsAxisItemLabel = cellsAxisItems.length === 0 ? '' : QueryAxisItem.getIdForQueryAxisItem(cellsAxisItem);
+            const width = tuple.widths[cellsAxisItemLabel];
             if (width !== undefined) {
               cell.style.width = width + 'px';
             }
@@ -784,79 +784,79 @@ class PivotTableUi extends EventEmitter {
   }
 
   async #updateRowsAxisTupleData(physicalRowsAxisTupleIndex){
-    var repeatingValuesIndex;
-    var hideRepeatingAxisValues = this.#getHideRepeatingAxisValues();
-    var dittoMark = hideRepeatingAxisValues ? this.#getDittoMark() : '';
+    let repeatingValuesIndex;
+    const hideRepeatingAxisValues = this.#getHideRepeatingAxisValues();
+    const dittoMark = hideRepeatingAxisValues ? this.#getDittoMark() : '';
     
-    var axisId = QueryModel.AXIS_ROWS;
-    var tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalRowsAxisTupleIndex);
-    var rowsAxisSizeInfo = this.#getRowsAxisSizeInfo();
-    var columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
-    var count = rowsAxisSizeInfo.rows.rowCount;
-    var tupleCount = Math.ceil(count / tupleIndexInfo.factor);
+    const axisId = QueryModel.AXIS_ROWS;
+    const tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalRowsAxisTupleIndex);
+    const rowsAxisSizeInfo = this.#getRowsAxisSizeInfo();
+    const columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
+    const count = rowsAxisSizeInfo.rows.rowCount;
+    let tupleCount = Math.ceil(count / tupleIndexInfo.factor);
     if (tupleIndexInfo.cellsAxisItemIndex > 0) {
       tupleCount += 1;
     }      
-    var tupleSet = this.#rowsTupleSet;
-    var lastTupleIndex = tupleSet.getTupleCountSync() - 1;
+    const tupleSet = this.#rowsTupleSet;
+    const lastTupleIndex = tupleSet.getTupleCountSync() - 1;
 
-    var queryModel = this.getQueryModel();
-    var queryAxis = queryModel.getRowsAxis();
-    var queryAxisItems = queryAxis.getItems();
-    var totalsItemsIndices = PivotTableUi.#getTotalsItemsIndices(queryAxisItems);
+    const queryModel = this.getQueryModel();
+    const queryAxis = queryModel.getRowsAxis();
+    const queryAxisItems = queryAxis.getItems();
+    const totalsItemsIndices = PivotTableUi.#getTotalsItemsIndices(queryAxisItems);
 
-    var tupleValueFields = tupleSet.getTupleValueFields();
-    var tuples = await tupleSet.getTuples(tupleCount, tupleIndexInfo.tupleIndex || 0);
+    const tupleValueFields = tupleSet.getTupleValueFields();
+    const tuples = await tupleSet.getTuples(tupleCount, tupleIndexInfo.tupleIndex || 0);
 
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
-    var cellsAxisItems;
-    var doCellHeaders = (cellHeadersAxis === axisId);
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
+    let cellsAxisItems;
+    const doCellHeaders = (cellHeadersAxis === axisId);
     if (doCellHeaders) {
-      var cellsAxis = queryModel.getCellsAxis();
+      const cellsAxis = queryModel.getCellsAxis();
       cellsAxisItems = cellsAxis.getItems();
     }
 
-    var tupleIndex = 0;
-    var cellsAxisItemIndex = tupleIndexInfo.cellsAxisItemIndex;
+    let tupleIndex = 0;
+    let cellsAxisItemIndex = tupleIndexInfo.cellsAxisItemIndex;
 
-    var tableBodyDom = this.#getTableBodyDom();
-    var rows = tableBodyDom.childNodes;
+    const tableBodyDom = this.#getTableBodyDom();
+    const rows = tableBodyDom.childNodes;
 
-    for (var i = 0; i < rows.length - 1; i++) {
-      var row = rows.item(i);
-      var cells = row.childNodes;
+    for (let i = 0; i < rows.length - 1; i++) {
+      const row = rows.item(i);
+      const cells = row.childNodes;
 
-      var tuple = tuples[tupleIndex];
-      var prevTuple = tuples[tupleIndex - 1];
+      const tuple = tuples[tupleIndex];
+      const prevTuple = tuples[tupleIndex - 1];
       repeatingValuesIndex = undefined;
 
       row.setAttribute('data-row-index', tupleIndex);
       row.setAttribute('data-row-tuple-index', tupleIndexInfo.tupleIndex + tupleIndex);
       row.setAttribute('data-is-last-row-tuple', (tupleIndexInfo.tupleIndex + tupleIndex) === lastTupleIndex || isNaN(lastTupleIndex) );
       
-      var groupingId = this.#getTupleGroupingId(tuple);
+      const groupingId = this.#getTupleGroupingId(tuple);
 
-      var isTotalsRow = Boolean(groupingId);
+      const isTotalsRow = Boolean(groupingId);
       row.setAttribute('data-totals', isTotalsRow);
 
-      var columnsOffset = columnsAxisSizeInfo.headers.columnCount;
-      for (var j = 0; j < columnsOffset; j++){
-        var queryAxisItem = queryAxisItems[j];
-        var cell = cells.item(j);
-        var label = getChildWithClassName(cell, 'pivotTableUiCellLabel');
+      const columnsOffset = columnsAxisSizeInfo.headers.columnCount;
+      for (let j = 0; j < columnsOffset; j++){
+        const queryAxisItem = queryAxisItems[j];
+        const cell = cells.item(j);
+        const label = getChildWithClassName(cell, 'pivotTableUiCellLabel');
 
-        var labelText = undefined;
-        var titleText = undefined;
-        var numMembers = tuple ? tuple.values.length : 0;
-        var isTotalsMember = PivotTableUi.#isTotalsMember(groupingId, totalsItemsIndices, queryAxisItem ? j : undefined);
-        var isTotals = false;
-        var isTotalsOrigin = false;
+        let labelText = undefined;
+        let titleText = undefined;
+        const numMembers = tuple ? tuple.values.length : 0;
+        const isTotalsMember = PivotTableUi.#isTotalsMember(groupingId, totalsItemsIndices, queryAxisItem ? j : undefined);
+        let isTotals = false;
+        let isTotalsOrigin = false;
         
         if (tuple && j < numMembers) {
-          var tupleValue = tuple.values[j];
+          const tupleValue = tuple.values[j];
 
           if (hideRepeatingAxisValues && prevTuple && (repeatingValuesIndex === undefined || repeatingValuesIndex === j - 1)){
-            var prevTupleValue = prevTuple.values[j];
+            const prevTupleValue = prevTuple.values[j];
             if ( 
               tupleValue !== null && tupleValue === prevTupleValue ||
               tupleValue === null && prevTupleValue === null &&  
@@ -874,7 +874,7 @@ class PivotTableUi extends EventEmitter {
             }
           }
 
-          var tupleValueField = tupleValueFields[j];
+          const tupleValueField = tupleValueFields[j];
           this.#setCellValueLiteral(cell, queryAxisItem, tupleValue, tupleValueField);
           if (isTotalsMember > j) {
             if (queryAxisItem.formatter) {
@@ -906,7 +906,7 @@ class PivotTableUi extends EventEmitter {
           titleText = `${QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem)}: ${labelText}`;
 
           if (hideRepeatingAxisValues){
-            var isRepeatingValue;
+            let isRepeatingValue;
             if (
               repeatingValuesIndex === j ||
               doCellHeaders && cellsAxisItems.length && (cellsAxisItemIndex > 0 && i !== 0)
@@ -926,7 +926,7 @@ class PivotTableUi extends EventEmitter {
         }
         else
         if (doCellHeaders && j === columnsOffset - 1) {
-          var cellsAxisItem = cellsAxisItems[cellsAxisItemIndex];
+          const cellsAxisItem = cellsAxisItems[cellsAxisItemIndex];
           labelText = QueryAxisItem.getCaptionForQueryAxisItem(cellsAxisItem);
           titleText = labelText;
           isTotals = isTotalsRow;
@@ -975,7 +975,7 @@ class PivotTableUi extends EventEmitter {
       return;
     }
     cellElement.setAttribute('data-axis', queryAxisItem.axis);
-    var itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
+    const itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
     cellElement.setAttribute('data-axis-item', itemId);
     cellElement.setAttribute('data-axis-item-index', queryAxisItemIndex);
   }
@@ -1003,11 +1003,11 @@ class PivotTableUi extends EventEmitter {
 
     cellElement.setAttribute('data-axis', queryAxisItem.axis);
 
-    var itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
+    const itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
     cellElement.setAttribute('data-axis-item', itemId);
 
-    var valueLiteral;
-    var literalWriter = queryAxisItem.literalWriter;
+    let valueLiteral;
+    const literalWriter = queryAxisItem.literalWriter;
     if (literalWriter){
       valueLiteral = literalWriter(tupleValue, tupleValueField);
     }
@@ -1016,9 +1016,9 @@ class PivotTableUi extends EventEmitter {
     }
     cellElement.setAttribute('data-value-literal', valueLiteral);
 
-    var cellValueType = String(tupleValueField.type);
+    let cellValueType = String(tupleValueField.type);
     if (queryAxisItem.derivation) {
-      var derivationInfo = AttributeUi.getDerivationInfo(queryAxisItem.derivation);
+      const derivationInfo = AttributeUi.getDerivationInfo(queryAxisItem.derivation);
       if (derivationInfo.dataValueTypeOverride) {
         cellValueType = derivationInfo.dataValueTypeOverride;
       }
@@ -1027,22 +1027,22 @@ class PivotTableUi extends EventEmitter {
   }
 
   #renderCellValue(cell, cellsAxisItem, cellElement){
-    var label = getChildWithClassName(cellElement, 'pivotTableUiCellLabel');
+    const label = getChildWithClassName(cellElement, 'pivotTableUiCellLabel');
     if (!cell || !cellsAxisItem){
       label.title = '';
       return label.textContant = '';
     }
 
-    var values = cell.values;
-    var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(cellsAxisItem, CellSet.datasetRelationName);
-    var value = values[sqlExpression];
+    const values = cell.values;
+    const sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(cellsAxisItem, CellSet.datasetRelationName);
+    const value = values[sqlExpression];
 
-    var cellValueFields = this.#cellsSet.getCellValueFields();
-    var cellValueField = cellValueFields[sqlExpression];
+    const cellValueFields = this.#cellsSet.getCellValueFields();
+    const cellValueField = cellValueFields[sqlExpression];
     this.#setCellValueLiteral(cellElement, cellsAxisItem, value, cellValueField);
 
-    var labelText;
-    var formatter = cellsAxisItem.formatter;
+    let labelText;
+    const formatter = cellsAxisItem.formatter;
 
     if (formatter) {
       labelText = formatter(value, cellValueField);
@@ -1056,48 +1056,48 @@ class PivotTableUi extends EventEmitter {
     }
     label.textContent = labelText;
 
-    var caption = QueryAxisItem.getCaptionForQueryAxisItem(cellsAxisItem);
+    const caption = QueryAxisItem.getCaptionForQueryAxisItem(cellsAxisItem);
     label.title = `${caption}: ${labelText}`;
     return labelText
   }
 
   async #updateCellData(physicalColumnsAxisTupleIndex, physicalRowsAxisTupleIndex){
-    var tableBodyDom = this.#getTableBodyDom();
-    var tableBodyRows = tableBodyDom.childNodes;
+    const tableBodyDom = this.#getTableBodyDom();
+    const tableBodyRows = tableBodyDom.childNodes;
 
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var tableHeaderRows = tableHeaderDom.childNodes;
-    var firstTableHeaderRow = tableHeaderRows.item(0);
-    var firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const tableHeaderRows = tableHeaderDom.childNodes;
+    const firstTableHeaderRow = tableHeaderRows.item(0);
+    const firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
 
-    var lastTableHeaderRow = tableHeaderRows.item(tableHeaderRows.length - 1);
-    var lastTableHeaderRowCells = lastTableHeaderRow.childNodes;
+    const lastTableHeaderRow = tableHeaderRows.item(tableHeaderRows.length - 1);
+    const lastTableHeaderRowCells = lastTableHeaderRow.childNodes;
 
-    var queryModel = this.getQueryModel();
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
+    const queryModel = this.getQueryModel();
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
 
-    var rowsAxis = queryModel.getRowsAxis();
-    var rowsAxisItems = rowsAxis.getItems();
-    var columnsAxis = queryModel.getColumnsAxis();
-    var columnsAxisItems = columnsAxis.getItems();
-    var cellsAxis = queryModel.getCellsAxis();
-    var cellsAxisItems = cellsAxis.getItems();
-    var itemId;
+    const rowsAxis = queryModel.getRowsAxis();
+    const rowsAxisItems = rowsAxis.getItems();
+    const columnsAxis = queryModel.getColumnsAxis();
+    const columnsAxisItems = columnsAxis.getItems();
+    const cellsAxis = queryModel.getCellsAxis();
+    const cellsAxisItems = cellsAxis.getItems();
+    let itemId;
 
-    var columnTupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_COLUMNS, physicalColumnsAxisTupleIndex);
-    var columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
-    var headerColumnCount = columnsAxisSizeInfo.headers.columnCount;
+    const columnTupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_COLUMNS, physicalColumnsAxisTupleIndex);
+    const columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
+    const headerColumnCount = columnsAxisSizeInfo.headers.columnCount;
 
-    var rowTupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_ROWS, physicalRowsAxisTupleIndex);
+    const rowTupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_ROWS, physicalRowsAxisTupleIndex);
 
-    var rowCount = tableBodyRows.length - 1;
-    var columnCount = firstTableHeaderRowCells.length - headerColumnCount - 1;
+    const rowCount = tableBodyRows.length - 1;
+    const columnCount = firstTableHeaderRowCells.length - headerColumnCount - 1;
 
-    var columnsAxisTupleIndex = columnTupleIndexInfo.tupleIndex;
-    var rowsAxisTupleIndex = rowTupleIndexInfo.tupleIndex;
-    var numRowsAxisTuples, numColumnsAxisTuples;
-    var columnsTupleRange = [];
-    var rowsTupleRange = [];
+    let columnsAxisTupleIndex = columnTupleIndexInfo.tupleIndex;
+    let rowsAxisTupleIndex = rowTupleIndexInfo.tupleIndex;
+    let numRowsAxisTuples, numColumnsAxisTuples;
+    let columnsTupleRange = [];
+    let rowsTupleRange = [];
     switch (cellHeadersAxis){
       case QueryModel.AXIS_COLUMNS:
         if (columnsAxisItems.length){
@@ -1127,27 +1127,27 @@ class PivotTableUi extends EventEmitter {
     columnsTupleRange = [columnsAxisTupleIndex, columnsAxisTupleIndex + numColumnsAxisTuples];
     rowsTupleRange = [rowsAxisTupleIndex, rowsAxisTupleIndex + numRowsAxisTuples];
 
-    var cellsAxisItemIndex;
+    let cellsAxisItemIndex;
 
-    var cellsSet = this.#cellsSet;
-    var cells = await cellsSet.getCells([rowsTupleRange, columnsTupleRange]);
+    const cellsSet = this.#cellsSet;
+    const cells = await cellsSet.getCells([rowsTupleRange, columnsTupleRange]);
 
-    var cellIndex;
+    let cellIndex;
 
-    for (var i = 0; i < tableBodyRows.length - 1; i++){
-      var tableRow = tableBodyRows.item(i);
+    for (let i = 0; i < tableBodyRows.length - 1; i++){
+      const tableRow = tableBodyRows.item(i);
       if (!tableRow){
         continue;
       }
-      var isTotalsRow = tableRow.getAttribute('data-totals') === 'true';
-      var cellElements = tableRow.childNodes;
+      const isTotalsRow = tableRow.getAttribute('data-totals') === 'true';
+      const cellElements = tableRow.childNodes;
 
       if (cellHeadersAxis === QueryModel.AXIS_ROWS && i === 0){
         cellsAxisItemIndex = rowTupleIndexInfo.cellsAxisItemIndex;
         rowsAxisTupleIndex = rowTupleIndexInfo.tupleIndex;
       }
 
-      for (var j = headerColumnCount; j < headerColumnCount + columnCount; j++){
+      for (let j = headerColumnCount; j < headerColumnCount + columnCount; j++){
 
         if (j === headerColumnCount) {
           columnsAxisTupleIndex = columnTupleIndexInfo.tupleIndex;
@@ -1156,23 +1156,23 @@ class PivotTableUi extends EventEmitter {
           }
         }
 
-        var cellElement = cellElements.item(j);
+        const cellElement = cellElements.item(j);
         if (!cellElement){
           console.warn(`Warning: no DOM found for cell ${i},${j}`);
           continue;
         }
                 
-        var cellIndex = cellsSet.getCellIndex(rowsAxisTupleIndex, columnsAxisTupleIndex);
-        var cell = undefined;
+        const cellIndex = cellsSet.getCellIndex(rowsAxisTupleIndex, columnsAxisTupleIndex);
+        let cell = undefined;
         if (cells) {
           cell = cells[cellIndex];
         }
-        var cellsAxisItem = cellsAxisItems[cellsAxisItemIndex];
-        var labelText = this.#renderCellValue(cell, cellsAxisItem, cellElement);
+        const cellsAxisItem = cellsAxisItems[cellsAxisItemIndex];
+        const labelText = this.#renderCellValue(cell, cellsAxisItem, cellElement);
 
-        var headerCell = firstTableHeaderRowCells.item(j);
+        const headerCell = firstTableHeaderRowCells.item(j);
         if (headerCell) {
-          var lastTableHeaderRowCell = lastTableHeaderRowCells.item(j);
+          const lastTableHeaderRowCell = lastTableHeaderRowCells.item(j);
           if (isTotalsRow || (lastTableHeaderRowCell ? lastTableHeaderRowCell.getAttribute('data-totals') === 'true' : false) ){
             cellElement.setAttribute('data-totals', true);
           }
@@ -1180,9 +1180,9 @@ class PivotTableUi extends EventEmitter {
             cellElement.removeAttribute('data-totals');
           }
           // adjust the column width if necessary.
-          var width = headerCell.style.width;
+          const width = headerCell.style.width;
           if (width.endsWith('ch')){
-            var newWidth = labelText.length + 1;
+            let newWidth = labelText.length + 1;
 
             if (newWidth > PivotTableUi.#maximumCellWidth) {
               newWidth = PivotTableUi.#maximumCellWidth;
@@ -1225,22 +1225,22 @@ class PivotTableUi extends EventEmitter {
   }
 
   #renderHeader() {
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var tableBodyDom = this.#getTableBodyDom();
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const tableBodyDom = this.#getTableBodyDom();
 
-    var queryModel = this.getQueryModel();
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
+    const queryModel = this.getQueryModel();
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
 
-    var rowsAxis = queryModel.getRowsAxis();
-    var rowsAxisItems = rowsAxis.getItems();
+    const rowsAxis = queryModel.getRowsAxis();
+    const rowsAxisItems = rowsAxis.getItems();
 
-    var columnsAxis = queryModel.getColumnsAxis();
-    var columnsAxisItems = columnsAxis.getItems();
+    const columnsAxis = queryModel.getColumnsAxis();
+    const columnsAxisItems = columnsAxis.getItems();
 
-    var cellsAxis = queryModel.getCellsAxis();
-    var cellsAxisItems = cellsAxis.getItems();
+    const cellsAxis = queryModel.getCellsAxis();
+    const cellsAxisItems = cellsAxis.getItems();
 
-    var numColumnAxisRows = columnsAxisItems.length;
+    let numColumnAxisRows = columnsAxisItems.length;
     if (
       cellHeadersAxis === QueryModel.AXIS_COLUMNS && cellsAxisItems.length ||
       rowsAxisItems.length && columnsAxisItems.length && !cellsAxisItems.length
@@ -1252,7 +1252,7 @@ class PivotTableUi extends EventEmitter {
       numColumnAxisRows = 1;
     }
 
-    var numRowAxisColumns = rowsAxisItems.length;
+    let numRowAxisColumns = rowsAxisItems.length;
     if (cellHeadersAxis === QueryModel.AXIS_ROWS) {
       // make room for the cell headers on the rows axis
       if (columnsAxisItems.length || cellsAxisItems.length) {
@@ -1264,26 +1264,26 @@ class PivotTableUi extends EventEmitter {
       numRowAxisColumns = 1;
     }
 
-    var firstTableHeaderRow, firstTableHeaderRowCells;
-    for (var i = 0; i < numColumnAxisRows; i++){
-      var tableRow = createEl('div', {
+    let firstTableHeaderRow, firstTableHeaderRowCells;
+    for (let i = 0; i < numColumnAxisRows; i++){
+      const tableRow = createEl('div', {
         "class": "pivotTableUiRow"
       });
       tableHeaderDom.appendChild(tableRow);
 
-      var tableCell, labelText, label;
-      for (var j = 0; j < numRowAxisColumns; j++) {
+      let tableCell, labelText, label;
+      for (let j = 0; j < numRowAxisColumns; j++) {
         tableCell = createEl('div', {
           "class": 'pivotTableUiCell pivotTableUiHeaderCell'
         });
         tableRow.appendChild(tableCell);
 
-        var columnWidth;
+        let columnWidth;
         // last row in the header section: headers for the  row axis columns
         if (i === (numColumnAxisRows - 1)) {
           if (j < rowsAxisItems.length){
             tableCell.className += ' pivotTableUiRowsAxisHeaderCell';
-            var rowsAxisItem = rowsAxisItems[j];
+            const rowsAxisItem = rowsAxisItems[j];
             this.#setCellItemId(tableCell, rowsAxisItem, j);
             labelText = QueryAxisItem.getCaptionForQueryAxisItem(rowsAxisItem);
             columnWidth = (labelText.length + 2);
@@ -1302,7 +1302,7 @@ class PivotTableUi extends EventEmitter {
           }
           else
           if (cellHeadersAxis === QueryModel.AXIS_ROWS) {
-            columnWidth = rowsAxisItems.reduce(function(acc, curr){
+            columnWidth = rowsAxisItems.reduce((acc, curr) =>{
               labelText = QueryAxisItem.getCaptionForQueryAxisItem(curr);
               columnWidth = labelText.length;
               return columnWidth > acc ? columnWidth : acc;
@@ -1319,7 +1319,7 @@ class PivotTableUi extends EventEmitter {
 
           firstTableHeaderRow = tableHeaderDom.childNodes.item(0);
           firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
-          var firstTableHeaderRowCell = firstTableHeaderRowCells.item(j);
+          const firstTableHeaderRowCell = firstTableHeaderRowCells.item(j);
           firstTableHeaderRowCell.style.width = columnWidth;
         }
       }
@@ -1327,7 +1327,7 @@ class PivotTableUi extends EventEmitter {
       // headers for the column axis rows
       if (i < columnsAxisItems.length) {
         tableCell.className += ' pivotTableUiColumnsAxisHeaderCell';
-        var columnsAxisItem = columnsAxisItems[i];
+        const columnsAxisItem = columnsAxisItems[i];
         this.#setCellItemId(tableCell, columnsAxisItem, i);
         labelText = QueryAxisItem.getCaptionForQueryAxisItem(columnsAxisItem);
         label = createEl('span', {
@@ -1347,7 +1347,7 @@ class PivotTableUi extends EventEmitter {
     }
 
     firstTableHeaderRow = tableHeaderDom.childNodes.item(0);
-    var stufferCell, stufferRow;
+    let stufferCell, stufferRow;
     stufferCell = createEl('div', {
       "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell"
     });
@@ -1365,26 +1365,26 @@ class PivotTableUi extends EventEmitter {
 
   #renderColumns(tuples){
 
-    var containerDom = this.#getInnerContainerDom();
-    var innerContainerWidth = containerDom.clientWidth;
-    var tableDom = this.#getTableDom();
-    var physicalColumnsAdded = 0;
+    const containerDom = this.#getInnerContainerDom();
+    const innerContainerWidth = containerDom.clientWidth;
+    const tableDom = this.#getTableDom();
+    let physicalColumnsAdded = 0;
 
-    var queryModel = this.getQueryModel();
-    var queryAxis = queryModel.getColumnsAxis();
-    var queryAxisItems = queryAxis.getItems();
-    var totalsItemsIndices = PivotTableUi.#getTotalsItemsIndices(queryAxisItems);
+    const queryModel = this.getQueryModel();
+    const queryAxis = queryModel.getColumnsAxis();
+    const queryAxisItems = queryAxis.getItems();
+    const totalsItemsIndices = PivotTableUi.#getTotalsItemsIndices(queryAxisItems);
 
-    var tupleValueFields = this.#columnsTupleSet.getTupleValueFields();
+    const tupleValueFields = this.#columnsTupleSet.getTupleValueFields();
 
-    var numCellHeaders = 0;
-    var numTuples = tuples.length;
-    var numColumns = numTuples;
-    var cellHeadersPlacement = queryModel.getCellHeadersAxis();
-    var renderCellHeaders = (cellHeadersPlacement === QueryModel.AXIS_COLUMNS);
+    let numCellHeaders = 0;
+    const numTuples = tuples.length;
+    let numColumns = numTuples;
+    const cellHeadersPlacement = queryModel.getCellHeadersAxis();
+    const renderCellHeaders = (cellHeadersPlacement === QueryModel.AXIS_COLUMNS);
 
-    var cellsAxis = queryModel.getCellsAxis();
-    var cellItems = cellsAxis.getItems();
+    const cellsAxis = queryModel.getCellsAxis();
+    const cellItems = cellsAxis.getItems();
     if (renderCellHeaders) {
       numCellHeaders = cellItems.length;
       if (numCellHeaders === 0) {
@@ -1401,40 +1401,40 @@ class PivotTableUi extends EventEmitter {
       numColumns = 1;
     }
 
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var headerRows = tableHeaderDom.childNodes;
-    var firstHeaderRow = headerRows.item(0);
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const headerRows = tableHeaderDom.childNodes;
+    const firstHeaderRow = headerRows.item(0);
 
     if (!firstHeaderRow) {
       return;
     }
 
-    var firstHeaderRowCells = firstHeaderRow.childNodes;
-    var stufferCell = firstHeaderRowCells.item(firstHeaderRowCells.length - 1);
+    const firstHeaderRowCells = firstHeaderRow.childNodes;
+    const stufferCell = firstHeaderRowCells.item(firstHeaderRowCells.length - 1);
 
     // loop for each row from the column axis query result
     // if there aren't any, but the cells are on the column axis, and there is at least one item on the cell axis, this will still run once.
-    for (var i = 0; i < numColumns; i++){
-      var tuple;
+    for (let i = 0; i < numColumns; i++){
+      let tuple;
       if (i < numTuples){
         tuple = tuples[i];
       }
 
-      var valuesMaxWidth = 0, columnWidth = 0;
-      var values, groupingId;
+      let valuesMaxWidth = 0, columnWidth = 0;
+      let values, groupingId;
       if (tuple){
         values = tuple.values;
         groupingId = tuple[TupleSet.groupingIdAlias];
       }
 
-      for (var k = 0; k < numCellHeaders; k++){
-        for (var j = 0; j < headerRows.length; j++){
-          var queryAxisItem = queryAxisItems[j];
-          var isTotalsMember = PivotTableUi.#isTotalsMember(groupingId, totalsItemsIndices, queryAxisItem ? j : undefined);
+      for (let k = 0; k < numCellHeaders; k++){
+        for (let j = 0; j < headerRows.length; j++){
+          const queryAxisItem = queryAxisItems[j];
+          const isTotalsMember = PivotTableUi.#isTotalsMember(groupingId, totalsItemsIndices, queryAxisItem ? j : undefined);
 
-          var headerRow = headerRows.item(j);
+          const headerRow = headerRows.item(j);
 
-          var cell = createEl('div', {
+          const cell = createEl('div', {
             "class": "pivotTableUiCell pivotTableUiHeaderCell",
             "data-totals": groupingId > 0
           });
@@ -1445,12 +1445,12 @@ class PivotTableUi extends EventEmitter {
             cell.setAttribute('data-axis', QueryModel.AXIS_CELLS);
           }
 
-          var labelText = undefined;
+          let labelText = undefined;
           if (isTotalsMember > j){
             if (values && j < values.length) {
               if (k === 0) {
-                var value = values[j];
-                var tupleValueField = tupleValueFields[j];
+                const value = values[j];
+                const tupleValueField = tupleValueFields[j];
                 labelText = queryAxisItem.formatter ? queryAxisItem.formatter(value, tupleValueField) : String(value);
                 this.#setCellValueLiteral(cell, queryAxisItem, value, tupleValueField);
               }
@@ -1465,7 +1465,7 @@ class PivotTableUi extends EventEmitter {
             }
             else
             if (renderCellHeaders && k < cellItems.length) {
-              var cellItem = cellItems[k];
+              const cellItem = cellItems[k];
               labelText = QueryAxisItem.getCaptionForQueryAxisItem(cellItem);
               columnWidth = labelText.length > valuesMaxWidth ? labelText.length : valuesMaxWidth;
               this.#setCellItemId(cell, cellItem, k);
@@ -1479,7 +1479,7 @@ class PivotTableUi extends EventEmitter {
             labelText = String.fromCharCode(160);
           }
 
-          var label = createEl('span', {
+          const label = createEl('span', {
             "class": "pivotTableUiCellLabel"
           });
           label.title = labelText;
@@ -1515,29 +1515,29 @@ class PivotTableUi extends EventEmitter {
   }
 
   #removeExcessColumns(){
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var headerRows = tableHeaderDom.childNodes;
-    var firstHeaderRow = headerRows.item(0);
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const headerRows = tableHeaderDom.childNodes;
+    const firstHeaderRow = headerRows.item(0);
     if (!firstHeaderRow) {
       return;
     }
-    var firstHeaderRowCells = firstHeaderRow.childNodes;
-    var lastHeaderRowIndex = headerRows.length -1;
+    const firstHeaderRowCells = firstHeaderRow.childNodes;
+    const lastHeaderRowIndex = headerRows.length -1;
 
-    var containerDom = this.#getInnerContainerDom();
-    var innerContainerWidth = containerDom.clientWidth;
-    var tableDom = this.#getTableDom();
+    const containerDom = this.#getInnerContainerDom();
+    const innerContainerWidth = containerDom.clientWidth;
+    const tableDom = this.#getTableDom();
 
     while (tableDom.clientWidth > innerContainerWidth) {
       // table exceeds allowed width remove the last column.
-      for (var j = lastHeaderRowIndex; j >=0; j--){
-        var headerRow = headerRows.item(j);
-        var cells = headerRow.childNodes;
-        var lastCellIndex = firstHeaderRowCells.length - 2;
+      for (let j = lastHeaderRowIndex; j >=0; j--){
+        const headerRow = headerRows.item(j);
+        const cells = headerRow.childNodes;
+        const lastCellIndex = firstHeaderRowCells.length - 2;
         if (lastCellIndex < 0 || lastCellIndex >= cells.length) {
           return;
         }
-        var lastCell = cells.item(lastCellIndex);
+        const lastCell = cells.item(lastCellIndex);
         if (j === lastHeaderRowIndex && (tableDom.clientWidth - lastCell.clientWidth) < innerContainerWidth) {
           return;
         }
@@ -1547,55 +1547,55 @@ class PivotTableUi extends EventEmitter {
   }
 
   #removeExcessRows(){
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var headerRows = tableHeaderDom.childNodes;
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const headerRows = tableHeaderDom.childNodes;
 
-    var containerDom = this.#getInnerContainerDom();
-    var innerContainerHeight = containerDom.clientHeight;
-    var tableDom = this.#getTableDom();
+    const containerDom = this.#getInnerContainerDom();
+    const innerContainerHeight = containerDom.clientHeight;
+    const tableDom = this.#getTableDom();
 
-    var tableBodyDom = this.#getTableBodyDom();
-    var tableBodyDomRows = tableBodyDom.childNodes;
+    const tableBodyDom = this.#getTableBodyDom();
+    const tableBodyDomRows = tableBodyDom.childNodes;
 
     while (tableDom.clientHeight > innerContainerHeight && tableBodyDomRows.length > 1) {
       // the last row is the stuffer row, remove the row before that.
-      var tableBodyRow = tableBodyDomRows[tableBodyDomRows.length - 2];
+      const tableBodyRow = tableBodyDomRows[tableBodyDomRows.length - 2];
       tableBodyDom.removeChild(tableBodyRow);
     }
   }
 
   #renderRows(tuples){
-    var containerDom = this.#getInnerContainerDom();
-    var innerContainerHeight = containerDom.clientHeight;
-    var tableDom = this.#getTableDom();
-    var physicalRowsAdded = 0;
+    const containerDom = this.#getInnerContainerDom();
+    const innerContainerHeight = containerDom.clientHeight;
+    const tableDom = this.#getTableDom();
+    let physicalRowsAdded = 0;
 
-    var queryModel = this.getQueryModel();
-    var columnsAxis = queryModel.getColumnsAxis();
-    var columnAxisItems = columnsAxis.getItems();
+    const queryModel = this.getQueryModel();
+    const columnsAxis = queryModel.getColumnsAxis();
+    const columnAxisItems = columnsAxis.getItems();
 
-    var rowsAxis = queryModel.getRowsAxis();
-    var rowAxisItems = rowsAxis.getItems();
-    var numColumns = rowAxisItems.length;
-    var itemId;
+    const rowsAxis = queryModel.getRowsAxis();
+    const rowAxisItems = rowsAxis.getItems();
+    let numColumns = rowAxisItems.length;
+    let itemId;
 
-    var tupleValueFields = this.#rowsTupleSet.getTupleValueFields();
+    const tupleValueFields = this.#rowsTupleSet.getTupleValueFields();
 
-    var numCellHeaders = 1;
-    var numRows = tuples.length;
-    var cellHeadersPlacement = queryModel.getCellHeadersAxis();
-    var renderCellHeaders = (cellHeadersPlacement === QueryModel.AXIS_ROWS);
+    let numCellHeaders = 1;
+    let numRows = tuples.length;
+    const cellHeadersPlacement = queryModel.getCellHeadersAxis();
+    const renderCellHeaders = (cellHeadersPlacement === QueryModel.AXIS_ROWS);
 
-    var cellsAxis = queryModel.getCellsAxis();
-    var cellAxisItems = cellsAxis.getItems();
+    const cellsAxis = queryModel.getCellsAxis();
+    const cellAxisItems = cellsAxis.getItems();
 
     if (renderCellHeaders) {
       numCellHeaders = cellAxisItems.length;
       if (numCellHeaders === 0) {
         numCellHeaders = 1;
 
-        var columnsAxis = queryModel.getColumnsAxis();
-        var columnAxisItems = columnsAxis.getItems();
+        const columnsAxis = queryModel.getColumnsAxis();
+        const columnAxisItems = columnsAxis.getItems();
         if (columnAxisItems.length){
           numColumns += 1;
         }
@@ -1615,49 +1615,49 @@ class PivotTableUi extends EventEmitter {
       numRows = 1;
     }
 
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var tableHeaderRows = tableHeaderDom.childNodes;
-    var firstTableHeaderRow = tableHeaderRows.item(0);
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const tableHeaderRows = tableHeaderDom.childNodes;
+    const firstTableHeaderRow = tableHeaderRows.item(0);
 
     if (!firstTableHeaderRow){
       return;
     }
-    var firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
+    const firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
 
-    var tableBodyDom = this.#getTableBodyDom();
-    var tableBodyDomRows = tableBodyDom.childNodes;
-    var stufferRow = tableBodyDomRows.item(0);
+    const tableBodyDom = this.#getTableBodyDom();
+    const tableBodyDomRows = tableBodyDom.childNodes;
+    const stufferRow = tableBodyDomRows.item(0);
 
-    for (var i = 0; i < numRows; i++){
-      var tuple = tuples[i];
-      var groupingId = tuple ? tuple[TupleSet.groupingIdAlias] : undefined;
+    for (let i = 0; i < numRows; i++){
+      const tuple = tuples[i];
+      const groupingId = tuple ? tuple[TupleSet.groupingIdAlias] : undefined;
 
-      for (var k = 0; k < numCellHeaders; k++){
-        var bodyRow = createEl('div', {
+      for (let k = 0; k < numCellHeaders; k++){
+        const bodyRow = createEl('div', {
           "class": "pivotTableUiRow",
           "data-totals": groupingId > 0
         });
 
         tableBodyDom.insertBefore(bodyRow, stufferRow);
 
-        for (var j = 0; j < numColumns; j++){
-          var cell = createEl('div', {
+        for (let j = 0; j < numColumns; j++){
+          const cell = createEl('div', {
             "class": "pivotTableUiCell pivotTableUiHeaderCell"
           });
 
-          var headerCell = firstTableHeaderRowCells[bodyRow.childNodes.length];
-          var headerCellWidth = parseInt(headerCell.style.width, 10);
+          const headerCell = firstTableHeaderRowCells[bodyRow.childNodes.length];
+          let headerCellWidth = parseInt(headerCell.style.width, 10);
 
           bodyRow.appendChild(cell);
 
-          var labelText = undefined;
+          let labelText = undefined;
           if (j < rowAxisItems.length) {
             if (k === 0 && tuple) {
-              var value = tuple.values[j];
-              var rowAxisItem = rowAxisItems[j];
+              const value = tuple.values[j];
+              const rowAxisItem = rowAxisItems[j];
               this.#setCellItemId(cell, rowAxisItem, j);
 
-              var tupleValueField = tupleValueFields[j];
+              const tupleValueField = tupleValueFields[j];
               labelText = rowAxisItem.formatter ? rowAxisItem.formatter(value, tupleValueField) : String(value);
               this.#setCellValueLiteral(cell, rowAxisItem, value, tupleValueField);
 
@@ -1666,7 +1666,7 @@ class PivotTableUi extends EventEmitter {
           else {
             cell.className += ' pivotTableUiCellAxisHeaderCell';
             if (k < cellAxisItems.length && renderCellHeaders) {
-              var cellsAxisItem = cellAxisItems[k];
+              const cellsAxisItem = cellAxisItems[k];
               labelText = QueryAxisItem.getCaptionForQueryAxisItem(cellsAxisItem);
               this.#setCellItemId(cell, cellsAxisItem, k);
             }
@@ -1676,7 +1676,7 @@ class PivotTableUi extends EventEmitter {
             labelText = String.fromCharCode(160);
           }
 
-          var label = createEl('span', {
+          const label = createEl('span', {
             "class": "pivotTableUiCellLabel",
           });
           label.title = labelText;
@@ -1697,7 +1697,7 @@ class PivotTableUi extends EventEmitter {
 
         physicalRowsAdded += 1;
         // check if the table overshoots its heigh.
-        var newTableDomHeight = tableDom.clientHeight;
+        const newTableDomHeight = tableDom.clientHeight;
         if (newTableDomHeight > innerContainerHeight) {
           // remove the last added row to ensure it fits in the container
           // we need it to it or else the "sticky" positioning won't work as intended
@@ -1710,29 +1710,29 @@ class PivotTableUi extends EventEmitter {
   }
 
   #renderCells(){
-    var tableHeaderDom = this.#getTableHeaderDom();
+    const tableHeaderDom = this.#getTableHeaderDom();
 
-    var columnAxisSizeInfo = this.#getColumnsAxisSizeInfo();
+    const columnAxisSizeInfo = this.#getColumnsAxisSizeInfo();
     if (!columnAxisSizeInfo) {
       return;
     }
     
-    var columnOffset = columnAxisSizeInfo.headers.columnCount;
-    var columnCount = columnAxisSizeInfo.headers.columnCount + columnAxisSizeInfo.columns.columnCount;
+    const columnOffset = columnAxisSizeInfo.headers.columnCount;
+    const columnCount = columnAxisSizeInfo.headers.columnCount + columnAxisSizeInfo.columns.columnCount;
 
-    var tableBodyDom = this.#getTableBodyDom();
-    var tableBodyDomRows = tableBodyDom.childNodes;
+    const tableBodyDom = this.#getTableBodyDom();
+    const tableBodyDomRows = tableBodyDom.childNodes;
 
-    for (var i = 0; i < tableBodyDomRows.length - 1; i++){
-      var bodyRow = tableBodyDomRows.item(i);
-      for (var j = columnOffset; j < columnCount; j++){
+    for (let i = 0; i < tableBodyDomRows.length - 1; i++){
+      const bodyRow = tableBodyDomRows.item(i);
+      for (let j = columnOffset; j < columnCount; j++){
 
-        var cell = createEl('div', {
+        const cell = createEl('div', {
           "class": "pivotTableUiCell pivotTableUiValueCell",
           "data-axis": QueryModel.AXIS_CELLS
         });
         bodyRow.appendChild(cell);
-        var label = createEl('span', {
+        const label = createEl('span', {
           "class": "pivotTableUiCellLabel"
         }, '');
         cell.appendChild(label);
@@ -1749,8 +1749,8 @@ class PivotTableUi extends EventEmitter {
   }
 
   #getDittoMark(){
-    var dittoMark;
-    var settings = this.#settings;
+    let dittoMark;
+    let settings = this.#settings;
     if (settings && typeof settings.getSettings === 'function') {
       settings = settings.getSettings('pivotSettings');
     }
@@ -1764,8 +1764,8 @@ class PivotTableUi extends EventEmitter {
   }
   
   #getHideRepeatingAxisValues(){
-    var hideRepeatingAxisValues;
-    var settings = this.#settings;
+    let hideRepeatingAxisValues;
+    let settings = this.#settings;
     if (settings && typeof settings.getSettings === 'function') {
       settings = settings.getSettings('pivotSettings');
     }
@@ -1779,8 +1779,8 @@ class PivotTableUi extends EventEmitter {
   }
 
   #getMaxCellWidth(){
-    var maxCellWidth;
-    var settings = this.#settings;
+    let maxCellWidth;
+    let settings = this.#settings;
     if (settings && typeof settings.getSettings === 'function') {
       settings = settings.getSettings('pivotSettings');
     }
@@ -1801,14 +1801,14 @@ class PivotTableUi extends EventEmitter {
       return;
     }
 
-    var maxCellWidth = this.#getMaxCellWidth();
+    const maxCellWidth = this.#getMaxCellWidth();
     PivotTableUi.#maximumCellWidth = maxCellWidth;
 
-    var tableDom = this.#getTableDom();
+    const tableDom = this.#getTableDom();
     try {
 
-      var cellHeadersAxis = this.getQueryModel().getCellHeadersAxis();
-      var currCellHeadersAxis = tableDom.getAttribute('data-cellheadersaxis');
+      const cellHeadersAxis = this.getQueryModel().getCellHeadersAxis();
+      const currCellHeadersAxis = tableDom.getAttribute('data-cellheadersaxis');
       if (cellHeadersAxis !== currCellHeadersAxis) {
         tableDom.setAttribute('data-cellheadersaxis', cellHeadersAxis);
       }
@@ -1816,14 +1816,14 @@ class PivotTableUi extends EventEmitter {
       this.#setBusy(true);
       this.clear();
 
-      var columnsTupleSet = this.#columnsTupleSet;
-      var rowsTupleSet = this.#rowsTupleSet;
+      const columnsTupleSet = this.#columnsTupleSet;
+      const rowsTupleSet = this.#rowsTupleSet;
 
       this.#renderHeader();
 
       tableDom.style.width = '';
 
-      var pageSizes = await Promise.all([
+      const pageSizes = await Promise.all([
         this.#estimateColumnsAxisPageSize(),
         this.#estimateRowsAxisPageSize(),
       ]);
@@ -1831,20 +1831,20 @@ class PivotTableUi extends EventEmitter {
       columnsTupleSet.setPageSize(pageSizes[0]);
       rowsTupleSet.setPageSize(pageSizes[1]);
 
-      var renderAxisPromises = [
+      const renderAxisPromises = [
         columnsTupleSet.getTuples(columnsTupleSet.getPageSize(), 0),
         rowsTupleSet.getTuples(rowsTupleSet.getPageSize(), 0)
       ];
 
-      var renderAxisPromisesResults = await Promise.all(renderAxisPromises);
+      const renderAxisPromisesResults = await Promise.all(renderAxisPromises);
       //tableDom.setAttribute('data-max-row-tuple-index', rowsTupleSet.getTupleCountSync()-1);
       //tableDom.setAttribute('data-max-column-tuple-index', columnsTupleSet.getTupleCountSync()-1);
 
-      var columnTuples = renderAxisPromisesResults[0];
+      const columnTuples = renderAxisPromisesResults[0];
       this.#setHorizontalSize(0);
       this.#renderColumns(columnTuples);
 
-      var rowTuples = renderAxisPromisesResults[1];
+      const rowTuples = renderAxisPromisesResults[1];
       this.#setVerticalSize(0);
 
       this.#renderRows(rowTuples);
@@ -1856,18 +1856,18 @@ class PivotTableUi extends EventEmitter {
 
       //await this.#updateCellData(0, 0);
       await this.#updateDataToScrollPosition();
-      setTimeout(function(){
+      setTimeout(() =>{
         this.#removeExcessColumns();
         this.#updateHorizontalSizer();
         this.#removeExcessRows();
         this.#updateVerticalSizer();
-      }.bind(this), 1000)
+      }, 1000)
       this.#setNeedsUpdate(false);
       this.#fireUpdatedSuccess();
     }
     catch(e){
       console.error(e);
-      var eventData = {
+      const eventData = {
         status: 'error',
         error: e
       };
@@ -1881,9 +1881,9 @@ class PivotTableUi extends EventEmitter {
 
   clear(){
     this.#toggleObserveColumnsResizing(false);
-    var tableHeaderDom = this.#getTableHeaderDom();
+    const tableHeaderDom = this.#getTableHeaderDom();
     tableHeaderDom.innerHTML = '';
-    var tableBodyDom = this.#getTableBodyDom();
+    const tableBodyDom = this.#getTableBodyDom();
     tableBodyDom.innerHTML = '';
     this.#setHorizontalSize(0);
     this.#setVerticalSize(0);
@@ -1903,18 +1903,18 @@ class PivotTableUi extends EventEmitter {
   }
 
   #setHorizontalSize(size){
-    var sizer = this.#getHorizontalSizer();
+    const sizer = this.#getHorizontalSizer();
     sizer.style.width = size + 'px';
   }
 
   #getNumberOfPhysicalTuplesForAxis(axisId){
-    var queryModel = this.getQueryModel();
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
+    const queryModel = this.getQueryModel();
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
 
-    var factor;
+    let factor;
     if (cellHeadersAxis === axisId) {
-      var cellsAxis = queryModel.getCellsAxis();
-      var items = cellsAxis.getItems();
+      const cellsAxis = queryModel.getCellsAxis();
+      const items = cellsAxis.getItems();
       factor = items.length;
     }
 
@@ -1922,7 +1922,7 @@ class PivotTableUi extends EventEmitter {
       factor = 1;
     }
 
-    var tupleSet;
+    let tupleSet;
     switch (axisId){
       case QueryModel.AXIS_COLUMNS:
         tupleSet = this.#columnsTupleSet;
@@ -1933,37 +1933,37 @@ class PivotTableUi extends EventEmitter {
       default:
         throw new Error(`Invalid axis id ${axisId}.`);
     }
-    var tupleCount = tupleSet.getTupleCountSync();
+    let tupleCount = tupleSet.getTupleCountSync();
     if (tupleCount === undefined) {
       tupleCount = 1;
     }
-    var numberOfPhysicalRows = tupleCount * factor;
+    const numberOfPhysicalRows = tupleCount * factor;
     return numberOfPhysicalRows;
   }
 
   #getColumnsAxisSizeInfo(){
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var firstHeaderRow = tableHeaderDom.childNodes.item(0);
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const firstHeaderRow = tableHeaderDom.childNodes.item(0);
 
     if (!firstHeaderRow ){
       return undefined;
     }
 
-    var cells = firstHeaderRow.childNodes;
+    const cells = firstHeaderRow.childNodes;
 
-    var queryModel = this.getQueryModel();
-    var rowsAxis = queryModel.getQueryAxis(QueryModel.AXIS_ROWS);
-    var rowsAxisItems = rowsAxis.getItems();
+    const queryModel = this.getQueryModel();
+    const rowsAxis = queryModel.getQueryAxis(QueryModel.AXIS_ROWS);
+    const rowsAxisItems = rowsAxis.getItems();
 
-    var columnsAxis = queryModel.getQueryAxis(QueryModel.AXIS_COLUMNS);
-    var columnsAxisItems = columnsAxis.getItems();
+    const columnsAxis = queryModel.getQueryAxis(QueryModel.AXIS_COLUMNS);
+    const columnsAxisItems = columnsAxis.getItems();
 
-    var cellsAxis = queryModel.getQueryAxis(QueryModel.AXIS_CELLS);
-    var cellsAxisItems = cellsAxis.getItems();
+    const cellsAxis = queryModel.getQueryAxis(QueryModel.AXIS_CELLS);
+    const cellsAxisItems = cellsAxis.getItems();
 
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
 
-    var numHeaderItems;
+    let numHeaderItems;
     numHeaderItems = rowsAxisItems.length;
     if (cellHeadersAxis === QueryModel.AXIS_ROWS) {
       if (cellsAxisItems.length){
@@ -1975,7 +1975,7 @@ class PivotTableUi extends EventEmitter {
       numHeaderItems = 1;
     }
 
-     var sizeInfo = {
+     const sizeInfo = {
       headers: {
         width: 0,
         columnCount: numHeaderItems,
@@ -1988,9 +1988,9 @@ class PivotTableUi extends EventEmitter {
     };
 
     // we have to subtract 1 for the stuffer cell.
-    var numCells = cells.length - 1;
-    for (var i = 0; i < numCells; i++){
-      var cell = cells.item(i);
+    const numCells = cells.length - 1;
+    for (let i = 0; i < numCells; i++){
+      const cell = cells.item(i);
       if (i < numHeaderItems) {
         sizeInfo.headers.width += cell.clientWidth;
         sizeInfo.headers.numPhysicalHeaders += 1;
@@ -2005,33 +2005,33 @@ class PivotTableUi extends EventEmitter {
   }
 
   #updateHorizontalSizer(){
-    var numberOfPhysicalTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_COLUMNS);
-    var sizeInfo = this.#getColumnsAxisSizeInfo();
+    const numberOfPhysicalTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_COLUMNS);
+    const sizeInfo = this.#getColumnsAxisSizeInfo();
     if (!sizeInfo) {
       console.warn('updateHorizontalSizer: no sizeInfo');
       return;
     }
 
-    var avgColumnWidth;
+    let avgColumnWidth;
     if (sizeInfo.columns.columnCount === 0) {
       avgColumnWidth = 0;
     }
     else {
       avgColumnWidth = sizeInfo.columns.width / sizeInfo.columns.columnCount;
     }
-    var requiredWidth = avgColumnWidth * numberOfPhysicalTuples;
+    const requiredWidth = avgColumnWidth * numberOfPhysicalTuples;
 
-    var headersWidth;
+    let headersWidth;
     if (sizeInfo.headers.numPhysicalHeaders === sizeInfo.headers.columnCount) {
       // all headers are rendered, the headersWidth is the actual width;
       headersWidth = sizeInfo.headers.width;
     }
     else {
-      var avgHeaderWidth = sizeInfo.headers.width / sizeInfo.headers.numPhysicalHeaders;
+      const avgHeaderWidth = sizeInfo.headers.width / sizeInfo.headers.numPhysicalHeaders;
       headersWidth = avgHeaderWidth * sizeInfo.headers.columnCount;
     }
 
-    var totalWidth = headersWidth + requiredWidth;
+    const totalWidth = headersWidth + requiredWidth;
     this.#setHorizontalSize(totalWidth);
   }
 
@@ -2040,13 +2040,13 @@ class PivotTableUi extends EventEmitter {
   }
 
   #setVerticalSize(size){
-    var sizer = this.#getVerticalSizer();
+    const sizer = this.#getVerticalSizer();
     sizer.style.height = size + 'px';
   }
 
   #getRowsAxisSizeInfo(){
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var tableBodyDom = this.#getTableBodyDom();
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const tableBodyDom = this.#getTableBodyDom();
 
     return {
       headers: {
@@ -2062,38 +2062,38 @@ class PivotTableUi extends EventEmitter {
   }
 
   #updateVerticalSizer(){
-    var numberOfPhysicalTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_ROWS);
-    var sizeInfo = this.#getRowsAxisSizeInfo();
+    const numberOfPhysicalTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_ROWS);
+    const sizeInfo = this.#getRowsAxisSizeInfo();
     if (!sizeInfo) {
       console.warn('updateVerticalSizer: no sizeInfo');
       return;
     }
-    var physicalRowHeight = sizeInfo.rows.height / sizeInfo.rows.rowCount;
-    var requiredHeight = physicalRowHeight * numberOfPhysicalTuples;
-    var totalHeight = sizeInfo.headers.height + requiredHeight;
+    const physicalRowHeight = sizeInfo.rows.height / sizeInfo.rows.rowCount;
+    const requiredHeight = physicalRowHeight * numberOfPhysicalTuples;
+    const totalHeight = sizeInfo.headers.height + requiredHeight;
     this.#setVerticalSize(totalHeight);
   }
 
   #getTableDom(){
-    var innerContainerDom = this.#getInnerContainerDom();
+    const innerContainerDom = this.#getInnerContainerDom();
     return getChildWithClassName(innerContainerDom, 'pivotTableUiTable');
   }
 
   #getTableHeaderDom(){
-    var tableDom = this.#getTableDom();
+    const tableDom = this.#getTableDom();
     return getChildWithClassName(tableDom, 'pivotTableUiTableHeader');
   }
 
   #getTableBodyDom(){
-    var tableDom = this.#getTableDom();
+    const tableDom = this.#getTableDom();
     return getChildWithClassName(tableDom, 'pivotTableUiTableBody');
   }
 
   #contextMenuContext = null;
   beforeShowContextMenu(event, contextMenu){
-    var target = event.target;
-    var cell = target;
-    var dom = this.getDom();
+    const target = event.target;
+    let cell = target;
+    const dom = this.getDom();
     while (cell !== dom && cell && !hasClass(cell, 'pivotTableUiCell')){
       cell = cell.parentNode;
     }
@@ -2104,10 +2104,10 @@ class PivotTableUi extends EventEmitter {
   }
 
   async contextMenuItemClicked(event){
-    var target = event.target;
-    var id = target.id;
+    const target = event.target;
+    const id = target.id;
     
-    var suffix = id.substr('pivotTableContextMenuItem'.length);
+    const suffix = id.slice('pivotTableContextMenuItem'.length);
     if (suffix.startsWith('Copy')){
       await this.#contextMenuCopyClicked(event);
     }
@@ -2119,13 +2119,13 @@ class PivotTableUi extends EventEmitter {
 
   // see: https://github.com/rpbouman/huey/issues/543
   async #contextMenuFilterClicked(event){
-    var target = event.target;
-    var id = target.id;
+    const target = event.target;
+    const id = target.id;
 
-    var contextMenuContext = this.#contextMenuContext;
+    const contextMenuContext = this.#contextMenuContext;
     this.#contextMenuContext = null;
 
-    var axis = contextMenuContext.getAttribute('data-axis');
+    const axis = contextMenuContext.getAttribute('data-axis');
     switch(axis){
       case QueryModel.AXIS_COLUMNS:
       case QueryModel.AXIS_ROWS:
@@ -2138,7 +2138,7 @@ class PivotTableUi extends EventEmitter {
         return;
     }
 
-    var filterType = FilterDialog.equalityFilterTypes.INCLUDE;
+    let filterType = FilterDialog.equalityFilterTypes.INCLUDE;
     switch(id){
       case 'pivotTableContextMenuItemFilterExcludeValue':
         filterType = FilterDialog.equalityFilterTypes.EXCLUDE;
@@ -2149,29 +2149,29 @@ class PivotTableUi extends EventEmitter {
         throw new Error(`Unrecognized context menu option "${id}"`);
     }
 
-    var queryModel = this.#queryModel;
-    var queryModelAxis = queryModel.getQueryAxis(axis);
-    var axisItemIndex = contextMenuContext.getAttribute('data-axis-item-index');
-    var queryModelItem = Object.assign({}, queryModelAxis.getItems()[parseInt(axisItemIndex, 10)]);
+    const queryModel = this.#queryModel;
+    const queryModelAxis = queryModel.getQueryAxis(axis);
+    const axisItemIndex = contextMenuContext.getAttribute('data-axis-item-index');
+    const queryModelItem = Object.assign({}, queryModelAxis.getItems()[parseInt(axisItemIndex, 10)]);
     
-    var filterValue = contextMenuContext.textContent;
-    var literal = contextMenuContext.getAttribute('data-value-literal');
+    const filterValue = contextMenuContext.textContent;
+    const literal = contextMenuContext.getAttribute('data-value-literal');
 
     queryModelItem.axis = QueryModel.AXIS_FILTERS;
-    var newFilter, newFilterValues = {};
-    var newFilterValueListValue = {
+    let newFilter, newFilterValues = {};
+    const newFilterValueListValue = {
       value: filterValue, 
       label: filterValue, 
       literal: literal
     };
-    var newFilterItem = queryModel.findItem(queryModelItem);
+    let newFilterItem = queryModel.findItem(queryModelItem);
     if (newFilterItem){
       // this filter item already exists.
-      var oldFilter = newFilterItem.filter;
-      var oldFilterValues = oldFilter ? oldFilter.values : undefined;
-      var oldFilterValueEntry = oldFilterValues ? oldFilterValues[filterValue] : undefined;
-      var oldFilterValueEntryDisabled = oldFilterValueEntry ? oldFilterValueEntry.enabled === false : false;
-      var numOldFilterValues = oldFilterValues ? Object.keys(oldFilterValues).length : 0;
+      const oldFilter = newFilterItem.filter;
+      const oldFilterValues = oldFilter ? oldFilter.values : undefined;
+      const oldFilterValueEntry = oldFilterValues ? oldFilterValues[filterValue] : undefined;
+      const oldFilterValueEntryDisabled = oldFilterValueEntry ? oldFilterValueEntry.enabled === false : false;
+      const numOldFilterValues = oldFilterValues ? Object.keys(oldFilterValues).length : 0;
 
       switch(filterType){
         case FilterDialog.equalityFilterTypes.INCLUDE:
@@ -2295,10 +2295,10 @@ class PivotTableUi extends EventEmitter {
   }
 
   async #contextMenuCopyClicked(event) {
-    var target = event.target;
-    var id = target.id;
+    const target = event.target;
+    const id = target.id;
 
-    var contextMenuContext = this.#contextMenuContext;
+    const contextMenuContext = this.#contextMenuContext;
     this.#contextMenuContext = null;
 
     if (id === 'pivotTableContextMenuItemCopyCell'){
@@ -2306,7 +2306,7 @@ class PivotTableUi extends EventEmitter {
       return;
     }
 
-    var exportSettings = this.#settings.getSettings('exportUi');
+    const exportSettings = this.#settings.getSettings('exportUi');
     exportSettings.exportType = 'exportDelimited';
     exportSettings.exportDelimitedCompression = {value: 'UNCOMPRESSED'};
     exportSettings.exportResultShapePivot = !(exportSettings.exportResultShapeTable = true);
@@ -2314,27 +2314,27 @@ class PivotTableUi extends EventEmitter {
     exportSettings.exportDestinationClipboard = true;
     exportSettings.exportDestinationFile = false;
 
-    var queryAxisItem, cellsAxisItem, filter, filterAxisItem, itemId;
-    var queryModel = this.#queryModel;
-    var datasource = queryModel.getDatasource();
-    var cellHeadersAxis = queryModel.getCellHeadersAxis();
+    let queryAxisItem, cellsAxisItem, filter, filterAxisItem, itemId;
+    const queryModel = this.#queryModel;
+    const datasource = queryModel.getDatasource();
+    const cellHeadersAxis = queryModel.getCellHeadersAxis();
 
-    var queryModelState = queryModel.getState();
-    var queryModelAxes = queryModelState.axes;
-    var filterAxisItems = queryModelAxes[QueryModel.AXIS_FILTERS];
-    var cellsAxisItems = queryModelAxes[QueryModel.AXIS_CELLS];
-    var rowsAxisItems = queryModelAxes[QueryModel.AXIS_ROWS];
-    var columnsAxisItems = queryModelAxes[QueryModel.AXIS_COLUMNS];
+    const queryModelState = queryModel.getState();
+    const queryModelAxes = queryModelState.axes;
+    let filterAxisItems = queryModelAxes[QueryModel.AXIS_FILTERS];
+    const cellsAxisItems = queryModelAxes[QueryModel.AXIS_CELLS];
+    const rowsAxisItems = queryModelAxes[QueryModel.AXIS_ROWS];
+    const columnsAxisItems = queryModelAxes[QueryModel.AXIS_COLUMNS];
 
-    var tableHeaderDom = this.#getTableHeaderDom();
-    var tableHeaderRows = tableHeaderDom.childNodes;
-    var tableBodyDom = this.#getTableBodyDom();
-    var tableBodyRows = tableBodyDom.childNodes;
-    var tableHeaderRow, tableBodyRow, cells;
+    const tableHeaderDom = this.#getTableHeaderDom();
+    const tableHeaderRows = tableHeaderDom.childNodes;
+    const tableBodyDom = this.#getTableBodyDom();
+    const tableBodyRows = tableBodyDom.childNodes;
+    let tableHeaderRow, tableBodyRow, cells;
 
     // calculate the number of row headers
-    var numRowHeaders = rowsAxisItems ? rowsAxisItems.length : 0;
-    var numColumnHeaders = columnsAxisItems ? columnsAxisItems.length : 0;
+    let numRowHeaders = rowsAxisItems ? rowsAxisItems.length : 0;
+    let numColumnHeaders = columnsAxisItems ? columnsAxisItems.length : 0;
     if (cellsAxisItems && cellsAxisItems.length) {
       switch (cellHeadersAxis){
         case QueryModel.AXIS_COLUMNS:
@@ -2346,7 +2346,7 @@ class PivotTableUi extends EventEmitter {
       }
     }
 
-    var busyDialog = byId('visualizationProgressDialog');
+    const busyDialog = byId('visualizationProgressDialog');
     busyDialog.showModal();
     switch (id){
       case 'pivotTableContextMenuItemCopyColumnTuples':
@@ -2362,8 +2362,8 @@ class PivotTableUi extends EventEmitter {
         break;
       case 'pivotTableContextMenuItemCopyColumn':
         // find the physical column index
-        var columnIndex = 0;
-        var cell = contextMenuContext;
+        let columnIndex = 0;
+        let cell = contextMenuContext;
         while (cell && cell.previousSibling) {
           columnIndex += 1;
           cell = cell.previousSibling;
@@ -2390,15 +2390,15 @@ class PivotTableUi extends EventEmitter {
             queryModelAxes[QueryModel.AXIS_FILTERS] = filterAxisItems = [];
           }
 
-          for (var i = 0; i < tableHeaderRows.length; i++){
+          for (let i = 0; i < tableHeaderRows.length; i++){
             tableHeaderRow = tableHeaderRows.item(i);
             cells = tableHeaderRow.childNodes;
             cell = cells.item(columnIndex);
             if (i < columnsAxisItems.length){
               queryAxisItem = columnsAxisItems[i];
               itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
-              filterAxisItem = filterAxisItems.find(function(filterAxisItem){
-                var id = QueryAxisItem.getIdForQueryAxisItem(filterAxisItem);
+              filterAxisItem = filterAxisItems.find((filterAxisItem) =>{
+                const id = QueryAxisItem.getIdForQueryAxisItem(filterAxisItem);
                 return id === itemId;
               });
               if (filterAxisItem){
@@ -2420,8 +2420,8 @@ class PivotTableUi extends EventEmitter {
             else
             if (cellHeadersAxis === QueryModel.AXIS_COLUMNS){
               itemId = cell.getAttribute('data-axis-item');
-              cellsAxisItem = cellsAxisItems.find(function(cellsAxisItem){
-                var id = QueryAxisItem.getIdForQueryAxisItem(cellsAxisItem);
+              cellsAxisItem = cellsAxisItems.find((cellsAxisItem) =>{
+                const id = QueryAxisItem.getIdForQueryAxisItem(cellsAxisItem);
                 return id === itemId;
               });
               cellsAxisItems.length = 0;
@@ -2433,8 +2433,8 @@ class PivotTableUi extends EventEmitter {
       case 'pivotTableContextMenuItemCopyRow':
 
         // find the physical row index
-        var row = contextMenuContext.parentNode;
-        var rowIndex = 0;
+        let row = contextMenuContext.parentNode;
+        let rowIndex = 0;
         while (row && row.previousSibling) {
           rowIndex += 1;
           row = row.previousSibling;
@@ -2458,7 +2458,7 @@ class PivotTableUi extends EventEmitter {
         }
         else
         if (row.parentNode === tableBodyDom){
-          var cells = row.childNodes;
+          const cells = row.childNodes;
           exportSettings.exportResultShapePivot = !(exportSettings.exportResultShapeTable = false);
           // the column is a table column;
           // to export it, we set up a transformed query model that applies a filter to select only this column.
@@ -2466,13 +2466,13 @@ class PivotTableUi extends EventEmitter {
             queryModelAxes[QueryModel.AXIS_FILTERS] = filterAxisItems = [];
           }
 
-          for (var i = 0; i < numRowHeaders; i++){
+          for (let i = 0; i < numRowHeaders; i++){
             cell = cells.item(i);
             if (i < rowsAxisItems.length){
               queryAxisItem = rowsAxisItems[i];
               itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
-              filterAxisItem = filterAxisItems.find(function(filterAxisItem){
-                var id = QueryAxisItem.getIdForQueryAxisItem(filterAxisItem);
+              filterAxisItem = filterAxisItems.find((filterAxisItem) =>{
+                const id = QueryAxisItem.getIdForQueryAxisItem(filterAxisItem);
                 return id === itemId;
               });
               if (filterAxisItem){
@@ -2494,8 +2494,8 @@ class PivotTableUi extends EventEmitter {
             else
             if (cellHeadersAxis === QueryModel.AXIS_ROWS){
               itemId = cell.getAttribute('data-axis-item');
-              cellsAxisItem = cellsAxisItems.find(function(cellsAxisItem){
-                var id = QueryAxisItem.getIdForQueryAxisItem(cellsAxisItem);
+              cellsAxisItem = cellsAxisItems.find((cellsAxisItem) =>{
+                const id = QueryAxisItem.getIdForQueryAxisItem(cellsAxisItem);
                 return id === itemId;
               });
               cellsAxisItems.length = 0;
@@ -2512,14 +2512,14 @@ class PivotTableUi extends EventEmitter {
     }
 
     try {
-      var exportQueryModel = new QueryModel();
+      const exportQueryModel = new QueryModel();
 
       // https://github.com/rpbouman/huey/issues/584
       // currently not all datasources are cleanly restored from state
       // in particular, on the fly datasources form a list of files.
       // while we figure out a better solution, we now simply reuse the existing datasource.
-      var datasourceId = queryModelState.datasourceId;
-      var parts = DuckDbDataSource.parseId(datasourceId);
+      const datasourceId = queryModelState.datasourceId;
+      const parts = DuckDbDataSource.parseId(datasourceId);
       if (parts.type === DuckDbDataSource.types.FILES){
         delete queryModelState.datasourceId;
         exportQueryModel.setDatasource(datasource);
@@ -2536,8 +2536,8 @@ class PivotTableUi extends EventEmitter {
   }
 }
 
-var pivotTableUi;
-var pivotTableUiHighlighting;
+let pivotTableUi;
+let pivotTableUiHighlighting;
 function initPivotTableUi(){
   pivotTableUi = new PivotTableUi({
     container: 'workarea',
@@ -2546,18 +2546,18 @@ function initPivotTableUi(){
     settings: settings
   });
 
-  var pivotTableUiContextMenu = new ContextMenu(pivotTableUi, 'pivotTableContextMenu');
+  const pivotTableUiContextMenu = new ContextMenu(pivotTableUi, 'pivotTableContextMenu');
   
   pivotTableUiHighlighting = new PivotTableUiHighlighting(pivotTableUi);
   
   function updateAppearance(){
-    var pivotTableSettings = settings.getSettings('pivotSettings');
+    const pivotTableSettings = settings.getSettings('pivotSettings');
     pivotTableUiHighlighting.enableAlternatingRowColors(pivotTableSettings.alternatingRowColors);
     pivotTableUiHighlighting.enableHoverRowHighlighting(pivotTableSettings.hoverRowHighlight);
     pivotTableUiHighlighting.enableHoverColumnHighlighting(pivotTableSettings.hoverColumnHighlight);
   }
   updateAppearance();
-  settings.addEventListener('change', function(){
+  settings.addEventListener('change', () =>{
     updateAppearance();
   });
 }
