@@ -170,6 +170,26 @@ class TestFindExpired:
         assert len(expired) == 0
 
 
+class TestFindStale:
+    def test_returns_pending_and_processing(self, store: ExportJobStore) -> None:
+        store.create("exp-pending", "ds1")
+        store.create("exp-proc", "ds1")
+        store.update_status("exp-proc", "processing")
+        store.create("exp-complete", "ds1")
+        store.update_status("exp-complete", "processing")
+        store.update_status("exp-complete", "complete", file_path="/tmp/f.csv")
+
+        stale = store.find_stale()
+        ids = {j.id for j in stale}
+        assert ids == {"exp-pending", "exp-proc"}
+
+    def test_empty_when_no_active(self, store: ExportJobStore) -> None:
+        store.create("exp-1", "ds1")
+        store.update_status("exp-1", "processing")
+        store.update_status("exp-1", "complete", file_path="/tmp/f.csv")
+        assert store.find_stale() == []
+
+
 class TestDelete:
     def test_deletes_existing(self, store: ExportJobStore) -> None:
         store.create("exp-1", "ds1")
