@@ -1,5 +1,6 @@
 """Shared test fixtures for backend tests."""
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +15,24 @@ from server.main import app
 
 
 @pytest.fixture(autouse=True, scope="session")
-def _init_test_db():
+def _tmp_export_dir(tmp_path_factory):
+    """Override export paths to a writable temp directory for the test session.
+
+    Prevents tests from writing to the production default (/data/exports) which
+    may not exist or be writable in CI environments.
+    """
+    export_dir = tmp_path_factory.mktemp("exports")
+    os.environ["QUERYSERVICE_EXPORT_OUTPUT_DIR"] = str(export_dir)
+    os.environ["QUERYSERVICE_EXPORT_DB_PATH"] = str(export_dir / "jobs.db")
+    get_settings.cache_clear()
+    yield
+    os.environ.pop("QUERYSERVICE_EXPORT_OUTPUT_DIR", None)
+    os.environ.pop("QUERYSERVICE_EXPORT_DB_PATH", None)
+    get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _init_test_db(_tmp_export_dir):
     """Initialize DuckDB and export service once for the entire test session."""
     db_manager.initialize()
     settings = get_settings()
