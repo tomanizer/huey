@@ -38,7 +38,7 @@ PYTHONPATH=. ./.venv-server/bin/python -m server.main
 - `POST /query/cells` – aggregated cell values grouped by dimensions/measures
 - `POST /query/picklist` – distinct values for a field with search/paging
 - `POST /export` – submit an export job (background processing)
-- `GET /export/{export_id}` – poll export status/download URL
+- `GET /export/{export_id}` – poll export status/download URL (`row_count` is nullable and may be omitted when not materialized)
 - `GET /export/{export_id}/download` – download completed export artifact
 - `GET /health/liveness` – liveness probe
 - `GET /health/readiness` – readiness probe

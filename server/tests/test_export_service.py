@@ -3,6 +3,7 @@ Unit tests for ExportService business logic.
 """
 
 import time
+from contextlib import nullcontext
 from unittest.mock import patch
 
 import pytest
@@ -64,6 +65,33 @@ class TestGetStatus:
     def test_raises_not_found(self, service: ExportService) -> None:
         with pytest.raises(ExportNotFoundError):
             service.get_status("nonexistent")
+
+
+class TestProcess:
+    def test_process_runs_single_copy_execution(self, service: ExportService, store: ExportJobStore, tmp_path) -> None:
+        store.create("exp-test", "trades_v1")
+        req = _export_request()
+        req.query.format = "csv"
+
+        with (
+            patch("server.export_service.get_settings") as mock_settings,
+            patch("server.export_service.datasets.get_schema_field_names", return_value=["date", "symbol"]),
+            patch("server.export_service.build_export_sql", return_value=("SELECT * FROM trades_v1", [], [])),
+            patch("server.export_service.db_manager.execute_sql") as mock_execute_sql,
+            patch("server.export_service.db_manager.cursor") as mock_cursor,
+        ):
+            mock_settings.return_value.export_output_dir = str(tmp_path)
+            mock_cur = mock_cursor.return_value.__enter__.return_value
+            mock_cursor.return_value = nullcontext(mock_cur)
+
+            service.process("exp-test", req)
+
+        mock_execute_sql.assert_not_called()
+        mock_cur.execute.assert_called_once()
+        job = store.get("exp-test")
+        assert job is not None
+        assert job.status == "complete"
+        assert job.row_count is None
 
 
 class TestGetDownloadPath:

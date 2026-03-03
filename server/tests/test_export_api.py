@@ -81,6 +81,20 @@ class TestExportLifecycle:
         symbols = {r[0] for r in data_rows}
         assert symbols & {"AAPL", "GOOG", "MSFT", "AMZN", "TSLA"}
 
+    def test_export_status_row_count_is_nullable(self, client: TestClient) -> None:
+        r = client.post("/export", json=_valid_body())
+        assert r.status_code == 200
+        export_id = r.json()["export_id"]
+        for _ in range(20):
+            status_r = client.get(f"/export/{export_id}")
+            assert status_r.status_code == 200
+            if status_r.json()["status"] == "complete":
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail("Export did not complete in time")
+        assert status_r.json()["row_count"] is None
+
     def test_csv_values_are_correct_aggregations(self, client: TestClient) -> None:
         _, rows = _run_export_and_download(client, _valid_body())
         lookup = {r[0]: int(r[1]) for r in rows[1:]}
