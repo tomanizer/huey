@@ -117,8 +117,7 @@ def build_base_relation(
     - parquet_partitioned: reads partitioned parquet paths with projection pushdown
     """
     settings = get_settings()
-    mode = getattr(settings, "execution_mode", "sample_table")
-    if mode == "parquet_partitioned":
+    if settings.execution_mode == "parquet_partitioned":
         return _build_parquet_partition_relation(dataset_id, date_range, required_columns)
 
     quoted = quote_identifier(dataset_id)
