@@ -2,10 +2,11 @@
 
 import hmac
 
-from fastapi import HTTPException, Security
+from fastapi import Security
 from fastapi.security import APIKeyHeader
 
 from server.config import get_settings
+from server.errors import AuthError
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -34,7 +35,7 @@ async def require_api_key(api_key: str = Security(api_key_header)) -> str:
     if not settings.auth_enabled:
         return "anonymous"
     if not api_key:
-        raise HTTPException(status_code=401, detail="Missing API key")
+        raise AuthError("Missing API key")
     if not _constant_time_key_check(api_key, settings.api_key_list):
-        raise HTTPException(status_code=401, detail="Invalid API key")
+        raise AuthError("Invalid API key")
     return api_key
