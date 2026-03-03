@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+from server.config import Settings
 from server.datasets import generate_sample_rows, load_sample_data
 from server.engine import DuckDBManager
 
@@ -73,6 +74,9 @@ class TestGenerateSampleRows:
 
 
 class TestLoadSampleData:
+    def test_default_settings_disable_seeding(self) -> None:
+        assert Settings().seed_sample_data is False
+
     def test_seeds_when_enabled(self, fresh_db: DuckDBManager) -> None:
         config_yaml = """
 datasets:
