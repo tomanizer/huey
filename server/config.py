@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
+    log_format: str = "text"  # "text" for dev, "json" for production
 
     # Optional: path to datasets config YAML (for dataset/schema loader)
     datasets_config_path: Optional[str] = None

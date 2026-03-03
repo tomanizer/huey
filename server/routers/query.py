@@ -2,6 +2,9 @@
 Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 """
 
+import logging
+import time
+
 from fastapi import APIRouter, HTTPException
 
 from server import datasets
@@ -24,6 +27,7 @@ from server.query_builder import (
     build_tuples_sql,
 )
 
+logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
 
 
@@ -39,12 +43,25 @@ async def post_query_tuples(body: QueryTuplesRequest) -> TuplesResponse:
     limit = paging.limit if paging else 200
     offset = paging.offset if paging else 0
 
+    start = time.perf_counter()
     sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
     rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
 
     count_sql, count_params = build_tuples_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
     count_rows = await db_manager.execute_sql_async(count_sql, tuple(count_params) if count_params else None)
     total_count = count_rows[0][0] if count_rows else 0
+    duration_ms = (time.perf_counter() - start) * 1000
+
+    logger.info(
+        "tuples query executed",
+        extra={
+            "dataset_id": body.dataset_id,
+            "endpoint": "tuples",
+            "duration_ms": round(duration_ms, 2),
+            "row_count": len(rows),
+            "total_count": total_count,
+        },
+    )
 
     items = [TupleItem(values=list(row)) for row in rows]
     return TuplesResponse(
@@ -63,8 +80,20 @@ async def post_query_cells(body: QueryCellsRequest) -> CellsResponse:
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
 
+    start = time.perf_counter()
     sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)
     rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
+    duration_ms = (time.perf_counter() - start) * 1000
+
+    logger.info(
+        "cells query executed",
+        extra={
+            "dataset_id": body.dataset_id,
+            "endpoint": "cells",
+            "duration_ms": round(duration_ms, 2),
+            "row_count": len(rows),
+        },
+    )
 
     cells = []
     for i, row in enumerate(rows):
@@ -84,12 +113,25 @@ async def post_query_picklist(body: QueryPicklistRequest) -> PicklistResponse:
     limit = paging.limit if paging else 100
     offset = paging.offset if paging else 0
 
+    start = time.perf_counter()
     sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
     rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
 
     count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
     count_rows = await db_manager.execute_sql_async(count_sql, tuple(count_params) if count_params else None)
     total_count = count_rows[0][0] if count_rows else 0
+    duration_ms = (time.perf_counter() - start) * 1000
+
+    logger.info(
+        "picklist query executed",
+        extra={
+            "dataset_id": body.dataset_id,
+            "endpoint": "picklist",
+            "duration_ms": round(duration_ms, 2),
+            "row_count": len(rows),
+            "total_count": total_count,
+        },
+    )
 
     values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
     return PicklistResponse(
