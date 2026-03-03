@@ -1,5 +1,9 @@
 # QueryService venv
 .venv-server/
+.venv-server-audit/
+
+# Coverage
+.coverage
 
 # Node (UI tests)
 node_modules/

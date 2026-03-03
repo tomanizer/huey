@@ -34,6 +34,10 @@ class PromptUi {
       };
       promptDialog.addEventListener('close', closeHandler);
       promptDialog.showModal();
+      var firstInput = promptDialog.querySelector('section input:not([type="hidden"]), section textarea, section select');
+      if (firstInput) {
+        firstInput.focus();
+      }
     });
   }
 }

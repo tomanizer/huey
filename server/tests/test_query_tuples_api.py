@@ -94,6 +94,20 @@ def test_query_tuples_paging_offset(client: TestClient) -> None:
     assert page1_symbols.isdisjoint(page2_symbols)
 
 
+def test_query_tuples_empty_page_reports_total(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 10}},
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["items"] == []
+    assert data["paging"]["returned"] == 0
+    assert data["total_count"] == 5
+
+
 def test_query_tuples_sort_desc(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",

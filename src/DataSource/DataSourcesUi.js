@@ -208,16 +208,23 @@ class DataSourcesUi extends EventEmitter {
           }
         }
         miscGroup.datasources[datasource.getId()] = datasource;
+        if (miscGroup !== group) {
+          delete potentialGroups[groupId];
+        }
       }
       else {
         this.#createDataSourceGroupNode(group);
+        delete potentialGroups[groupId];
       }
-      delete potentialGroups[groupId];
     }
 
     this.#createDataSourceGroupNode(potentialGroups[DuckDbDataSource.types.FILE], true);
     delete potentialGroups[DuckDbDataSource.types.FILE];
-    
+
+    for (var remainingId in potentialGroups) {
+      this.#createDataSourceGroupNode(potentialGroups[remainingId]);
+    }
+
     // TODO: pass some data that tells listeners why we rerendered
     this.fireEvent('change', {});
   }
@@ -529,11 +536,11 @@ class DataSourcesUi extends EventEmitter {
     }
   }
 
-  #attachRejectsDetection(duckdbDataSource) {
-    if(!duckdbDataSource.supportsRejectsDetection()) {
+  #attachRejectsDetection(datasource) {
+    if (typeof datasource.supportsRejectsDetection !== 'function' || !datasource.supportsRejectsDetection()) {
       return;
     }
-    duckdbDataSource.addEventListener('rejectsdetected', this.#rejectsDetectedHandler.bind(this));
+    datasource.addEventListener('rejectsdetected', this.#rejectsDetectedHandler.bind(this));
   }
 
   #getDatasourceFromClickEvent(event){

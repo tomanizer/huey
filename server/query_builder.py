@@ -114,7 +114,11 @@ def build_tuples_sql(
     offset = paging.offset if paging else 0
     limit_clause = f" LIMIT {limit} OFFSET {offset}"
 
-    sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}{order_clause}{limit_clause}"
+    base_sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}"
+    sql = (
+        f"SELECT {select_clause}, COUNT(*) OVER() AS __count__ "
+        f"FROM ({base_sql}) AS grouped{order_clause}{limit_clause}"
+    )
     return sql, params
 
 
@@ -235,7 +239,11 @@ def build_picklist_sql(
     limit = paging.limit if paging else 100
     offset = paging.offset if paging else 0
 
-    sql = f"SELECT DISTINCT {col} AS value FROM {table}{where_clause} ORDER BY {col} LIMIT {limit} OFFSET {offset}"
+    base_sql = f"SELECT DISTINCT {col} AS value FROM {table}{where_clause}"
+    sql = (
+        f"SELECT value, COUNT(*) OVER() AS __count__ "
+        f"FROM ({base_sql}) AS distinct_values ORDER BY value LIMIT {limit} OFFSET {offset}"
+    )
     return sql, params
 
 

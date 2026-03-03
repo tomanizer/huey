@@ -389,8 +389,10 @@ class CellSet extends DataSetComponent {
   #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount){
     const cells = apiResponse.cells || [];
     const colCount = columnCount || 1;
-    const measureAliases = (cellsAxisItemsToFetch || []).map((item) => { return item.columnName; });
-    const fields = [{ name: CellSet.#cellIndexColumnName }].concat(measureAliases.map((a) => { return { name: a }; }));
+    const items = cellsAxisItemsToFetch || [];
+    const fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map((item) => {
+      return { name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName) };
+    }));
     const numRows = cells.length;
     const get = function(i) {
       const c = cells[i];
@@ -398,7 +400,10 @@ class CellSet extends DataSetComponent {
       const row = {};
       row[CellSet.#cellIndexColumnName] = (c.row_index || 0) * colCount + (c.column_index || 0);
       const vals = c.values || {};
-      measureAliases.forEach((a) => { row[a] = vals[a]; });
+      items.forEach((item) => {
+        const sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
+        row[sqlExpression] = vals[item.columnName];
+      });
       return row;
     };
     return { numRows: numRows, schema: { fields: fields }, get: get };

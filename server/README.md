@@ -57,5 +57,14 @@ Environment variables (optional, prefix `QUERYSERVICE_`):
 - `QUERYSERVICE_HOST` (default `0.0.0.0`)
 - `QUERYSERVICE_PORT` (default `8000`)
 - `QUERYSERVICE_LOG_LEVEL` (default `INFO`)
+- `QUERYSERVICE_SCHEMA_CACHE_TTL_SECONDS` (default `300`, set `0` to disable TTL refresh)
+
+Schema metadata is cached in memory and automatically refreshed when the datasets
+config file changes on disk or when the TTL elapses. Use the TTL env var to tune
+refresh cadence for your deployment.
 
 Optional `.env` in the working directory is also loaded.
+
+## Try Huey with this backend (remote datasource)
+
+See [Try the remote feature](../docs/try-remote-feature.md): start this server, serve Huey, add a remote datasource in the browser console, then explore and run queries.

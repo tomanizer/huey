@@ -1,14 +1,14 @@
 # QueryService – Huey OLAP backend
-# Python 3.9+
+# Python 3.11+
 
-fastapi>=0.109.0,<1.0
-uvicorn[standard]>=0.27.0,<1.0
-pydantic-settings>=2.0.0,<3.0
-pyyaml>=6.0,<7.0
-duckdb>=0.10.0,<1.0
-python-json-logger>=3.0.0,<5.0
+fastapi>=0.115.0,<1.0
+uvicorn[standard]>=0.32.0,<1.0
+pydantic-settings>=2.7.0,<3.0
+pyyaml>=6.0.2,<7.0
+duckdb>=1.1.0,<2.0
+python-json-logger>=3.2.0,<5.0
 
 # Tests
-pytest>=7.0.0,<9.0
+pytest>=8.3.0,<9.0
 pytest-cov>=6.0.0,<8.0
-httpx>=0.26.0,<1.0
+httpx>=0.28.0,<1.0
