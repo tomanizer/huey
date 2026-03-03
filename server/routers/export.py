@@ -5,6 +5,7 @@ Supports background processing via FastAPI BackgroundTasks, TTL-based cleanup,
 and a configurable max concurrent export limit.
 """
 
+import csv
 import logging
 import time
 import uuid
@@ -17,6 +18,7 @@ from server import datasets
 from server.config import get_settings
 from server.engine import db_manager
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
+from server.query_builder import build_export_sql
 
 logger = logging.getLogger("query_service.export")
 
@@ -57,17 +59,28 @@ def _process_export(export_id: str, body: ExportRequest) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
         file_path = output_dir / f"{export_id}.csv"
 
-        # TODO: generate real export SQL from body.query axes/filters
-        rows = db_manager.execute_sql("SELECT 1 AS placeholder")
+        schema_fields = datasets.get_schema_field_names(body.dataset_id)
+        sql, params, headers = build_export_sql(
+            body.dataset_id, body.query, body.date_range, schema_fields,
+        )
 
-        with open(file_path, "w") as f:
+        rows = db_manager.execute_sql(sql, params)
+
+        with open(file_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
             for row in rows:
-                f.write(",".join(str(v) for v in row) + "\n")
+                writer.writerow(row)
 
+        row_count = len(rows) if rows else 0
         _exports[export_id]["status"] = "complete"
         _exports[export_id]["file_path"] = str(file_path)
+        _exports[export_id]["row_count"] = row_count
         _exports[export_id]["download_url"] = f"/export/{export_id}/download"
-        logger.info("Export complete", extra={"export_id": export_id})
+        logger.info(
+            "Export complete",
+            extra={"export_id": export_id, "row_count": row_count},
+        )
     except Exception:
         _exports[export_id]["status"] = "failed"
         logger.exception("Export failed", extra={"export_id": export_id})

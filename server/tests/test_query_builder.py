@@ -4,6 +4,7 @@ from server.models import (
     CellsQueryBody,
     DateRangeRange,
     DateRangeSingle,
+    ExportQueryBody,
     PagingSpec,
     PicklistQueryBody,
     TupleFieldSpec,
@@ -12,6 +13,7 @@ from server.models import (
 )
 from server.query_builder import (
     build_cells_sql,
+    build_export_sql,
     build_picklist_count_sql,
     build_picklist_sql,
     build_tuples_count_sql,
@@ -267,3 +269,97 @@ class TestBuildPicklistCountSql:
         query = PicklistQueryBody(field=None)
         sql, _ = build_picklist_count_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert sql == "SELECT 0"
+
+
+class TestBuildExportSql:
+    def test_basic_export_with_dimensions_and_measures(self) -> None:
+        query = ExportQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}],
+            },
+            max_rows=500,
+        )
+        sql, params, headers = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"symbol"' in sql
+        assert 'SUM("volume")' in sql
+        assert "GROUP BY" in sql
+        assert "ORDER BY" in sql
+        assert "LIMIT 500" in sql
+        assert headers == ["symbol", "total_volume"]
+        assert params == ["2026-03-01"]
+
+    def test_date_range(self) -> None:
+        query = ExportQueryBody(
+            axes={"rows": [{"field": "symbol"}], "measures": []},
+        )
+        sql, params, headers = build_export_sql("trades_v1", query, DR_RANGE, SCHEMA_FIELDS)
+        assert "BETWEEN ? AND ?" in sql
+        assert params == ["2026-03-01", "2026-03-31"]
+
+    def test_with_filter(self) -> None:
+        query = ExportQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
+            },
+            filters=[TupleFilter(field="symbol", operator="INCLUDE", values=["AAPL"])],
+        )
+        sql, params, _ = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"symbol" IN (?)' in sql
+        assert "AAPL" in params
+
+    def test_max_rows_capped_at_100k(self) -> None:
+        query = ExportQueryBody(
+            axes={"rows": [{"field": "symbol"}], "measures": []},
+            max_rows=999999,
+        )
+        sql, _, _ = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "LIMIT 100000" in sql
+
+    def test_default_max_rows(self) -> None:
+        query = ExportQueryBody(
+            axes={"rows": [{"field": "symbol"}], "measures": []},
+        )
+        sql, _, _ = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "LIMIT 10000" in sql
+
+    def test_empty_axes_exports_all_columns(self) -> None:
+        query = ExportQueryBody(axes={}, max_rows=100)
+        sql, params, headers = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "GROUP BY" not in sql
+        assert "LIMIT 100" in sql
+        assert set(headers) == {"date", "symbol", "volume"}
+
+    def test_dimensions_only_no_group_by(self) -> None:
+        query = ExportQueryBody(
+            axes={"rows": [{"field": "symbol"}, {"field": "date"}], "measures": []},
+        )
+        sql, _, headers = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "GROUP BY" not in sql
+        assert headers == ["symbol", "date"]
+
+    def test_row_and_column_fields(self) -> None:
+        query = ExportQueryBody(
+            axes={
+                "rows": [{"field": "date"}],
+                "columns": [{"field": "symbol"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
+            },
+        )
+        sql, _, headers = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"date"' in sql
+        assert '"symbol"' in sql
+        assert "GROUP BY" in sql
+        assert headers == ["date", "symbol", "vol"]
+
+    def test_unknown_field_skipped(self) -> None:
+        query = ExportQueryBody(
+            axes={
+                "rows": [{"field": "nonexistent"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
+            },
+        )
+        sql, _, headers = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "nonexistent" not in sql
+        assert headers == ["vol"]
