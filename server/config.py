@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     export_ttl_seconds: int = 3600
     export_max_concurrent: int = 5
     export_output_dir: str = "/tmp/huey-exports"
+    export_db_path: str = "/tmp/huey-exports/jobs.db"
 
     # Optional: S3 / engine config (for later issues)
     s3_bucket: Optional[str] = None

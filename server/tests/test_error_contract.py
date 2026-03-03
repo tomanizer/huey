@@ -5,8 +5,6 @@ Verifies that all API error responses conform to the ErrorResponse schema
 (code, message, optional request_id, optional details) across all endpoints.
 """
 
-import time
-
 import pytest
 from starlette.testclient import TestClient
 
@@ -18,7 +16,21 @@ from server.errors import (
     ExportNotReadyError,
     TooManyConcurrentExportsError,
 )
-from server.routers import export as export_module
+from server.export_service import get_export_service
+
+
+@pytest.fixture(autouse=True)
+def _clear_export_jobs():
+    """Reset the export store between tests."""
+    svc = get_export_service()
+    store = svc.store
+    with store._lock:
+        store._conn.execute("DELETE FROM export_jobs")
+        store._conn.commit()
+    yield
+    with store._lock:
+        store._conn.execute("DELETE FROM export_jobs")
+        store._conn.commit()
 
 
 def _query_body(dataset_id: str = "trades_v1") -> dict:
@@ -77,37 +89,39 @@ class TestErrorResponseSchema:
         assert body["code"] == "EXPORT_NOT_FOUND"
 
     def test_export_not_ready_409_envelope(self, client: TestClient) -> None:
-        export_module._exports["exp-pending"] = {"status": "processing", "created_at": time.time()}
+        store = get_export_service().store
+        store.create("exp-pending", "trades_v1")
+        store.update_status("exp-pending", "processing")
         r = client.get("/export/exp-pending/download")
         assert r.status_code == 409
         body = r.json()
         assert body["code"] == "EXPORT_NOT_READY"
         assert body["details"]["status"] == "processing"
-        export_module._exports.pop("exp-pending", None)
 
     def test_export_file_missing_404_envelope(self, client: TestClient) -> None:
-        export_module._exports["exp-gone"] = {
-            "status": "complete",
-            "created_at": time.time(),
-            "file_path": "/tmp/nonexistent.csv",
-            "download_url": "/export/exp-gone/download",
-        }
+        store = get_export_service().store
+        store.create("exp-gone", "trades_v1")
+        store.update_status("exp-gone", "processing")
+        store.update_status(
+            "exp-gone", "complete",
+            file_path="/tmp/nonexistent.csv",
+            download_url="/export/exp-gone/download",
+        )
         r = client.get("/export/exp-gone/download")
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "EXPORT_FILE_NOT_FOUND"
-        export_module._exports.pop("exp-gone", None)
 
     def test_too_many_exports_429_envelope(self, client: TestClient) -> None:
+        store = get_export_service().store
         for i in range(5):
-            export_module._exports[f"exp-active-{i}"] = {"status": "processing", "created_at": time.time()}
+            store.create(f"exp-active-{i}", "trades_v1")
+            store.update_status(f"exp-active-{i}", "processing")
         r = client.post("/export", json=_export_body())
         assert r.status_code == 429
         body = r.json()
         assert body["code"] == "TOO_MANY_EXPORTS"
         assert body["details"]["max_concurrent"] == 5
-        for i in range(5):
-            export_module._exports.pop(f"exp-active-{i}", None)
 
 
 class TestValidationErrorEnvelope:

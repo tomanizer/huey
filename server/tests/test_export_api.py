@@ -7,15 +7,21 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from server.routers import export as export_module
+from server.export_service import get_export_service
 
 
 @pytest.fixture(autouse=True)
 def _clear_exports():
     """Reset the export store between tests."""
-    export_module._exports.clear()
+    svc = get_export_service()
+    store = svc.store
+    with store._lock:
+        store._conn.execute("DELETE FROM export_jobs")
+        store._conn.commit()
     yield
-    export_module._exports.clear()
+    with store._lock:
+        store._conn.execute("DELETE FROM export_jobs")
+        store._conn.commit()
 
 
 def _valid_body(**overrides):
@@ -165,52 +171,75 @@ class TestExportErrors:
         assert r.status_code == 404
 
     def test_download_not_ready(self, client: TestClient) -> None:
-        export_module._exports["exp-test"] = {"status": "processing", "created_at": time.time()}
+        store = get_export_service().store
+        store.create("exp-test", "trades_v1")
+        store.update_status("exp-test", "processing")
         r = client.get("/export/exp-test/download")
         assert r.status_code == 409
 
     def test_download_for_failed_export(self, client: TestClient) -> None:
-        export_module._exports["exp-fail"] = {"status": "failed", "created_at": time.time()}
+        store = get_export_service().store
+        store.create("exp-fail", "trades_v1")
+        store.update_status("exp-fail", "processing")
+        store.update_status("exp-fail", "failed", error_message="boom")
         r = client.get("/export/exp-fail/download")
         assert r.status_code == 409
 
     def test_download_file_missing_on_disk(self, client: TestClient) -> None:
-        export_module._exports["exp-gone"] = {
-            "status": "complete",
-            "created_at": time.time(),
-            "file_path": "/tmp/nonexistent-file.csv",
-            "download_url": "/export/exp-gone/download",
-        }
+        store = get_export_service().store
+        store.create("exp-gone", "trades_v1")
+        store.update_status("exp-gone", "processing")
+        store.update_status(
+            "exp-gone", "complete",
+            file_path="/tmp/nonexistent-file.csv",
+            download_url="/export/exp-gone/download",
+        )
         r = client.get("/export/exp-gone/download")
         assert r.status_code == 404
 
 
 class TestExportConcurrencyAndTtl:
     def test_max_concurrent_limit(self, client: TestClient) -> None:
+        store = get_export_service().store
         for i in range(5):
-            export_module._exports[f"exp-active-{i}"] = {"status": "processing", "created_at": time.time()}
+            store.create(f"exp-active-{i}", "trades_v1")
+            store.update_status(f"exp-active-{i}", "processing")
         r = client.post("/export", json=_valid_body())
         assert r.status_code == 429
         assert r.json()["code"] == "TOO_MANY_EXPORTS"
 
     def test_ttl_cleanup(self, client: TestClient, tmp_path) -> None:
+        store = get_export_service().store
         expired_file = tmp_path / "exp-old.csv"
         expired_file.write_text("old data")
-        export_module._exports["exp-old"] = {
-            "status": "complete",
-            "created_at": time.time() - 7200,
-            "file_path": str(expired_file),
-        }
+        store.create("exp-old", "trades_v1")
+        store.update_status("exp-old", "processing")
+        store.update_status(
+            "exp-old", "complete",
+            file_path=str(expired_file),
+        )
+        with store._lock:
+            store._conn.execute(
+                "UPDATE export_jobs SET created_at = ? WHERE id = ?",
+                (time.time() - 7200, "exp-old"),
+            )
+            store._conn.commit()
+
         r = client.post("/export", json=_valid_body())
         assert r.status_code == 200
-        assert "exp-old" not in export_module._exports
+        assert store.get("exp-old").status == "expired"
         assert not expired_file.exists()
 
     def test_ttl_preserves_active_exports(self, client: TestClient) -> None:
-        export_module._exports["exp-recent"] = {"status": "complete", "created_at": time.time()}
+        store = get_export_service().store
+        store.create("exp-recent", "trades_v1")
+        store.update_status("exp-recent", "processing")
+        store.update_status("exp-recent", "complete", file_path="/tmp/f.csv")
         r = client.post("/export", json=_valid_body())
         assert r.status_code == 200
-        assert "exp-recent" in export_module._exports
+        job = store.get("exp-recent")
+        assert job is not None
+        assert job.status == "complete"
 
     def test_multiple_exports_unique_ids(self, client: TestClient) -> None:
         r1 = client.post("/export", json=_valid_body())

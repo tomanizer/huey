@@ -17,6 +17,8 @@ from server.config import get_settings
 from server.datasets import load_sample_data
 from server.engine import db_manager
 from server.errors import AppError, ErrorResponse
+from server.export_service import init_export_service
+from server.export_store import ExportJobStore
 from server.logging_config import setup_logging
 from server.middleware import AccessLogMiddleware, CorrelationIdMiddleware
 from server.request_context import get_request_id
@@ -32,7 +34,17 @@ async def lifespan(app: FastAPI):
     logger.info("QueryService starting", extra={"host": settings.host, "port": settings.port})
     db_manager.initialize()
     load_sample_data(db_manager)
+
+    export_store = ExportJobStore(settings.export_db_path)
+    export_store.initialize()
+    svc = init_export_service(export_store)
+    recovered = svc.recover_stale_jobs()
+    if recovered:
+        logger.info("Recovered stale export jobs", extra={"count": recovered})
+
     yield
+
+    export_store.close()
     db_manager.shutdown()
     logger.info("QueryService shutting down")
 
