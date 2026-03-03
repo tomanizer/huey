@@ -5,6 +5,7 @@
     "test:ui": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@playwright/test": "^1.49.0",
+    "serve": "^14.2.5"
   }
 }
