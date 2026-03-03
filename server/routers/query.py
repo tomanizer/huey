@@ -63,10 +63,11 @@ async def _execute_with_budget(request: Request, coro):
 
 @router.post("/tuples", response_model=TuplesResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_tuples(request: Request, body: QueryTuplesRequest, response: Response) -> TuplesResponse:
 async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
+    queue_wait_ms = 0.0
+    execution_ms = 0.0
     settings = get_settings()
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
@@ -176,10 +177,11 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
 
 @router.post("/cells", response_model=CellsResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_cells(request: Request, body: QueryCellsRequest, response: Response) -> CellsResponse:
 async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: str = Depends(require_api_key)) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
+    queue_wait_ms = 0.0
+    execution_ms = 0.0
     settings = get_settings()
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
@@ -292,10 +294,11 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
 
 @router.post("/picklist", response_model=PicklistResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_picklist(request: Request, body: QueryPicklistRequest, response: Response) -> PicklistResponse:
 async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
+    queue_wait_ms = 0.0
+    execution_ms = 0.0
     settings = get_settings()
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
