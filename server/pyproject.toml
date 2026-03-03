@@ -1,3 +1,8 @@
+[project]
+name = "queryservice"
+version = "0.1.0"
+requires-python = ">=3.11"
+
 [tool.coverage.run]
 source = ["server"]
 omit = ["server/tests/*"]
