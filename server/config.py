@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
     s3_region: str | None = None
 
+    # Query execution
+    execution_mode: str = "sample_table"  # "sample_table" | "parquet_partitioned"
+    partition_base_path: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

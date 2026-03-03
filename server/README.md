@@ -85,6 +85,8 @@ Environment variables (prefix `QUERYSERVICE_`):
 - `QUERYSERVICE_EXPORT_DB_PATH` (default `/tmp/huey-exports/jobs.db`)
 - `QUERYSERVICE_S3_BUCKET` (default `None`)
 - `QUERYSERVICE_S3_REGION` (default `None`)
+- `QUERYSERVICE_EXECUTION_MODE` (default `sample_table`; set `parquet_partitioned` to scan partitioned parquet)
+- `QUERYSERVICE_PARTITION_BASE_PATH` (default `None`; local base path for partitioned parquet when not using S3)
 - `QUERYSERVICE_SCHEMA_CACHE_TTL_SECONDS` (default `300`, set `0` to disable TTL refresh)
 
 Schema metadata is cached in memory and automatically refreshed when the datasets
