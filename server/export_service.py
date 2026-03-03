@@ -11,8 +11,9 @@ from pathlib import Path
 
 from server import datasets
 from server.config import get_settings
-from server.engine import db_manager
+from server.engine import db_manager, is_missing_table_error
 from server.errors import (
+    DatasetUnavailableError,
     ExportFileNotFoundError,
     ExportNotFoundError,
     ExportNotReadyError,
@@ -88,7 +89,11 @@ class ExportService:
             query_params = tuple(params) if params else None
 
             count_sql = f"SELECT COUNT(*) FROM ({sql}) AS export_rows"
-            count_rows = db_manager.execute_sql(count_sql, query_params)
+            count_rows = db_manager.execute_sql(
+                count_sql,
+                query_params,
+                dataset_id=body.dataset_id,
+            )
             row_count = int(count_rows[0][0]) if count_rows else 0
 
             escaped_path = _escape_sql_string(str(file_path))
@@ -97,10 +102,15 @@ class ExportService:
             else:
                 copy_sql = f"COPY ({sql}) TO '{escaped_path}' (FORMAT CSV, HEADER TRUE)"
             with db_manager.cursor() as cur:
-                if query_params:
-                    cur.execute(copy_sql, query_params)
-                else:
-                    cur.execute(copy_sql)
+                try:
+                    if query_params:
+                        cur.execute(copy_sql, query_params)
+                    else:
+                        cur.execute(copy_sql)
+                except Exception as exc:
+                    if is_missing_table_error(exc):
+                        raise DatasetUnavailableError(body.dataset_id) from exc
+                    raise
 
             self._store.update_status(
                 job_id, "complete",
@@ -111,6 +121,16 @@ class ExportService:
             logger.info(
                 "Export complete",
                 extra={"export_id": job_id, "row_count": row_count},
+            )
+        except DatasetUnavailableError as exc:
+            self._store.update_status(
+                job_id,
+                "failed",
+                error_message=f"{exc.code}: {exc.message} ({body.dataset_id})",
+            )
+            logger.warning(
+                "Export failed due to unavailable dataset",
+                extra={"export_id": job_id, "dataset_id": body.dataset_id, "error_code": exc.code},
             )
         except Exception:
             self._store.update_status(job_id, "failed", error_message="Export processing failed")

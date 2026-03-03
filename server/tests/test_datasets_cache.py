@@ -1,9 +1,9 @@
 """Caching tests for dataset metadata."""
 
-from concurrent.futures import ThreadPoolExecutor
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest

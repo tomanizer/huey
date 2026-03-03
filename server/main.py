@@ -3,6 +3,7 @@ QueryService – Huey OLAP backend.
 
 FastAPI application with health endpoints, config loader, and structured logging.
 """
+# ruff: noqa: E402
 
 import logging
 from contextlib import asynccontextmanager

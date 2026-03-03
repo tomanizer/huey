@@ -5,6 +5,7 @@ import os
 import pytest
 
 from server.engine import DuckDBManager, get_connection
+from server.errors import DatasetUnavailableError
 
 
 class TestDuckDBManager:
@@ -72,6 +73,17 @@ class TestDuckDBManager:
     def test_health_check_unhealthy(self) -> None:
         mgr = DuckDBManager()
         assert mgr.health_check() is False
+
+    def test_missing_table_maps_to_dataset_unavailable(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            with pytest.raises(DatasetUnavailableError) as exc:
+                mgr.execute_sql("SELECT * FROM missing_table", dataset_id="missing_ds")
+            assert exc.value.code == "DATASET_UNAVAILABLE"
+            assert exc.value.details["dataset_id"] == "missing_ds"
+        finally:
+            mgr.shutdown()
 
     @pytest.mark.anyio
     async def test_execute_sql_async(self) -> None:

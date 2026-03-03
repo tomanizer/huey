@@ -17,8 +17,17 @@ from typing import Any
 import duckdb
 
 from server.config import get_settings
+from server.errors import DatasetUnavailableError
 
 logger = logging.getLogger("query_service.engine")
+
+
+def is_missing_table_error(exc: Exception) -> bool:
+    """Return True when DuckDB error indicates a missing table/catalog relation."""
+    if not isinstance(exc, duckdb.CatalogException):
+        return False
+    msg = str(exc).lower()
+    return "table with name" in msg and "does not exist" in msg
 
 
 class DuckDBManager:
@@ -126,18 +135,48 @@ class DuckDBManager:
         finally:
             cur.close()
 
-    def execute_sql(self, sql: str, parameters: tuple[Any, ...] | None = None) -> list[list[Any]]:
+    def execute_sql(
+        self,
+        sql: str,
+        parameters: tuple[Any, ...] | None = None,
+        *,
+        dataset_id: str | None = None,
+    ) -> list[list[Any]]:
         """Execute a SQL query and return rows as list of lists."""
         with self.cursor() as cur:
-            if parameters:
-                result = cur.execute(sql, parameters).fetchall()
-            else:
-                result = cur.execute(sql).fetchall()
-            return [list(row) for row in result]
+            try:
+                if parameters:
+                    result = cur.execute(sql, parameters).fetchall()
+                else:
+                    result = cur.execute(sql).fetchall()
+                return [list(row) for row in result]
+            except Exception as exc:
+                if dataset_id and is_missing_table_error(exc):
+                    raise DatasetUnavailableError(dataset_id) from exc
+                raise
 
-    async def execute_sql_async(self, sql: str, parameters: tuple[Any, ...] | None = None) -> list[list[Any]]:
+    async def execute_sql_async(
+        self,
+        sql: str,
+        parameters: tuple[Any, ...] | None = None,
+        *,
+        dataset_id: str | None = None,
+    ) -> list[list[Any]]:
         """Run SQL in a thread pool to avoid blocking the event loop."""
-        return await asyncio.to_thread(self.execute_sql, sql, parameters)
+        return await asyncio.to_thread(
+            self.execute_sql,
+            sql,
+            parameters,
+            dataset_id=dataset_id,
+        )
+
+    def table_exists(self, table_name: str) -> bool:
+        """Return True when a table is present in DuckDB catalog."""
+        rows = self.execute_sql(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
+            (table_name,),
+        )
+        return bool(rows and rows[0][0] > 0)
 
     def health_check(self) -> bool:
         """Return True if the connection is alive."""
