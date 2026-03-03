@@ -1,5 +1,7 @@
 """Tests for DuckDB engine integration and DuckDBManager."""
 
+import os
+
 import pytest
 
 from server.engine import DuckDBManager, get_connection
@@ -80,6 +82,36 @@ class TestDuckDBManager:
             assert rows == [[7]]
         finally:
             mgr.shutdown()
+
+    def test_initialize_applies_runtime_tuning(self, monkeypatch, tmp_path) -> None:
+        class MockSettings:
+            data_dir = None
+            duckdb_threads = 2
+            duckdb_memory_limit = "512MB"
+            duckdb_temp_directory = str(tmp_path / "duckdb-spill")
+            duckdb_enable_object_cache = False
+
+        monkeypatch.setattr("server.engine.get_settings", lambda: MockSettings())
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            with mgr.cursor() as cur:
+                assert cur.execute("SELECT current_setting('threads')").fetchone()[0] == 2
+                assert cur.execute("SELECT current_setting('temp_directory')").fetchone()[0] == str(tmp_path / "duckdb-spill")
+                assert cur.execute("SELECT current_setting('enable_object_cache')").fetchone()[0] is False
+                assert cur.execute("SELECT current_setting('memory_limit')").fetchone()[0]
+        finally:
+            mgr.shutdown()
+
+    def test_default_threads_considers_uvicorn_workers(self, monkeypatch) -> None:
+        monkeypatch.setattr(os, "cpu_count", lambda: 8)
+        monkeypatch.setenv("UVICORN_WORKERS", "2")
+        assert DuckDBManager._resolved_default_threads() == 4
+
+    def test_default_threads_handles_invalid_worker_env(self, monkeypatch) -> None:
+        monkeypatch.setattr(os, "cpu_count", lambda: 8)
+        monkeypatch.setenv("UVICORN_WORKERS", "not-a-number")
+        assert DuckDBManager._resolved_default_threads() == 4
 
 
 class TestGetConnection:

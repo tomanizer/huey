@@ -6,6 +6,7 @@ Loads settings from environment variables and optional config file.
 
 from functools import lru_cache
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,10 @@ class Settings(BaseSettings):
 
     # DuckDB
     data_dir: str | None = None  # Path to DuckDB database file; None = in-memory
+    duckdb_threads: int | None = Field(default=None, ge=1, le=128)
+    duckdb_memory_limit: str | None = None
+    duckdb_temp_directory: str | None = "/tmp/huey-duckdb-tmp"
+    duckdb_enable_object_cache: bool = True
 
     # Export
     export_ttl_seconds: int = 3600
@@ -46,6 +51,17 @@ class Settings(BaseSettings):
     # Optional: S3 / engine config (for later issues)
     s3_bucket: str | None = None
     s3_region: str | None = None
+
+    @field_validator("duckdb_memory_limit", "duckdb_temp_directory")
+    @classmethod
+    def _empty_string_to_none_or_value(cls, v: str | None) -> str | None:
+        """Normalize optional string settings and reject blank values."""
+        if v is None:
+            return None
+        value = v.strip()
+        if value == "":
+            return None
+        return value
 
 
 @lru_cache

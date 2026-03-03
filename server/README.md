@@ -39,7 +39,7 @@ PYTHONPATH=. ./.venv-server/bin/python -m server.main
 - `POST /query/picklist` – distinct values for a field with search/paging
 - `POST /export` – submit an export job (background processing)
 - `GET /export/{export_id}` – poll export status/download URL
-- `GET /export/{export_id}/download` – download completed CSV
+- `GET /export/{export_id}/download` – download completed export artifact
 - `GET /health/liveness` – liveness probe
 - `GET /health/readiness` – readiness probe
 
@@ -63,7 +63,7 @@ From the repo root:
 
 ```bash
 docker build -f server/Dockerfile -t query-service .
-docker run -p 8000:8000 query-service
+docker run -p 8000:8000 -e UVICORN_WORKERS=1 query-service
 ```
 
 ## Config
@@ -77,6 +77,10 @@ Environment variables (prefix `QUERYSERVICE_`):
 - `QUERYSERVICE_DATASETS_CONFIG_PATH` (default bundled `datasets_config/datasets.yaml`)
 - `QUERYSERVICE_SEED_SAMPLE_DATA` (default `true`)
 - `QUERYSERVICE_DATA_DIR` (default `None`, DuckDB in-memory; set to persist)
+- `QUERYSERVICE_DUCKDB_THREADS` (default auto, conservative: `min(4, CPU/worker)`)
+- `QUERYSERVICE_DUCKDB_MEMORY_LIMIT` (default unset, DuckDB default)
+- `QUERYSERVICE_DUCKDB_TEMP_DIRECTORY` (default `/tmp/huey-duckdb-tmp`)
+- `QUERYSERVICE_DUCKDB_ENABLE_OBJECT_CACHE` (default `true`)
 - `QUERYSERVICE_EXPORT_TTL_SECONDS` (default `3600`)
 - `QUERYSERVICE_EXPORT_MAX_CONCURRENT` (default `5`)
 - `QUERYSERVICE_EXPORT_OUTPUT_DIR` (default `/tmp/huey-exports`)
@@ -90,6 +94,32 @@ config file changes on disk or when the TTL elapses. Use the TTL env var to tune
 refresh cadence for your deployment.
 
 Optional `.env` in the working directory is also loaded.
+
+## Runtime Tuning Profile
+
+QueryService applies DuckDB runtime settings at startup and logs the effective
+values (`threads`, `memory_limit`, `temp_directory`, `enable_object_cache`).
+
+Recommended baseline profiles:
+
+- `dev`:
+  - `UVICORN_WORKERS=1`
+  - `QUERYSERVICE_DUCKDB_THREADS` unset (auto)
+  - `QUERYSERVICE_DUCKDB_MEMORY_LIMIT=2GB`
+- `staging`:
+  - `UVICORN_WORKERS=1`
+  - `QUERYSERVICE_DUCKDB_THREADS=4` (or unset for auto)
+  - `QUERYSERVICE_DUCKDB_MEMORY_LIMIT=8GB`
+- `prod` (large analytical workloads):
+  - Start with `UVICORN_WORKERS=1` to avoid CPU oversubscription.
+  - Scale workers only when needed for mixed/short queries.
+  - If `UVICORN_WORKERS>1`, reduce `QUERYSERVICE_DUCKDB_THREADS` per worker so total threads do not exceed available vCPUs.
+
+Resource sizing baseline:
+
+- CPU: keep total `workers * duckdb_threads <= vCPU count`
+- Memory: reserve headroom for app and OS (`duckdb_memory_limit` set with explicit units, e.g. `8GB`)
+- Disk: place `duckdb_temp_directory` on fast local SSD for spill-heavy queries
 
 ## Try Huey with this backend (remote datasource)
 
