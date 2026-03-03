@@ -28,7 +28,7 @@ def _get_date_str(date_range: DateRangeSingle | DateRangeRange) -> str:
 
 
 @router.post("/tuples", response_model=TuplesResponse)
-def post_query_tuples(body: QueryTuplesRequest) -> TuplesResponse:
+async def post_query_tuples(body: QueryTuplesRequest) -> TuplesResponse:
     """
     POST /query/tuples: fetch row or column headers (tuples) for one axis.
     Basic implementation: validates request, returns empty result or stub.
@@ -49,7 +49,7 @@ def post_query_tuples(body: QueryTuplesRequest) -> TuplesResponse:
 
 
 @router.post("/cells", response_model=CellsResponse)
-def post_query_cells(body: QueryCellsRequest) -> CellsResponse:
+async def post_query_cells(body: QueryCellsRequest) -> CellsResponse:
     """
     POST /query/cells: fetch cell values for a window of row/column tuples.
     Basic implementation: validates request, returns empty cells.
@@ -62,7 +62,7 @@ def post_query_cells(body: QueryCellsRequest) -> CellsResponse:
 
 
 @router.post("/picklist", response_model=PicklistResponse)
-def post_query_picklist(body: QueryPicklistRequest) -> PicklistResponse:
+async def post_query_picklist(body: QueryPicklistRequest) -> PicklistResponse:
     """
     POST /query/picklist: fetch distinct values for a field (filter UI).
     Basic implementation: validates request, returns empty values.

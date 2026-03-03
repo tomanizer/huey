@@ -10,7 +10,7 @@ router = APIRouter(tags=["schema"])
 
 
 @router.get("/schema")
-def get_schema(dataset_id: str) -> dict:
+async def get_schema(dataset_id: str) -> dict:
     """
     Fetch schema metadata for a dataset.
     GET /schema?dataset_id=trades_v1
