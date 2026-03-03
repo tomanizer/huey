@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     export_db_path: str = "/tmp/huey-exports/jobs.db"
 
     # Dataset metadata cache
-    schema_cache_ttl_seconds: int = 300  # 0 disables TTL-based refresh
+    schema_cache_ttl_seconds: Optional[float] = 300  # Set to 0 or None to disable TTL-based refresh
 
     # Optional: S3 / engine config (for later issues)
     s3_bucket: Optional[str] = None

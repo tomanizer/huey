@@ -8,6 +8,9 @@ import pytest
 
 from server import datasets
 
+# Extra wait multiplier to ensure TTL expiry on slower clocks in CI.
+TTL_EXPIRY_WAIT_MULTIPLIER = 2.5
+
 
 @pytest.fixture(autouse=True)
 def _reset_cache():
@@ -18,7 +21,7 @@ def _reset_cache():
 
 def _settings(path: Path | None, ttl: float = 60) -> object:
     return type(
-        "S",
+        "MockSettings",
         (),
         {
             "datasets_config_path": str(path) if path else None,
@@ -39,7 +42,7 @@ def test_schema_cache_hit_and_miss(monkeypatch) -> None:
         }
 
     monkeypatch.setattr(datasets, "load_datasets_config", fake_load)
-    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=120))
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=1))
     datasets.reset_cache()
 
     first = datasets.get_schema("cache_ds")
@@ -54,6 +57,7 @@ def test_schema_cache_hit_and_miss(monkeypatch) -> None:
 
 def test_schema_cache_respects_ttl(monkeypatch) -> None:
     calls = {"count": 0}
+    ttl = 0.05
 
     def fake_load():
         calls["count"] += 1
@@ -64,11 +68,11 @@ def test_schema_cache_respects_ttl(monkeypatch) -> None:
         }
 
     monkeypatch.setattr(datasets, "load_datasets_config", fake_load)
-    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=0.01))
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=ttl))
     datasets.reset_cache()
 
     datasets.get_schema("ttl_ds")
-    time.sleep(0.02)
+    time.sleep(ttl * TTL_EXPIRY_WAIT_MULTIPLIER)
     datasets.get_schema("ttl_ds")
 
     assert calls["count"] == 2
@@ -88,7 +92,7 @@ datasets:
 """
     )
 
-    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(config_path, ttl=120))
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(config_path, ttl=1))
     datasets.reset_cache()
 
     initial = datasets.get_schema("config_ds")
@@ -104,7 +108,8 @@ datasets:
         type: string
 """
     )
-    os.utime(config_path, None)
+    # Force an mtime bump to ensure config change detection even on coarse filesystems.
+    os.utime(config_path, times=(config_path.stat().st_atime, time.time()))
 
     refreshed = datasets.get_schema("config_ds")
     assert refreshed
@@ -115,7 +120,7 @@ datasets:
 
 
 def test_partition_metadata_hooks(monkeypatch) -> None:
-    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=120))
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=1))
     datasets.reset_cache()
 
     datasets.set_partition_metadata("ds", {"count": 2})

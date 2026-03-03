@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -21,6 +22,12 @@ if TYPE_CHECKING:
     from server.engine import DuckDBManager
 
 logger = logging.getLogger("query_service.datasets")
+
+
+@dataclass
+class _SchemaCacheEntry:
+    schema: dict[str, Any] | None
+    loaded_at: float
 
 
 def _default_config_path() -> Path:
@@ -57,8 +64,8 @@ class _DatasetSchemaCache:
     """In-memory cache for dataset schema + derived metadata."""
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._schemas: dict[str, dict[str, Any] | None] = {}
+        self._lock = threading.RLock()
+        self._schemas: dict[str, _SchemaCacheEntry] = {}
         self._schema_fields: dict[str, set[str]] = {}
         self._partition_metadata: dict[str, Any] = {}
         self._config_path: Optional[str] = None
@@ -69,8 +76,11 @@ class _DatasetSchemaCache:
 
     def _refresh_settings(self) -> None:
         settings = get_settings()
-        ttl = getattr(settings, "schema_cache_ttl_seconds", None)
-        self._ttl_seconds = ttl if ttl and ttl > 0 else None
+        try:
+            ttl = settings.schema_cache_ttl_seconds
+        except AttributeError:
+            ttl = None
+        self._ttl_seconds = ttl if (ttl is not None and ttl > 0) else None
 
     def _config_identity(self) -> tuple[str, Optional[float]]:
         settings = get_settings()
@@ -101,32 +111,45 @@ class _DatasetSchemaCache:
             )
 
     def _is_expired(self, loaded_at: float) -> bool:
-        return bool(self._ttl_seconds and (time.monotonic() - loaded_at) > self._ttl_seconds)
+        if not self._ttl_seconds:
+            return False
+        return (time.monotonic() - loaded_at) > self._ttl_seconds
+
+    @staticmethod
+    def _extract_field_names(schema: dict[str, Any] | None) -> set[str]:
+        if not schema:
+            return set()
+        return {
+            f["name"]
+            for f in schema.get("fields", [])
+            if isinstance(f, dict) and "name" in f
+        }
 
     def _store_schema_locked(self, dataset_id: str, schema: dict[str, Any] | None) -> None:
         loaded_at = time.monotonic()
-        field_names = (
-            {f["name"] for f in schema.get("fields", []) if isinstance(f, dict) and "name" in f}
-            if schema
-            else set()
-        )
-        self._schemas[dataset_id] = {"schema": schema, "loaded_at": loaded_at}
+        field_names = self._extract_field_names(schema)
+        self._schemas[dataset_id] = _SchemaCacheEntry(schema=schema, loaded_at=loaded_at)
         self._schema_fields[dataset_id] = field_names
 
     def get_schema(self, dataset_id: str) -> Optional[dict[str, Any]]:
-        """Return cached schema; refresh on miss/TTL/config change."""
+        """
+        Return cached schema for the given dataset.
+
+        Refreshes on cache miss, TTL expiry, or config change. The returned schema is shared and must be treated as read-only.
+        """
         with self._lock:
             self._refresh_settings()
             self._invalidate_if_config_changed_locked()
             entry = self._schemas.get(dataset_id)
-            if entry and not self._is_expired(entry["loaded_at"]):
+            if entry and not self._is_expired(entry.loaded_at):
                 self._counters["cache_hit"] += 1
                 logger.debug(
                     "dataset schema cache hit",
                     extra={"cache_event": "hit", "dataset_id": dataset_id},
                 )
-                return entry["schema"]
-            if entry and self._is_expired(entry["loaded_at"]):
+                # Shared cached schema; treat as read-only.
+                return entry.schema
+            if entry and self._is_expired(entry.loaded_at):
                 self._counters["refresh_count"] += 1
             self._counters["cache_miss"] += 1
 
@@ -147,6 +170,7 @@ class _DatasetSchemaCache:
                     "cache_miss": self._counters["cache_miss"],
                 },
             )
+            # Shared cached schema; treat as read-only.
             return schema
 
     def get_schema_field_names(self, dataset_id: str) -> set[str]:
@@ -156,10 +180,13 @@ class _DatasetSchemaCache:
             if schema is None:
                 return set()
             fields = self._schema_fields.get(dataset_id)
-            return set(fields) if fields is not None else set()
+            if fields is None:
+                return set()
+            # Return a new set to guard against accidental external mutation.
+            return set(fields)
 
     def set_partition_metadata(self, dataset_id: str, metadata: Any) -> None:
-        """Hook for partition-native execution metadata (prepared for future use)."""
+        """Store per-dataset partition metadata (e.g., shard descriptors) for partition-native execution."""
         with self._lock:
             self._partition_metadata[dataset_id] = metadata
 
@@ -195,7 +222,7 @@ _schema_cache = _DatasetSchemaCache()
 def get_schema(dataset_id: str) -> Optional[dict[str, Any]]:
     """
     Return schema for a dataset: { dataset_id, fields }.
-    Returns None if dataset_id is not found.
+    Returns None if dataset_id is not found. The returned object is shared and should be treated as read-only.
     """
     return _schema_cache.get_schema(dataset_id)
 
@@ -206,7 +233,7 @@ def get_schema_field_names(dataset_id: str) -> set[str]:
 
 
 def get_partition_metadata(dataset_id: str) -> Any:
-    """Return cached partition metadata for dataset (reserved for partition-native mode)."""
+    """Return cached partition metadata for dataset (used by partition-native execution paths)."""
     return _schema_cache.get_partition_metadata(dataset_id)
 
 
