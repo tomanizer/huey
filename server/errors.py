@@ -49,6 +49,18 @@ class DatasetNotFoundError(AppError):
         )
 
 
+class DatasetUnavailableError(AppError):
+    """Raised when dataset metadata exists but backing table/data is unavailable."""
+
+    def __init__(self, dataset_id: str) -> None:
+        super().__init__(
+            code="DATASET_UNAVAILABLE",
+            message="Dataset is configured but not available for querying",
+            status_code=409,
+            details={"dataset_id": dataset_id},
+        )
+
+
 class ExportNotFoundError(AppError):
     """Raised when an export job ID does not exist in the job store."""
 

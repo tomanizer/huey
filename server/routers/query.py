@@ -25,8 +25,8 @@ from server.query_builder import (
     build_cells_sql,
     build_picklist_count_sql,
     build_picklist_sql,
-    build_tuples_sql,
     build_tuples_count_sql,
+    build_tuples_sql,
 )
 from server.request_context import set_request_id
 
@@ -57,7 +57,11 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
 
     start = time.perf_counter()
     sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-    rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
+    rows = await db_manager.execute_sql_async(
+        sql,
+        tuple(params) if params else None,
+        dataset_id=body.dataset_id,
+    )
     if rows:
         total_count = int(rows[0][-1])
         items = [TupleItem(values=list(row[:-1])) for row in rows]
@@ -68,7 +72,11 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
     # Fallback to a lightweight count when page is empty (e.g., offset beyond results)
     if total_count == 0 and (paging.offset if paging else 0) > 0:
         count_sql, count_params = build_tuples_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        count_rows = await db_manager.execute_sql_async(count_sql, tuple(count_params) if count_params else None)
+        count_rows = await db_manager.execute_sql_async(
+            count_sql,
+            tuple(count_params) if count_params else None,
+            dataset_id=body.dataset_id,
+        )
         if count_rows:
             total_count = int(count_rows[0][0])
     duration_ms = (time.perf_counter() - start) * 1000
@@ -103,7 +111,11 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
 
     start = time.perf_counter()
     sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-    rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
+    rows = await db_manager.execute_sql_async(
+        sql,
+        tuple(params) if params else None,
+        dataset_id=body.dataset_id,
+    )
     duration_ms = (time.perf_counter() - start) * 1000
 
     logger.info(
@@ -137,7 +149,11 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
 
     start = time.perf_counter()
     sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-    rows = await db_manager.execute_sql_async(sql, tuple(params) if params else None)
+    rows = await db_manager.execute_sql_async(
+        sql,
+        tuple(params) if params else None,
+        dataset_id=body.dataset_id,
+    )
     if rows:
         total_count = int(rows[0][-1])
         values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
@@ -148,7 +164,11 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
     # Fallback to count when page is empty (e.g., offset beyond available values)
     if total_count == 0 and (paging.offset if paging else 0) > 0:
         count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        count_rows = await db_manager.execute_sql_async(count_sql, tuple(count_params) if count_params else None)
+        count_rows = await db_manager.execute_sql_async(
+            count_sql,
+            tuple(count_params) if count_params else None,
+            dataset_id=body.dataset_id,
+        )
         if count_rows:
             total_count = int(count_rows[0][0])
     duration_ms = (time.perf_counter() - start) * 1000
