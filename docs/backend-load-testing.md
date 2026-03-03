@@ -1,0 +1,38 @@
+# Backend load testing (QueryService)
+
+This document describes how to run load tests against the QueryService API (C3.1).
+
+## Scope
+
+- Concurrent requests to `/schema`, `/query/tuples`, `/query/cells`, `/query/picklist`.
+- Metrics: request count, success rate, latency percentiles (p50, p90, p99).
+
+## Prerequisites
+
+- QueryService running (e.g. `uvicorn server.main:app --port 8000`).
+- Python 3.9+ (stdlib only for the script below).
+
+## Running the load test script
+
+From repo root:
+
+```bash
+# Start the server in another terminal:
+# cd server && uvicorn server.main:app --port 8000
+
+python scripts/load_test_query_service.py --base-url http://127.0.0.1:8000 --workers 4 --requests 100
+```
+
+Options:
+
+- `--base-url`: QueryService base URL (default: `http://127.0.0.1:8000`).
+- `--workers`: Number of concurrent workers (default: 4).
+- `--requests`: Total number of requests to send (default: 100).
+
+Output: success count, failure count, and latency percentiles (p50, p90, p99) per endpoint.
+
+## Interpreting results
+
+- **Success rate:** Should be 100% under normal load; drops indicate errors or timeouts.
+- **Latency:** Use p90/p99 to spot slow endpoints or degradation under concurrency.
+- Run with increasing `--workers` and `--requests` to find a baseline before adding timeouts and resource limits (see A6.2).
