@@ -171,7 +171,11 @@ class TestErrorResponseSchema:
 
     def test_export_post_409_dataset_unavailable_envelope(self, client: TestClient, monkeypatch) -> None:
         import server.routers.export as export_router
+        from server.config import get_settings
 
+        # table_exists check only fires in sample_table mode
+        monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "sample_table")
+        get_settings.cache_clear()
         monkeypatch.setattr(
             export_router.datasets,
             "get_schema",
@@ -179,6 +183,7 @@ class TestErrorResponseSchema:
         )
         monkeypatch.setattr(export_router.db_manager, "table_exists", lambda _dataset_id: False)
         r = client.post("/export", json=_export_body(dataset_id="not_materialized_ds"))
+        get_settings.cache_clear()
         assert r.status_code == 409
         payload = r.json()
         assert payload["code"] == "DATASET_UNAVAILABLE"
@@ -293,6 +298,32 @@ class TestDomainExceptions:
         assert err.code == "TOO_MANY_EXPORTS"
         assert err.status_code == 429
         assert err.details["max_concurrent"] == 5
+
+
+class TestInternalErrorEnvelope:
+    """Unhandled exceptions return INTERNAL_ERROR without leaking stack traces."""
+
+    def test_unhandled_exception_returns_500_envelope(self, monkeypatch) -> None:
+        import server.routers.query as query_router
+        from server.main import app
+
+        async def boom(*args, **kwargs):
+            raise RuntimeError("unexpected failure")
+
+        monkeypatch.setattr(query_router.db_manager, "execute_sql_async", boom)
+        # raise_server_exceptions=False so we get the HTTP response instead of the re-raised exception
+        no_raise_client = TestClient(app, raise_server_exceptions=False)
+        r = no_raise_client.post("/query/cells", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "v"}]}},
+        })
+        assert r.status_code == 500
+        body = r.json()
+        assert body["code"] == "INTERNAL_ERROR"
+        assert "message" in body
+        # No raw exception message or traceback in the response body
+        assert "unexpected failure" not in str(body)
 
 
 class TestHappyPathUnchanged:
