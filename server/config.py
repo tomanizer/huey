@@ -42,10 +42,13 @@ class Settings(BaseSettings):
     duckdb_enable_object_cache: bool = True
 
     # Export
+    # NOTE: /data/exports must be a persistent volume in production.
+    # In containers, /tmp is ephemeral — pending exports are lost on restart.
+    # Override via QUERYSERVICE_EXPORT_OUTPUT_DIR / QUERYSERVICE_EXPORT_DB_PATH.
     export_ttl_seconds: int = 3600
     export_max_concurrent: int = 5
-    export_output_dir: str = "/tmp/huey-exports"
-    export_db_path: str = "/tmp/huey-exports/jobs.db"
+    export_output_dir: str = "/data/exports"
+    export_db_path: str = "/data/exports/jobs.db"
 
     # Query budgets
     query_timeout_seconds: float = 30.0
