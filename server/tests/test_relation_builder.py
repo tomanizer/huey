@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from server.errors import PartitionNotFoundError
 from server.models import DateRangeRange, DateRangeSingle
 from server.relation_builder import BaseRelation, build_base_relation
-from server.errors import PartitionNotFoundError
 
 
 class DummySettings:

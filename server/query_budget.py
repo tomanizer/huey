@@ -39,7 +39,7 @@ class QueryBudget:
         async with self._queue_lock:
             if (
                 self._max_queue_depth is not None
-                and self._active >= self._max_concurrent
+                and self._active + self._waiting >= self._max_concurrent
                 and self._waiting >= self._max_queue_depth
             ):
                 raise TooManyConcurrentQueriesError(

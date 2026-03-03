@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-import time
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -15,9 +15,15 @@ from server.query_budget import reset_query_budget
 
 @pytest.fixture
 def settings_override(monkeypatch):
-    """Override QUERYSERVICE_* settings for a single test and reset caches."""
+    """Override QUERYSERVICE_* settings for a single test and reset caches.
+
+    Always forces sample_table execution mode so tests run against in-memory
+    DuckDB data rather than S3 parquet paths.
+    """
 
     def _apply(**kwargs):
+        # Always use sample_table mode in budget tests to avoid S3 access.
+        monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "sample_table")
         for key, value in kwargs.items():
             env_key = f"QUERYSERVICE_{key.upper()}"
             monkeypatch.setenv(env_key, str(value))
@@ -37,8 +43,8 @@ def settings_override(monkeypatch):
 def _cells_body():
     return {
         "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2024-01-15"},
-        "query": {"axes": {"rows": [{"field": "symbol"}], "measures": [{"field": "price", "aggregation": "SUM"}]}},
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]}},
     }
 
 
@@ -56,32 +62,40 @@ def test_queue_depth_rejects_overflow(
     client: TestClient, settings_override, monkeypatch
 ) -> None:
     """When queue depth is exceeded, subsequent requests fail fast."""
-    settings_override(max_concurrent_queries=1, max_query_queue_depth=0, query_timeout_seconds=1)
+    settings_override(max_concurrent_queries=1, max_query_queue_depth=0, query_timeout_seconds=5)
 
     original_execute = db_manager.execute_sql_async
+    # Signal set when the first request has entered execute_sql_async, meaning
+    # the budget semaphore is already acquired and held.
+    in_execute = threading.Event()
 
-    async def slow_execute(sql, params=None):
-        await asyncio.sleep(0.1)
-        return await original_execute(sql, params)
+    async def slow_execute(sql, params=None, **kwargs):
+        in_execute.set()  # budget is held at this point
+        await asyncio.sleep(1)
+        return await original_execute(sql, params, **kwargs)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", slow_execute)
 
-    def slow_request():
-        return client.post(
-            "/query/cells",
-            json={
-                "dataset_id": "trades_v1",
-                "date_range": {"type": "single", "date": "2024-01-15"},
-                "query": {"axes": {"rows": [{"field": "symbol"}]}, "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL"]}]},
-            },
-        )
+    request_body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]}},
+    }
+
+    def first_request():
+        return client.post("/query/cells", json=request_body)
+
+    def second_request():
+        # Wait until the first request has definitely acquired the budget slot
+        # before sending the second, so the queue overflow is guaranteed.
+        in_execute.wait(timeout=5)
+        return client.post("/query/cells", json=request_body)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(slow_request)
-        time.sleep(0.01)
-        second = pool.submit(slow_request)
-        first_result = first.result(timeout=5)
-        second_result = second.result(timeout=5)
+        first = pool.submit(first_request)
+        second = pool.submit(second_request)
+        first_result = first.result(timeout=10)
+        second_result = second.result(timeout=10)
 
     assert first_result.status_code in (200, 504)
     assert second_result.status_code == 429

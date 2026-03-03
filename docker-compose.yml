@@ -6,7 +6,12 @@ services:
       dockerfile: server/Dockerfile
     ports:
       - "8002:8000"
+    volumes:
+      - ./server/datasets_config/datasets.yaml:/app/server/datasets_config/datasets.yaml:ro
     environment:
       UVICORN_WORKERS: "1"
-      QUERYSERVICE_SEED_SAMPLE_DATA: "true"
+      QUERYSERVICE_SEED_SAMPLE_DATA: "false"
+      QUERYSERVICE_EXECUTION_MODE: "parquet_partitioned"
+      QUERYSERVICE_S3_BUCKET: "aws-public-blockchain"
+      QUERYSERVICE_S3_REGION: "us-east-2"
     restart: unless-stopped
