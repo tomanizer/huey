@@ -1,0 +1,14 @@
+{
+  "profile": "small-fixture-initial-baseline",
+  "notes": "Initial placeholder baseline for benchmark harness validation. Replace with measured numbers from staging/prod-like hardware.",
+  "targets": {
+    "workload_goal": "~50GB/date",
+    "dataset_id": "trades_v1"
+  },
+  "kpis": {
+    "tuples": {"p95_ms": 250, "throughput_rps": 30},
+    "cells": {"p95_ms": 400, "throughput_rps": 20},
+    "picklist": {"p95_ms": 250, "throughput_rps": 30},
+    "export": {"p95_ms": 900, "throughput_rps": 5}
+  }
+}

@@ -1,0 +1,36 @@
+name: Backend Benchmarks Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r server/requirements.txt
+
+      - name: Run backend benchmark snapshot
+        run: |
+          python scripts/backend_benchmark_runner.py \
+            --base-url http://127.0.0.1:8000 \
+            --requests-per-endpoint 5 \
+            --workers 2 \
+            --output-dir artifacts/benchmarks/nightly
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-benchmark-artifacts
+          path: artifacts/benchmarks/nightly
+          if-no-files-found: warn

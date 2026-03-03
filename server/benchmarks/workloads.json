@@ -1,0 +1,59 @@
+{
+  "workloads": [
+    {
+      "name": "tuples",
+      "method": "POST",
+      "path": "/query/tuples",
+      "body": {
+        "query": {
+          "fields": [{"field": "symbol"}],
+          "paging": {"limit": 50, "offset": 0}
+        }
+      }
+    },
+    {
+      "name": "cells",
+      "method": "POST",
+      "path": "/query/cells",
+      "body": {
+        "query": {
+          "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
+          }
+        }
+      }
+    },
+    {
+      "name": "picklist",
+      "method": "POST",
+      "path": "/query/picklist",
+      "body": {
+        "query": {
+          "field": "symbol",
+          "search": "",
+          "filters": [],
+          "paging": {"limit": 100, "offset": 0}
+        }
+      }
+    },
+    {
+      "name": "export",
+      "method": "POST",
+      "path": "/export",
+      "body": {
+        "query": {
+          "export_type": "pivot_results",
+          "axes": {
+            "rows": [{"field": "symbol"}],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}]
+          },
+          "filters": [],
+          "max_rows": 1000,
+          "format": "csv"
+        }
+      }
+    }
+  ]
+}
