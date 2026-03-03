@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     export_output_dir: str = "/tmp/huey-exports"
     export_db_path: str = "/tmp/huey-exports/jobs.db"
 
+    # Query budgets
+    query_timeout_seconds: float = 30.0
+    max_concurrent_queries: int = 8
+    max_query_queue_depth: int | None = 32
+
+    # Endpoint defaults
+    tuples_default_limit: int = 200
+    picklist_default_limit: int = 100
+
     # Dataset metadata cache
     schema_cache_ttl_seconds: float | None = 300  # Set to 0 or None to disable TTL-based refresh
 

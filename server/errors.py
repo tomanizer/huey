@@ -95,3 +95,41 @@ class TooManyConcurrentExportsError(AppError):
             status_code=429,
             details={"max_concurrent": max_concurrent},
         )
+
+
+class QueryTimeoutError(AppError):
+    """Raised when a query exceeds the configured timeout budget."""
+
+    def __init__(self, timeout_seconds: float) -> None:
+        super().__init__(
+            code="QUERY_TIMEOUT",
+            message=f"Query exceeded timeout of {timeout_seconds} seconds",
+            status_code=504,
+            details={"timeout_seconds": timeout_seconds},
+        )
+
+
+class QueryCancelledError(AppError):
+    """Raised when a query is cancelled due to client disconnect."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            code="QUERY_CANCELLED",
+            message="Query cancelled because the client disconnected",
+            status_code=499,
+        )
+
+
+class TooManyConcurrentQueriesError(AppError):
+    """Raised when the in-flight query limit and queue depth are exceeded."""
+
+    def __init__(self, max_concurrent: int, max_queue_depth: int | None) -> None:
+        super().__init__(
+            code="TOO_MANY_QUERIES",
+            message="Query service is overloaded, please retry later",
+            status_code=429,
+            details={
+                "max_concurrent": max_concurrent,
+                "max_queue_depth": max_queue_depth,
+            },
+        )
