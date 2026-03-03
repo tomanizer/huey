@@ -12,20 +12,38 @@ def client() -> TestClient:
 
 
 def test_query_cells_ok(client: TestClient) -> None:
-    """POST /query/cells with valid envelope returns 200 and cells array."""
+    """POST /query/cells with valid envelope returns aggregated cells."""
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {
-            "rows": {"start_index": 0, "count": 10},
-            "columns": {"start_index": 0, "count": 5},
-            "axes": {"rows": [{"field": "symbol"}], "columns": [{"field": "region"}], "measures": [{"field": "volume", "aggregation": "sum", "alias": "sum_volume"}]},
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "sum", "alias": "sum_volume"}],
+            },
             "filters": [],
         },
     }
     r = client.post("/query/cells", json=body)
     assert r.status_code == 200
-    assert r.json() == {"cells": []}
+    data = r.json()
+    assert len(data["cells"]) > 0
+
+
+def test_query_cells_empty_axes(client: TestClient) -> None:
+    """POST /query/cells with no axes returns empty cells."""
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "axes": {"rows": [], "columns": [], "measures": []},
+            "filters": [],
+        },
+    }
+    r = client.post("/query/cells", json=body)
+    assert r.status_code == 200
+    assert r.json()["cells"] == []
 
 
 def test_query_cells_dataset_not_found(client: TestClient) -> None:
