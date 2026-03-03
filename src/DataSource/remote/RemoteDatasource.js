@@ -135,54 +135,50 @@
     return Promise.resolve();
   };
 
-  function RemoteDatasource(config) {
-    if (typeof EventEmitter === 'undefined') {
-      throw new Error('RemoteDatasource requires EventEmitter');
+  class RemoteDatasource extends EventEmitter {
+    constructor(config) {
+      super(['destroy', 'change']);
+      if (!RemoteDatasourceConfig.isRemoteDatasourceConfig(config)) {
+        throw new Error('Invalid remote datasource config');
+      }
+      this._baseUrl = config.baseUrl.replace(/\/$/, '');
+      this._datasetId = config.datasetId;
+      this._id = config.id || ('remote:' + this._baseUrl + ':' + this._datasetId);
+      this._connection = new RemoteConnection(this);
     }
-    EventEmitter.call(this, ['destroy', 'change']);
-    if (!RemoteDatasourceConfig.isRemoteDatasourceConfig(config)) {
-      throw new Error('Invalid remote datasource config');
+
+    getType() {
+      return RemoteDatasourceConfig.REMOTE_DATASOURCE_TYPE;
     }
-    this._baseUrl = config.baseUrl.replace(/\/$/, '');
-    this._datasetId = config.datasetId;
-    this._id = config.id || ('remote:' + this._baseUrl + ':' + this._datasetId);
-    this._connection = new RemoteConnection(this);
+
+    getId() {
+      return this._id;
+    }
+
+    getBaseUrl() {
+      return this._baseUrl;
+    }
+
+    getDatasetId() {
+      return this._datasetId;
+    }
+
+    getManagedConnection() {
+      return this._connection;
+    }
+
+    getSchema() {
+      return this._connection.getSchema();
+    }
+
+    getRejects() {
+      return Promise.resolve();
+    }
+
+    destroy() {
+      this.fireEvent('destroy', {});
+    }
   }
-
-  RemoteDatasource.prototype = Object.create(EventEmitter.prototype);
-  RemoteDatasource.prototype.constructor = RemoteDatasource;
-
-  RemoteDatasource.prototype.getType = function () {
-    return RemoteDatasourceConfig.REMOTE_DATASOURCE_TYPE;
-  };
-
-  RemoteDatasource.prototype.getId = function () {
-    return this._id;
-  };
-
-  RemoteDatasource.prototype.getBaseUrl = function () {
-    return this._baseUrl;
-  };
-
-  RemoteDatasource.prototype.getDatasetId = function () {
-    return this._datasetId;
-  };
-
-  RemoteDatasource.prototype.getManagedConnection = function () {
-    return this._connection;
-  };
-
-  RemoteDatasource.prototype.getSchema = function () {
-    return this._connection.getSchema();
-  };
-
-  RemoteDatasource.prototype.getRejects = function () {
-    return Promise.resolve();
-  };
-
-  RemoteDatasource.prototype.destroy = function () {
-    this.fireEvent('destroy', {});
-  };
 
   window.RemoteDatasource = RemoteDatasource;
 })();

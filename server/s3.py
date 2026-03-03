@@ -6,7 +6,6 @@ using DuckDB with the httpfs extension.
 """
 
 import re
-from typing import Optional
 
 from server.config import get_settings
 from server.engine import get_connection
@@ -15,6 +14,7 @@ _AWS_REGION_RE = re.compile(r"^[a-z]{2}-[a-z]+-\d+$")
 
 
 def _validate_region(region: str) -> str:
+    """Validate AWS region strings before passing them to DuckDB httpfs."""
     if not _AWS_REGION_RE.match(region):
         raise ValueError(f"Invalid AWS region format: {region}")
     return region
@@ -37,8 +37,8 @@ def sample_partition_read(
     dataset_id: str,
     date_str: str,
     *,
-    region: Optional[str] = None,
-    path_override: Optional[str] = None,
+    region: str | None = None,
+    path_override: str | None = None,
 ) -> int:
     """
     Run a sample read over a partition: COUNT(*) from parquet at the partition path.
@@ -70,7 +70,7 @@ def sample_partition_read(
 def sample_partition_read_if_configured(
     dataset_id: str,
     date_str: str,
-) -> Optional[int]:
+) -> int | None:
     """
     Run sample_partition_read if S3 is configured (bucket set).
     Returns count or None if bucket not configured.

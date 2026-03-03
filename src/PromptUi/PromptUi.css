@@ -8,3 +8,14 @@ dialog#promptUi {
   resize: both;
 }
 
+dialog#promptUi section form label,
+dialog#promptUi section form input {
+  display: block;
+  margin-top: 0.5em;
+}
+
+dialog#promptUi section form label:first-of-type,
+dialog#promptUi section form input:first-of-type {
+  margin-top: 0;
+}
+

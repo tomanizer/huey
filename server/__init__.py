@@ -1,1 +1,1 @@
-# QueryService package
+"""QueryService backend package for Huey."""

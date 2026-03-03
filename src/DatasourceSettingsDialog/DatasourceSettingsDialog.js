@@ -262,7 +262,7 @@ class DatasourceSettingsDialog extends SettingsDialogBase {
     // first clean up the datasource
     this.#rejectsTabQueryModel.setDatasource( null );
 
-    if (!datasource.supportsRejectsDetection()){
+    if (typeof datasource.supportsRejectsDetection !== 'function' || !datasource.supportsRejectsDetection()){
       return;
     }
 

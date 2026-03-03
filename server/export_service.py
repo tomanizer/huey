@@ -9,7 +9,6 @@ import csv
 import logging
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from server import datasets
 from server.config import get_settings
@@ -31,10 +30,12 @@ class ExportService:
     """Orchestrates export job lifecycle: submit, process, poll, download, cleanup."""
 
     def __init__(self, store: ExportJobStore) -> None:
+        """Bind the service to a durable ExportJobStore implementation."""
         self._store = store
 
     @property
     def store(self) -> ExportJobStore:
+        """Return the underlying ExportJobStore (primarily for tests)."""
         return self._store
 
     def submit(self, body: ExportRequest) -> ExportJob:
@@ -145,7 +146,7 @@ class ExportService:
         return count
 
 
-_export_service: Optional[ExportService] = None
+_export_service: ExportService | None = None
 
 
 def get_export_service() -> ExportService:

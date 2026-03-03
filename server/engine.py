@@ -8,8 +8,9 @@ The manager is initialized at application startup and shut down on exit.
 import asyncio
 import logging
 import threading
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any
 
 import duckdb
 
@@ -28,6 +29,7 @@ class DuckDBManager:
     """
 
     def __init__(self) -> None:
+        """Initialize the manager with no active connection and a cursor lock."""
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._lock = threading.Lock()
 
@@ -89,6 +91,7 @@ class DuckDBManager:
 
     @property
     def is_initialized(self) -> bool:
+        """Return True when the DuckDB connection has been opened."""
         return self._conn is not None
 
 

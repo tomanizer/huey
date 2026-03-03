@@ -712,6 +712,26 @@ class AttributeUi {
   }
 
   /**
+   * Map QueryService/tech-spec type names to UI type names (getDataTypeInfo keys).
+   */
+  static remoteSchemaTypeToUiType(backendType) {
+    if (!backendType) return 'VARCHAR';
+    var t = String(backendType).toLowerCase();
+    var map = {
+      string: 'VARCHAR',
+      int64: 'BIGINT',
+      int32: 'INTEGER',
+      float64: 'DOUBLE',
+      float32: 'REAL',
+      bool: 'BOOLEAN',
+      boolean: 'BOOLEAN',
+      date: 'DATE',
+      timestamp: 'TIMESTAMP'
+    };
+    return map[t] || backendType;
+  }
+
+  /**
    * Convert QueryService schema response to columnSummary shape for render().
    * schema: { dataset_id, fields: [{ name, type, is_dimension?, is_measure? }] }
    */
@@ -723,9 +743,10 @@ class AttributeUi {
         var f = fields[i];
         return {
           toJSON: function() {
+            var uiType = f ? AttributeUi.remoteSchemaTypeToUiType(f.type) : 'VARCHAR';
             return {
               column_name: f ? f.name : '',
-              column_type: f ? f.type : 'VARCHAR'
+              column_type: uiType
             };
           }
         };

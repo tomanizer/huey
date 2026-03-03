@@ -625,4 +625,48 @@ function initUploadUi(){
     afterUploaded(uploadResults);
   });
 
+  byId('addRemoteDatasource')
+  .addEventListener('click', async function(event){
+    var formHtml = [
+      '<p>Connect to a dataset served by QueryService.</p>',
+      '<form id="remoteDatasourceForm">',
+      '<label for="remoteDatasourceBaseUrl">Base URL</label>',
+      '<input type="text" id="remoteDatasourceBaseUrl" name="baseUrl" placeholder="http://localhost:8000" required />',
+      '<label for="remoteDatasourceDatasetId">Dataset ID</label>',
+      '<input type="text" id="remoteDatasourceDatasetId" name="datasetId" placeholder="trades_v1" required />',
+      '</form>'
+    ].join('');
+    var result = await PromptUi.show({
+      title: 'Add remote dataset',
+      contents: formHtml
+    });
+    if (result !== 'accept') {
+      return;
+    }
+    var baseUrlInput = byId('remoteDatasourceBaseUrl');
+    var datasetIdInput = byId('remoteDatasourceDatasetId');
+    var baseUrl = (baseUrlInput && baseUrlInput.value && baseUrlInput.value.trim()) || '';
+    var datasetId = (datasetIdInput && datasetIdInput.value && datasetIdInput.value.trim()) || '';
+    if (!baseUrl || !datasetId) {
+      showErrorDialog({ title: 'Invalid input', description: 'Base URL and Dataset ID are required.' });
+      return;
+    }
+    if (!/^https?:\/\//i.test(baseUrl)) {
+      baseUrl = 'http://' + baseUrl;
+    }
+    try {
+      var config = RemoteDatasourceConfig.createRemoteDatasourceConfig({ baseUrl: baseUrl, datasetId: datasetId });
+      var ds = new RemoteDatasource(config);
+      await datasourcesUi.addDatasources([ds]);
+      var promptDialog = byId('promptUi');
+      if (promptDialog && typeof promptDialog.close === 'function') {
+        promptDialog.close();
+      }
+      uploadUi.getDialog().close();
+      TabUi.setSelectedTab('#sidebar', '#datasourcesTab');
+    } catch (e) {
+      showErrorDialog({ title: 'Could not add remote dataset', description: e.message || String(e) });
+    }
+  });
+
 }
