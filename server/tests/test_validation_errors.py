@@ -79,6 +79,14 @@ class TestCommonValidation:
         })
         assert r.status_code == 422
 
+    def test_date_invalid_calendar_value(self, client: TestClient, endpoint: str) -> None:
+        r = client.post(endpoint, json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-02-30"},
+            "query": {},
+        })
+        assert r.status_code == 422
+
     def test_date_range_inverted(self, client: TestClient, endpoint: str) -> None:
         r = client.post(endpoint, json={
             "dataset_id": "trades_v1",
@@ -99,6 +107,14 @@ class TestCommonValidation:
         r = client.post(endpoint, json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single"},
+            "query": {},
+        })
+        assert r.status_code == 422
+
+    def test_date_range_invalid_calendar_value(self, client: TestClient, endpoint: str) -> None:
+        r = client.post(endpoint, json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "range", "start": "2026-01-01", "end": "2026-13-01"},
             "query": {},
         })
         assert r.status_code == 422
