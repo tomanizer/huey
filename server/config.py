@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     export_output_dir: str = "/tmp/huey-exports"
     export_db_path: str = "/tmp/huey-exports/jobs.db"
 
+    # Query budgets
+    query_timeout_seconds: float = 30.0
+    max_concurrent_queries: int = 8
+    max_query_queue_depth: int | None = 32
+
+    # Endpoint defaults
+    tuples_default_limit: int = 200
+    picklist_default_limit: int = 100
     # Authentication
     api_keys: str | None = None  # Comma-separated list of valid API keys
     auth_enabled: bool = False  # Set to True to require auth

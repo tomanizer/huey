@@ -8,12 +8,14 @@ import time
 from fastapi import APIRouter, Depends, Request
 
 from server import datasets
+from server.config import get_settings
 from server.auth import require_api_key
 from server.engine import db_manager
 from server.errors import DatasetNotFoundError
 from server.models import (
     CellsResponse,
     PagingResponse,
+    PagingSpec,
     PicklistResponse,
     QueryCellsRequest,
     QueryPicklistRequest,
@@ -28,6 +30,7 @@ from server.query_builder import (
     build_tuples_count_sql,
     build_tuples_sql,
 )
+from server.query_budget import get_query_budget
 from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.query")
@@ -42,18 +45,27 @@ def _apply_client_request_id(body, request: Request) -> None:
         request.state.request_id = rid
 
 
+async def _execute_with_budget(request: Request, coro):
+    """Run a SQL coroutine with query budget enforcement."""
+    budget = get_query_budget()
+    async with budget.acquire() as queue_wait_ms:
+        result, execution_ms = await budget.run_with_budget(request, coro)
+    return result, queue_wait_ms, execution_ms
+
+
 @router.post("/tuples", response_model=TuplesResponse)
 async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
+    settings = get_settings()
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
-    paging = body.query.paging
-    limit = paging.limit if paging else 200
-    offset = paging.offset if paging else 0
+    paging = body.query.paging or PagingSpec(limit=settings.tuples_default_limit, offset=0)
+    limit = paging.limit
+    offset = paging.offset
 
     start = time.perf_counter()
     sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
@@ -89,6 +101,8 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
             "duration_ms": round(duration_ms, 2),
             "row_count": len(rows),
             "total_count": total_count,
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 
@@ -125,6 +139,8 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
             "endpoint": "cells",
             "duration_ms": round(duration_ms, 2),
             "row_count": len(rows),
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 
@@ -138,14 +154,16 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
 async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
+    settings = get_settings()
     schema = datasets.get_schema(body.dataset_id)
     if schema is None:
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging
-    limit = paging.limit if paging else 100
-    offset = paging.offset if paging else 0
+    paging = paging or PagingSpec(limit=settings.picklist_default_limit, offset=0)
+    limit = paging.limit
+    offset = paging.offset
 
     start = time.perf_counter()
     sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
@@ -181,6 +199,8 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
             "duration_ms": round(duration_ms, 2),
             "row_count": len(rows),
             "total_count": total_count,
+            "queue_wait_ms": round(queue_wait_ms, 2),
+            "execution_ms": round(execution_ms, 2),
         },
     )
 

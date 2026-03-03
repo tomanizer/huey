@@ -187,6 +187,14 @@ class DuckDBManager:
             logger.exception("DuckDB health check failed")
             return False
 
+    def interrupt(self) -> None:
+        """Attempt to cancel in-flight queries on the shared connection."""
+        if self._conn is not None:
+            try:
+                self._conn.interrupt()
+            except Exception:
+                logger.exception("Failed to interrupt DuckDB query")
+
     @property
     def is_initialized(self) -> bool:
         """Return True when the DuckDB connection has been opened."""
