@@ -5,11 +5,19 @@ Builds partition paths per tech spec and provides a sample partition read
 using DuckDB with the httpfs extension.
 """
 
+import re
 from typing import Optional
 
-import duckdb
-
 from server.config import get_settings
+from server.engine import get_connection
+
+_AWS_REGION_RE = re.compile(r"^[a-z]{2}-[a-z]+-\d+$")
+
+
+def _validate_region(region: str) -> str:
+    if not _AWS_REGION_RE.match(region):
+        raise ValueError(f"Invalid AWS region format: {region}")
+    return region
 
 
 def build_partition_path(
@@ -44,12 +52,13 @@ def sample_partition_read(
         path = build_partition_path(bucket, dataset_id, date_str)
         pattern = f"{path}*.parquet"
 
-    conn = duckdb.connect(":memory:")
+    conn = get_connection()
     try:
         if path_override is None:
             conn.execute("INSTALL httpfs; LOAD httpfs;")
             if region:
-                conn.execute(f"SET s3_region='{region}';")
+                validated_region = _validate_region(region)
+                conn.execute(f"SET s3_region='{validated_region}';")
         rows = conn.execute(
             "SELECT count(*) FROM read_parquet(?)", [pattern]
         ).fetchone()

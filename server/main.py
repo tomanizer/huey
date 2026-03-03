@@ -9,8 +9,10 @@ import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from server.config import get_settings
+from server.engine import db_manager
 from server.routers import export, health, query, schema
 
 
@@ -32,7 +34,9 @@ logger = logging.getLogger("query_service")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("QueryService starting", extra={"host": settings.host, "port": settings.port})
+    db_manager.initialize()
     yield
+    db_manager.shutdown()
     logger.info("QueryService shutting down")
 
 
@@ -41,6 +45,14 @@ app = FastAPI(
     description="Huey OLAP query service for S3-backed parquet datasets",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8765", "http://127.0.0.1:8765", "http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
 )
 
 app.include_router(export.router)
