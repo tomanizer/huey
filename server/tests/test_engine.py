@@ -2,7 +2,7 @@
 
 import pytest
 
-from server.engine import DuckDBManager, db_manager, execute_sql, get_connection
+from server.engine import DuckDBManager, execute_sql, get_connection
 
 
 class TestDuckDBManager:

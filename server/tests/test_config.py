@@ -1,7 +1,5 @@
 """Unit tests for QueryService config."""
 
-import pytest
-
 from server.config import Settings, get_settings
 
 
