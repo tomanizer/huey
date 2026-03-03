@@ -276,3 +276,72 @@ class TestSchemaValidation:
     def test_missing_dataset_id_param(self, client: TestClient) -> None:
         r = client.get("/schema")
         assert r.status_code == 422
+
+
+class TestUnknownSchemaFields:
+    def test_unknown_tuples_field_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/tuples", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"fields": [{"field": "not_a_field"}]},
+        })
+        assert r.status_code == 422
+        body = r.json()
+        assert body["code"] == "VALIDATION_ERROR"
+        assert body["details"]["errors"][0]["loc"] == ["body", "query", "fields", 0, "field"]
+
+    def test_unknown_filter_field_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/tuples", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "fields": [{"field": "symbol"}],
+                "filters": [{"field": "not_a_field", "operator": "INCLUDE", "values": ["AAPL"]}],
+            },
+        })
+        assert r.status_code == 422
+        body = r.json()
+        assert body["code"] == "VALIDATION_ERROR"
+        assert body["details"]["errors"][0]["loc"] == ["body", "query", "filters", 0, "field"]
+
+    def test_unknown_cells_axis_or_measure_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/cells", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "axes": {
+                    "rows": [{"field": "not_a_field"}],
+                    "columns": [],
+                    "measures": [{"field": "also_not_a_field", "aggregation": "SUM", "alias": "bad"}],
+                },
+            },
+        })
+        assert r.status_code == 422
+        body = r.json()
+        assert body["code"] == "VALIDATION_ERROR"
+        assert len(body["details"]["errors"]) == 2
+
+    def test_unknown_picklist_field_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/picklist", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {"field": "not_a_field"},
+        })
+        assert r.status_code == 422
+        body = r.json()
+        assert body["code"] == "VALIDATION_ERROR"
+        assert body["details"]["errors"][0]["loc"] == ["body", "query", "field"]
+
+    def test_unknown_export_field_rejected(self, client: TestClient) -> None:
+        r = client.post("/export", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "format": "csv",
+                "axes": {"rows": [{"field": "not_a_field"}], "measures": []},
+            },
+        })
+        assert r.status_code == 422
+        body = r.json()
+        assert body["code"] == "VALIDATION_ERROR"
+        assert body["details"]["errors"][0]["loc"] == ["body", "query", "axes", "rows", 0, "field"]

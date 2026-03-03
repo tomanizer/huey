@@ -37,6 +37,18 @@ class AppError(Exception):
         super().__init__(message)
 
 
+class ValidationAppError(AppError):
+    """Raised for request validation failures outside Pydantic model parsing."""
+
+    def __init__(self, errors: list[dict[str, Any]]) -> None:
+        super().__init__(
+            code="VALIDATION_ERROR",
+            message="Request validation failed",
+            status_code=422,
+            details={"errors": errors},
+        )
+
+
 class DatasetNotFoundError(AppError):
     """Raised when a requested dataset_id is not registered in the service."""
 
@@ -130,6 +142,9 @@ class PartitionNotFoundError(AppError):
             message=f"Partitions not found for dataset {dataset_id}",
             status_code=404,
             details={"dataset_id": dataset_id, "dates": dates},
+        )
+
+
 class QueryTimeoutError(AppError):
     """Raised when a query exceeds the configured timeout budget."""
 
@@ -150,6 +165,18 @@ class QueryCancelledError(AppError):
             code="QUERY_CANCELLED",
             message="Query cancelled because the client disconnected",
             status_code=499,
+        )
+
+
+class CellsWindowTooLargeError(AppError):
+    """Raised when a /query/cells window request exceeds configured limits."""
+
+    def __init__(self, message: str, details: dict[str, Any]) -> None:
+        super().__init__(
+            code="CELLS_WINDOW_TOO_LARGE",
+            message=message,
+            status_code=400,
+            details=details,
         )
 
 

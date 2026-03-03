@@ -8,6 +8,7 @@ placeholders.
 
 from typing import Any
 
+from server.errors import ValidationAppError
 from server.models import (
     CellsQueryBody,
     DateRange,
@@ -20,6 +21,69 @@ from server.models import (
 )
 from server.relation_builder import build_base_relation
 from server.utils import quote_identifier as _quote
+
+
+def _unknown_field_error(loc: list[Any], field: str) -> dict[str, Any]:
+    return {
+        "loc": loc,
+        "msg": f"Unknown field: {field}",
+        "type": "value_error.unknown_field",
+    }
+
+
+def _raise_if_unknown(errors: list[dict[str, Any]]) -> None:
+    if errors:
+        raise ValidationAppError(errors)
+
+
+def validate_tuples_query_fields(query: TuplesQueryBody, schema_fields: set[str]) -> None:
+    errors: list[dict[str, Any]] = []
+    for idx, f in enumerate(query.fields or []):
+        if f.field not in schema_fields:
+            errors.append(_unknown_field_error(["body", "query", "fields", idx, "field"], f.field))
+    for idx, f in enumerate(query.filters or []):
+        if f.field not in schema_fields:
+            errors.append(_unknown_field_error(["body", "query", "filters", idx, "field"], f.field))
+    _raise_if_unknown(errors)
+
+
+def _validate_axes_fields(axes: dict[str, Any] | None, errors: list[dict[str, Any]], schema_fields: set[str]) -> None:
+    axis_names = ("rows", "columns", "measures")
+    axes_data = axes or {}
+    for axis_name in axis_names:
+        for idx, item in enumerate(axes_data.get(axis_name, [])):
+            if isinstance(item, dict) and isinstance(item.get("field"), str):
+                field_name = item["field"]
+                if field_name not in schema_fields:
+                    errors.append(_unknown_field_error(["body", "query", "axes", axis_name, idx, "field"], field_name))
+
+
+def _validate_filter_fields(filters: list[TupleFilter] | None, errors: list[dict[str, Any]], schema_fields: set[str]) -> None:
+    for idx, f in enumerate(filters or []):
+        if f.field not in schema_fields:
+            errors.append(_unknown_field_error(["body", "query", "filters", idx, "field"], f.field))
+
+
+def validate_cells_query_fields(query: CellsQueryBody, schema_fields: set[str]) -> None:
+    errors: list[dict[str, Any]] = []
+    _validate_axes_fields(query.axes, errors, schema_fields)
+    _validate_filter_fields(query.filters, errors, schema_fields)
+    _raise_if_unknown(errors)
+
+
+def validate_picklist_query_fields(query: PicklistQueryBody, schema_fields: set[str]) -> None:
+    errors: list[dict[str, Any]] = []
+    if query.field and query.field not in schema_fields:
+        errors.append(_unknown_field_error(["body", "query", "field"], query.field))
+    _validate_filter_fields(query.filters, errors, schema_fields)
+    _raise_if_unknown(errors)
+
+
+def validate_export_query_fields(query: ExportQueryBody, schema_fields: set[str]) -> None:
+    errors: list[dict[str, Any]] = []
+    _validate_axes_fields(query.axes, errors, schema_fields)
+    _validate_filter_fields(query.filters, errors, schema_fields)
+    _raise_if_unknown(errors)
 
 
 def _build_date_clause(date_range: DateRange, params: list[Any]) -> str:
@@ -44,8 +108,6 @@ def _build_filter_clauses(
         return []
     clauses = []
     for f in filters:
-        if f.field not in schema_fields:
-            continue
         col = _quote(f.field)
         if f.operator == "INCLUDE" and f.values:
             placeholders = ", ".join("?" for _ in f.values)
@@ -75,21 +137,20 @@ def build_tuples_sql(
 
     Returns (sql, params) for parameterized execution.
     """
+    validate_tuples_query_fields(query, schema_fields)
     fields = query.fields or []
     if not fields:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     select_cols = []
     for f in fields:
-        if f.field not in schema_fields:
-            continue
         select_cols.append(_quote(f.field))
     if not select_cols:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
-    required_columns = {f.field for f in fields if f.field in schema_fields}
+    required_columns = {f.field for f in fields}
     if query.filters:
-        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+        required_columns.update(f.field for f in query.filters)
     required_columns.add("date")
 
     base = build_base_relation(dataset_id, date_range, required_columns)
@@ -112,9 +173,8 @@ def build_tuples_sql(
 
     order_parts = []
     for f in fields:
-        if f.field in schema_fields:
-            col = _quote(f.field)
-            order_parts.append(f"{col} {f.sort or 'ASC'}")
+        col = _quote(f.field)
+        order_parts.append(f"{col} {f.sort or 'ASC'}")
     order_clause = (" ORDER BY " + ", ".join(order_parts)) if order_parts else ""
 
     paging = query.paging
@@ -138,14 +198,15 @@ def build_tuples_count_sql(
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """Generate a COUNT query for total_count in tuples response."""
+    validate_tuples_query_fields(query, schema_fields)
     fields = query.fields or []
-    select_cols = [_quote(f.field) for f in fields if f.field in schema_fields]
+    select_cols = [_quote(f.field) for f in fields]
     if not select_cols:
         return "SELECT 0", []
 
-    required_columns = {f.field for f in fields if f.field in schema_fields}
+    required_columns = {f.field for f in fields}
     if query.filters:
-        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+        required_columns.update(f.field for f in query.filters)
     required_columns.add("date")
 
     base = build_base_relation(dataset_id, date_range, required_columns)
@@ -179,10 +240,11 @@ def build_cells_sql(
 
     Returns (sql, params) for parameterized execution.
     """
+    validate_cells_query_fields(query, schema_fields)
     axes = query.axes or {}
 
-    row_fields = [f["field"] for f in axes.get("rows", []) if isinstance(f, dict) and f.get("field") in schema_fields]
-    col_fields = [f["field"] for f in axes.get("columns", []) if isinstance(f, dict) and f.get("field") in schema_fields]
+    row_fields = [f["field"] for f in axes.get("rows", []) if isinstance(f, dict) and isinstance(f.get("field"), str)]
+    col_fields = [f["field"] for f in axes.get("columns", []) if isinstance(f, dict) and isinstance(f.get("field"), str)]
     measures = axes.get("measures", [])
 
     dim_cols = [_quote(f) for f in row_fields + col_fields]
@@ -193,7 +255,7 @@ def build_cells_sql(
         field = m.get("field", "")
         agg = m.get("aggregation", "SUM").upper()
         alias = m.get("alias", f"{agg.lower()}_{field}")
-        if field not in schema_fields:
+        if not field:
             continue
         if agg in ("SUM", "COUNT", "AVG", "MIN", "MAX"):
             agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
@@ -202,9 +264,9 @@ def build_cells_sql(
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     required_columns = set(row_fields + col_fields)
-    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field") in schema_fields)
+    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field"))
     if query.filters:
-        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+        required_columns.update(f.field for f in query.filters)
     required_columns.add("date")
 
     base = build_base_relation(dataset_id, date_range, required_columns)
@@ -287,14 +349,15 @@ def build_picklist_sql(
 
     Returns (sql, params) for parameterized execution.
     """
+    validate_picklist_query_fields(query, schema_fields)
     field = query.field
-    if not field or field not in schema_fields:
+    if not field:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     col = _quote(field)
     required_columns = {field, "date"}
     if query.filters:
-        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+        required_columns.update(f.field for f in query.filters)
 
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
@@ -334,14 +397,15 @@ def build_picklist_count_sql(
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """Generate a COUNT query for total_count in picklist response."""
+    validate_picklist_query_fields(query, schema_fields)
     field = query.field
-    if not field or field not in schema_fields:
+    if not field:
         return "SELECT 0", []
 
     col = _quote(field)
     required_columns = {field, "date"}
     if query.filters:
-        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+        required_columns.update(f.field for f in query.filters)
 
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
@@ -378,18 +442,19 @@ def build_export_sql(
     Returns (sql, params, headers) where headers is the list of column names
     for the CSV header row.
     """
+    validate_export_query_fields(query, schema_fields)
     axes = query.axes or {}
     max_rows = query.max_rows
 
     row_fields = [
         f["field"]
         for f in axes.get("rows", [])
-        if isinstance(f, dict) and f.get("field") in schema_fields
+        if isinstance(f, dict) and isinstance(f.get("field"), str)
     ]
     col_fields = [
         f["field"]
         for f in axes.get("columns", [])
-        if isinstance(f, dict) and f.get("field") in schema_fields
+        if isinstance(f, dict) and isinstance(f.get("field"), str)
     ]
     measures = axes.get("measures", [])
 
@@ -403,16 +468,16 @@ def build_export_sql(
         field = m.get("field", "")
         agg = m.get("aggregation", "SUM").upper()
         alias = m.get("alias", f"{agg.lower()}_{field}")
-        if field not in schema_fields:
+        if not field:
             continue
         if agg in ("SUM", "COUNT", "AVG", "MIN", "MAX"):
             agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
             agg_headers.append(alias)
 
     required_columns = set(row_fields + col_fields)
-    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field") in schema_fields)
+    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field"))
     if query.filters:
-        required_columns.update(f.field for f in query.filters if f.field in schema_fields)
+        required_columns.update(f.field for f in query.filters)
     required_columns.add("date")
 
     base = build_base_relation(dataset_id, date_range, required_columns)
