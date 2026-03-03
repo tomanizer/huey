@@ -57,7 +57,7 @@ def build_cache_key(
     dataset_id: str,
     date_range: dict[str, Any],
     query_payload: dict[str, Any],
-    data_token: Any | None = None,
+    data_version_token: Any | None = None,
     config_token: dict[str, Any] | None = None,
 ) -> str:
     """
@@ -71,7 +71,7 @@ def build_cache_key(
         "date_range": _canonicalize(date_range),
         "query": _canonicalize(query_payload),
         "config_token": config_token or _config_identity(),
-        "data_token": data_token,
+        "data_version_token": data_version_token,
     }
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 

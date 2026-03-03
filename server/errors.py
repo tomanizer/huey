@@ -130,6 +130,21 @@ class PartitionNotFoundError(AppError):
             message=f"Partitions not found for dataset {dataset_id}",
             status_code=404,
             details={"dataset_id": dataset_id, "dates": dates},
+        )
+
+
+class CellsWindowTooLargeError(AppError):
+    """Raised when a requested cells window exceeds configured limits."""
+
+    def __init__(self, message: str, details: dict[str, Any]) -> None:
+        super().__init__(
+            code="CELLS_WINDOW_TOO_LARGE",
+            message=message,
+            status_code=400,
+            details=details,
+        )
+
+
 class QueryTimeoutError(AppError):
     """Raised when a query exceeds the configured timeout budget."""
 
