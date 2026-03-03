@@ -5,7 +5,7 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from server import datasets
 from server.auth import require_api_key
@@ -48,7 +48,7 @@ def _apply_client_request_id(body, request: Request) -> None:
 
 @router.post("/tuples", response_model=TuplesResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
+async def post_query_tuples(body: QueryTuplesRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
     queue_wait_ms = 0.0
@@ -145,7 +145,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
 
 @router.post("/cells", response_model=CellsResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: str = Depends(require_api_key)) -> CellsResponse:
+async def post_query_cells(body: QueryCellsRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
     queue_wait_ms = 0.0
@@ -249,7 +249,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
 
 @router.post("/picklist", response_model=PicklistResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
+async def post_query_picklist(body: QueryPicklistRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
     queue_wait_ms = 0.0
