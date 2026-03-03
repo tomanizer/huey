@@ -389,8 +389,11 @@ class CellSet extends DataSetComponent {
   #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount){
     var cells = apiResponse.cells || [];
     var colCount = columnCount || 1;
-    var measureAliases = (cellsAxisItemsToFetch || []).map(function(item) { return item.columnName; });
-    var fields = [{ name: CellSet.#cellIndexColumnName }].concat(measureAliases.map(function(a) { return { name: a }; }));
+    var items = cellsAxisItemsToFetch || [];
+    // Use same key as pivot: getSqlForQueryAxisItem (e.g. "sum(volume)") so cell.values[sqlExpression] finds the value
+    var fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map(function(item) {
+      return { name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName) };
+    }));
     var numRows = cells.length;
     var get = function(i) {
       var c = cells[i];
@@ -398,7 +401,11 @@ class CellSet extends DataSetComponent {
       var row = {};
       row[CellSet.#cellIndexColumnName] = (c.row_index || 0) * colCount + (c.column_index || 0);
       var vals = c.values || {};
-      measureAliases.forEach(function(a) { row[a] = vals[a]; });
+      items.forEach(function(item) {
+        var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
+        // API returns values keyed by alias (we send alias: item.columnName), so read by columnName
+        row[sqlExpression] = vals[item.columnName];
+      });
       return row;
     };
     return { numRows: numRows, schema: { fields: fields }, get: get };
