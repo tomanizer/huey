@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     # Query execution
     execution_mode: str = "sample_table"  # "sample_table" | "parquet_partitioned"
     partition_base_path: str | None = None
+
     @property
     def api_key_list(self) -> list[str]:
         if not self.api_keys:
