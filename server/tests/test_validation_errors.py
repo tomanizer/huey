@@ -236,6 +236,40 @@ class TestPagingValidation:
         assert r.status_code == 422
 
 
+class TestAxesValidation:
+    """Typed axes model validation — invalid aggregation rejected at parse time."""
+
+    def test_invalid_aggregation_in_cells_rejected(self, client: TestClient) -> None:
+        r = client.post("/query/cells", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "axes": {
+                    "rows": [{"field": "symbol"}],
+                    "measures": [{"field": "volume", "aggregation": "INVALID"}],
+                },
+            },
+        })
+        assert r.status_code == 422
+        body = r.json()
+        assert body["code"] == "VALIDATION_ERROR"
+
+    def test_invalid_aggregation_in_export_rejected(self, client: TestClient) -> None:
+        r = client.post("/export", json={
+            "dataset_id": "trades_v1",
+            "date_range": {"type": "single", "date": "2026-03-01"},
+            "query": {
+                "axes": {
+                    "rows": [{"field": "symbol"}],
+                    "measures": [{"field": "volume", "aggregation": "MEDIAN"}],
+                },
+            },
+        })
+        assert r.status_code == 422
+        body = r.json()
+        assert body["code"] == "VALIDATION_ERROR"
+
+
 class TestExportValidation:
     """Export-specific field validation."""
 

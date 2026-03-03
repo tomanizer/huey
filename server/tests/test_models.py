@@ -4,11 +4,14 @@ import pytest
 from pydantic import ValidationError
 
 from server.models import (
+    AxesSpec,
+    AxisField,
     CellsQueryBody,
     DateRangeRange,
     DateRangeSingle,
     ExportQueryBody,
     ExportRequest,
+    MeasureSpec,
     PagingResponse,
     PagingSpec,
     PicklistQueryBody,
@@ -252,6 +255,63 @@ class TestExportRequest:
         )
         assert req.query.max_rows == 10000
         assert req.query.format == "parquet"
+
+
+class TestAxesModels:
+    def test_axis_field_valid(self) -> None:
+        af = AxisField(field="symbol")
+        assert af.field == "symbol"
+
+    def test_axis_field_missing_field_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            AxisField()
+
+    def test_measure_spec_defaults(self) -> None:
+        m = MeasureSpec(field="volume")
+        assert m.aggregation == "SUM"
+        assert m.alias is None
+
+    def test_measure_spec_all_aggregations(self) -> None:
+        for agg in ("SUM", "COUNT", "AVG", "MIN", "MAX"):
+            m = MeasureSpec(field="volume", aggregation=agg)
+            assert m.aggregation == agg
+
+    def test_measure_spec_invalid_aggregation_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            MeasureSpec(field="volume", aggregation="INVALID")
+
+    def test_measure_spec_with_alias(self) -> None:
+        m = MeasureSpec(field="volume", aggregation="SUM", alias="vol")
+        assert m.alias == "vol"
+
+    def test_axes_spec_defaults(self) -> None:
+        axes = AxesSpec()
+        assert axes.rows == []
+        assert axes.columns == []
+        assert axes.measures == []
+
+    def test_axes_spec_from_dict(self) -> None:
+        axes = AxesSpec(
+            rows=[{"field": "symbol"}],
+            columns=[],
+            measures=[{"field": "volume", "aggregation": "SUM", "alias": "v"}],
+        )
+        assert len(axes.rows) == 1
+        assert isinstance(axes.rows[0], AxisField)
+        assert axes.rows[0].field == "symbol"
+        assert isinstance(axes.measures[0], MeasureSpec)
+        assert axes.measures[0].alias == "v"
+
+    def test_cells_query_body_axes_coerced(self) -> None:
+        body = CellsQueryBody(axes={"rows": [{"field": "symbol"}], "measures": [{"field": "volume"}]})
+        assert isinstance(body.axes, AxesSpec)
+        assert body.axes.rows[0].field == "symbol"
+        assert body.axes.measures[0].aggregation == "SUM"
+
+    def test_export_query_body_axes_coerced(self) -> None:
+        body = ExportQueryBody(axes={"rows": [{"field": "date"}], "measures": [{"field": "volume", "aggregation": "COUNT"}]})
+        assert isinstance(body.axes, AxesSpec)
+        assert body.axes.measures[0].aggregation == "COUNT"
 
 
 class TestPagingModels:

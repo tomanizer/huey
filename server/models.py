@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
 SortDirection = Literal["ASC", "DESC"]
 ExportFormat = Literal["parquet", "csv"]
+AggregationFunction = Literal["SUM", "COUNT", "AVG", "MIN", "MAX"]
 
 MAX_PAGE_LIMIT = 10000
 MAX_EXPORT_ROWS = 100000
@@ -119,6 +120,29 @@ class PagingResponse(BaseModel):
     returned: int
 
 
+# --- Axes models ---
+class AxisField(BaseModel):
+    """A dimension field referenced in a cells or export query axis."""
+
+    field: str
+
+
+class MeasureSpec(BaseModel):
+    """An aggregated measure with a required aggregation function and optional alias."""
+
+    field: str
+    aggregation: AggregationFunction = "SUM"
+    alias: str | None = None
+
+
+class AxesSpec(BaseModel):
+    """Typed axes specification grouping row dimensions, column dimensions, and measures."""
+
+    rows: list[AxisField] = Field(default_factory=list)
+    columns: list[AxisField] = Field(default_factory=list)
+    measures: list[MeasureSpec] = Field(default_factory=list)
+
+
 # --- Typed query bodies ---
 class TuplesQueryBody(BaseModel):
     """Body for /query/tuples supporting optional fields, filters, and paging."""
@@ -134,7 +158,7 @@ class CellsQueryBody(BaseModel):
 
     rows: WindowSpec | None = None  # virtualized row window (start/count)
     columns: WindowSpec | None = None  # virtualized column window (start/count)
-    axes: dict[str, Any] | None = None
+    axes: AxesSpec | None = None
     filters: list[TupleFilter] | None = None
 
 
@@ -151,7 +175,7 @@ class ExportQueryBody(BaseModel):
     """Body for /export, describing export format, filters, and bounds."""
 
     export_type: str | None = None
-    axes: dict[str, Any] | None = None
+    axes: AxesSpec | None = None
     filters: list[TupleFilter] | None = None
     max_rows: int = Field(default=10000, ge=1, le=MAX_EXPORT_ROWS)
     format: ExportFormat = "parquet"
