@@ -72,3 +72,44 @@ def test_validate_date_range_empty_or_not_dict() -> None:
     assert err2 == "Invalid date_range"
     _, err3 = validate_date_range([])
     assert err3 == "Invalid date_range"
+
+
+def test_validate_date_range_integer_input() -> None:
+    """Non-dict integer input returns error."""
+    _, err = validate_date_range(42)
+    assert err == "Invalid date_range"
+
+
+def test_validate_date_range_string_input() -> None:
+    """Bare string input returns error."""
+    _, err = validate_date_range("2026-03-01")
+    assert err == "Invalid date_range"
+
+
+def test_validate_date_range_boundary_dates() -> None:
+    """Regex-valid boundary dates pass (no calendar validation)."""
+    date_str, err = validate_date_range({"type": "single", "date": "2024-02-29"})
+    assert date_str == "2024-02-29"
+    assert err is None
+    date_str2, err2 = validate_date_range({"type": "single", "date": "9999-12-31"})
+    assert date_str2 == "9999-12-31"
+    assert err2 is None
+
+
+def test_validate_date_range_extra_fields_ignored() -> None:
+    """Extra fields in the dict are ignored."""
+    date_str, err = validate_date_range({"type": "single", "date": "2026-03-01", "extra": "ignored"})
+    assert date_str == "2026-03-01"
+    assert err is None
+
+
+def test_validate_date_range_range_missing_both() -> None:
+    """Range type with neither start nor end returns error."""
+    _, err = validate_date_range({"type": "range"})
+    assert err == "Invalid range start (use YYYY-MM-DD)"
+
+
+def test_validate_date_range_single_with_numeric_date() -> None:
+    """Single date with numeric value returns error."""
+    _, err = validate_date_range({"type": "single", "date": 20260301})
+    assert err == "Invalid date (use YYYY-MM-DD)"

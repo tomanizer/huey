@@ -5,15 +5,7 @@ Exercises schema → query (tuples, cells, picklist) → export in sequence
 using the default dataset config (no S3 required).
 """
 
-import pytest
 from fastapi.testclient import TestClient
-
-from server.main import app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 def test_full_api_flow(client: TestClient) -> None:
