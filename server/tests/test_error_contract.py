@@ -11,6 +11,7 @@ from starlette.testclient import TestClient
 from server.errors import (
     AppError,
     DatasetNotFoundError,
+    DatasetUnavailableError,
     ExportFileNotFoundError,
     ExportNotFoundError,
     ExportNotReadyError,
@@ -123,6 +124,56 @@ class TestErrorResponseSchema:
         assert body["code"] == "TOO_MANY_EXPORTS"
         assert body["details"]["max_concurrent"] == 5
 
+    @pytest.mark.parametrize("endpoint", ["/query/tuples", "/query/cells", "/query/picklist"])
+    def test_query_409_dataset_unavailable_envelope(self, client: TestClient, endpoint: str, monkeypatch) -> None:
+        import server.routers.query as query_router
+
+        monkeypatch.setattr(
+            query_router.datasets,
+            "get_schema",
+            lambda dataset_id: {"dataset_id": dataset_id, "fields": [{"name": "symbol"}, {"name": "date"}]},
+        )
+        monkeypatch.setattr(
+            query_router.datasets,
+            "get_schema_field_names",
+            lambda _dataset_id: {"symbol", "date", "volume"},
+        )
+
+        body = _query_body(dataset_id="not_materialized_ds")
+        if endpoint == "/query/tuples":
+            body["query"] = {"fields": [{"field": "symbol"}]}
+        elif endpoint == "/query/picklist":
+            body["query"] = {"field": "symbol"}
+        else:
+            body["query"] = {
+                "axes": {
+                    "rows": [{"field": "symbol"}],
+                    "columns": [],
+                    "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
+                },
+            }
+
+        r = client.post(endpoint, json=body)
+        assert r.status_code == 409
+        payload = r.json()
+        assert payload["code"] == "DATASET_UNAVAILABLE"
+        assert payload["details"]["dataset_id"] == "not_materialized_ds"
+
+    def test_export_post_409_dataset_unavailable_envelope(self, client: TestClient, monkeypatch) -> None:
+        import server.routers.export as export_router
+
+        monkeypatch.setattr(
+            export_router.datasets,
+            "get_schema",
+            lambda dataset_id: {"dataset_id": dataset_id, "fields": [{"name": "symbol"}]},
+        )
+        monkeypatch.setattr(export_router.db_manager, "table_exists", lambda _dataset_id: False)
+        r = client.post("/export", json=_export_body(dataset_id="not_materialized_ds"))
+        assert r.status_code == 409
+        payload = r.json()
+        assert payload["code"] == "DATASET_UNAVAILABLE"
+        assert payload["details"]["dataset_id"] == "not_materialized_ds"
+
 
 class TestValidationErrorEnvelope:
     """422 validation errors wrap Pydantic details in standard envelope."""
@@ -203,6 +254,12 @@ class TestDomainExceptions:
         err = DatasetNotFoundError("ds1")
         assert err.code == "DATASET_NOT_FOUND"
         assert err.status_code == 404
+        assert err.details["dataset_id"] == "ds1"
+
+    def test_dataset_unavailable(self) -> None:
+        err = DatasetUnavailableError("ds1")
+        assert err.code == "DATASET_UNAVAILABLE"
+        assert err.status_code == 409
         assert err.details["dataset_id"] == "ds1"
 
     def test_export_not_found(self) -> None:
