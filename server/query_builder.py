@@ -10,6 +10,7 @@ from typing import Any
 
 from server.errors import ValidationAppError
 from server.models import (
+    AxesSpec,
     CellsQueryBody,
     DateRange,
     DateRangeRange,
@@ -48,23 +49,21 @@ def validate_tuples_query_fields(query: TuplesQueryBody, schema_fields: set[str]
 
 
 def _validate_axes_fields(
-    axes: dict[str, Any] | None,
+    axes: AxesSpec | None,
     errors: list[dict[str, Any]],
     schema_fields: set[str],
 ) -> None:
-    axis_names = ("rows", "columns", "measures")
-    axes_data = axes or {}
-    for axis_name in axis_names:
-        for idx, item in enumerate(axes_data.get(axis_name, [])):
-            if isinstance(item, dict) and isinstance(item.get("field"), str):
-                field_name = item["field"]
-                if field_name not in schema_fields:
-                    errors.append(
-                        _unknown_field_error(
-                            ["body", "query", "axes", axis_name, idx, "field"],
-                            field_name,
-                        )
+    if axes is None:
+        return
+    for axis_name, items in (("rows", axes.rows), ("columns", axes.columns), ("measures", axes.measures)):
+        for idx, item in enumerate(items):
+            if item.field not in schema_fields:
+                errors.append(
+                    _unknown_field_error(
+                        ["body", "query", "axes", axis_name, idx, "field"],
+                        item.field,
                     )
+                )
 
 
 def _validate_filter_fields(
@@ -254,30 +253,25 @@ def build_cells_sql(
     Returns (sql, params) for parameterized execution.
     """
     validate_cells_query_fields(query, schema_fields)
-    axes = query.axes or {}
+    axes = query.axes
 
-    row_fields = [f["field"] for f in axes.get("rows", []) if isinstance(f, dict) and isinstance(f.get("field"), str)]
-    col_fields = [f["field"] for f in axes.get("columns", []) if isinstance(f, dict) and isinstance(f.get("field"), str)]
-    measures = axes.get("measures", [])
+    row_fields = [f.field for f in (axes.rows if axes else [])]
+    col_fields = [f.field for f in (axes.columns if axes else [])]
+    measures = axes.measures if axes else []
 
     dim_cols = [_quote(f) for f in row_fields + col_fields]
     agg_exprs = []
     for m in measures:
-        if not isinstance(m, dict):
-            continue
-        field = m.get("field", "")
-        agg = m.get("aggregation", "SUM").upper()
-        alias = m.get("alias", f"{agg.lower()}_{field}")
-        if not field:
-            continue
-        if agg in ("SUM", "COUNT", "AVG", "MIN", "MAX"):
-            agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
+        field = m.field
+        agg = m.aggregation.upper()
+        alias = m.alias or f"{agg.lower()}_{field}"
+        agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
 
     if not dim_cols and not agg_exprs:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     required_columns = set(row_fields + col_fields)
-    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field"))
+    required_columns.update(m.field for m in measures)
     if query.filters:
         required_columns.update(f.field for f in query.filters)
     required_columns.add("date")
@@ -476,39 +470,26 @@ def build_export_sql(
     for the CSV header row.
     """
     validate_export_query_fields(query, schema_fields)
-    axes = query.axes or {}
+    axes = query.axes
     max_rows = query.max_rows
 
-    row_fields = [
-        f["field"]
-        for f in axes.get("rows", [])
-        if isinstance(f, dict) and isinstance(f.get("field"), str)
-    ]
-    col_fields = [
-        f["field"]
-        for f in axes.get("columns", [])
-        if isinstance(f, dict) and isinstance(f.get("field"), str)
-    ]
-    measures = axes.get("measures", [])
+    row_fields = [f.field for f in (axes.rows if axes else [])]
+    col_fields = [f.field for f in (axes.columns if axes else [])]
+    measures = axes.measures if axes else []
 
     dim_cols = [_quote(f) for f in row_fields + col_fields]
     dim_headers = row_fields + col_fields
     agg_exprs = []
     agg_headers: list[str] = []
     for m in measures:
-        if not isinstance(m, dict):
-            continue
-        field = m.get("field", "")
-        agg = m.get("aggregation", "SUM").upper()
-        alias = m.get("alias", f"{agg.lower()}_{field}")
-        if not field:
-            continue
-        if agg in ("SUM", "COUNT", "AVG", "MIN", "MAX"):
-            agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
-            agg_headers.append(alias)
+        field = m.field
+        agg = m.aggregation.upper()
+        alias = m.alias or f"{agg.lower()}_{field}"
+        agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
+        agg_headers.append(alias)
 
     required_columns = set(row_fields + col_fields)
-    required_columns.update(m.get("field", "") for m in measures if isinstance(m, dict) and m.get("field"))
+    required_columns.update(m.field for m in measures)
     if query.filters:
         required_columns.update(f.field for f in query.filters)
     required_columns.add("date")
