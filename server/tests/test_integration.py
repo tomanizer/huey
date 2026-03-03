@@ -86,11 +86,11 @@ def test_full_api_flow(client: TestClient) -> None:
     assert data["status"] == "pending"
     export_id = data["export_id"]
 
-    # 6. Export status
+    # 6. Export status (background task may have completed already)
     r_export_get = client.get(f"/export/{export_id}")
     assert r_export_get.status_code == 200
     assert r_export_get.json()["export_id"] == export_id
-    assert r_export_get.json()["status"] == "pending"
+    assert r_export_get.json()["status"] in ("pending", "processing", "complete")
 
 
 def test_health_then_schema(client: TestClient) -> None:
