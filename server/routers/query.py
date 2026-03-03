@@ -7,23 +7,24 @@ from fastapi import APIRouter, HTTPException
 from server import datasets
 from server.models import (
     CellsResponse,
+    DateRangeRange,
+    DateRangeSingle,
+    PagingResponse,
     PicklistResponse,
     QueryCellsRequest,
     QueryPicklistRequest,
     QueryTuplesRequest,
     TuplesResponse,
 )
-from server.validators import validate_date_range
 
 router = APIRouter(prefix="/query", tags=["query"])
 
 
-def _get_date_from_range(date_range: dict) -> str | None:
-    """Extract a single date for partition path (single day or range start)."""
-    if not date_range:
-        return None
-    date_str, _ = validate_date_range(date_range)
-    return date_str
+def _get_date_str(date_range: DateRangeSingle | DateRangeRange) -> str:
+    """Extract a single date string for partition path."""
+    if isinstance(date_range, DateRangeSingle):
+        return date_range.date
+    return date_range.start
 
 
 @router.post("/tuples", response_model=TuplesResponse)
@@ -32,26 +33,18 @@ def post_query_tuples(body: QueryTuplesRequest) -> TuplesResponse:
     POST /query/tuples: fetch row or column headers (tuples) for one axis.
     Basic implementation: validates request, returns empty result or stub.
     """
-    dataset_id = body.dataset_id
-    schema = datasets.get_schema(dataset_id)
+    schema = datasets.get_schema(body.dataset_id)
     if schema is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {dataset_id}")
+        raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
 
-    date_range = body.date_range
-    date_str, err = validate_date_range(date_range or {})
-    if err:
-        raise HTTPException(status_code=400, detail=err)
+    paging = body.query.paging
+    limit = paging.limit if paging else 200
+    offset = paging.offset if paging else 0
 
-    query = body.query or {}
-    paging = query.get("paging") or {}
-    limit = paging.get("limit", 200)
-    offset = paging.get("offset", 0)
-
-    # Basic: return empty tuple set; real engine wiring in later iterations
     return TuplesResponse(
         total_count=0,
         items=[],
-        paging={"limit": limit, "offset": offset, "returned": 0},
+        paging=PagingResponse(limit=limit, offset=offset, returned=0),
     )
 
 
@@ -61,14 +54,9 @@ def post_query_cells(body: QueryCellsRequest) -> CellsResponse:
     POST /query/cells: fetch cell values for a window of row/column tuples.
     Basic implementation: validates request, returns empty cells.
     """
-    dataset_id = body.dataset_id
-    schema = datasets.get_schema(dataset_id)
+    schema = datasets.get_schema(body.dataset_id)
     if schema is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {dataset_id}")
-
-    date_str, err = validate_date_range(body.date_range or {})
-    if err:
-        raise HTTPException(status_code=400, detail=err)
+        raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
 
     return CellsResponse(cells=[])
 
@@ -79,22 +67,16 @@ def post_query_picklist(body: QueryPicklistRequest) -> PicklistResponse:
     POST /query/picklist: fetch distinct values for a field (filter UI).
     Basic implementation: validates request, returns empty values.
     """
-    dataset_id = body.dataset_id
-    schema = datasets.get_schema(dataset_id)
+    schema = datasets.get_schema(body.dataset_id)
     if schema is None:
-        raise HTTPException(status_code=404, detail=f"Dataset not found: {dataset_id}")
+        raise HTTPException(status_code=404, detail=f"Dataset not found: {body.dataset_id}")
 
-    date_str, err = validate_date_range(body.date_range or {})
-    if err:
-        raise HTTPException(status_code=400, detail=err)
-
-    query = body.query or {}
-    paging = query.get("paging") or {}
-    limit = paging.get("limit", 100)
-    offset = paging.get("offset", 0)
+    paging = body.query.paging
+    limit = paging.limit if paging else 100
+    offset = paging.offset if paging else 0
 
     return PicklistResponse(
         total_count=0,
         values=[],
-        paging={"limit": limit, "offset": offset, "returned": 0},
+        paging=PagingResponse(limit=limit, offset=offset, returned=0),
     )

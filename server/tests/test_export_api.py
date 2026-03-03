@@ -43,7 +43,7 @@ def test_get_export_not_found(client: TestClient) -> None:
 
 
 def test_post_export_bad_date_range(client: TestClient) -> None:
-    """POST /export with invalid date_range returns 400."""
+    """POST /export with inverted date range returns 422."""
     body = {"dataset_id": "trades_v1", "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-01-01"}, "query": {}}
     r = client.post("/export", json=body)
-    assert r.status_code == 400
+    assert r.status_code == 422

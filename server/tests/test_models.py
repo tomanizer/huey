@@ -1,0 +1,154 @@
+"""Unit tests for typed Pydantic request/response models."""
+
+import pytest
+from pydantic import ValidationError
+
+from server.models import (
+    CellsQueryBody,
+    DateRangeRange,
+    DateRangeSingle,
+    ExportQueryBody,
+    ExportRequest,
+    PagingResponse,
+    PagingSpec,
+    PicklistQueryBody,
+    QueryCellsRequest,
+    QueryPicklistRequest,
+    QueryTuplesRequest,
+    TuplesQueryBody,
+)
+
+
+class TestDateRangeSingle:
+    def test_valid(self) -> None:
+        dr = DateRangeSingle(type="single", date="2026-03-01")
+        assert dr.date == "2026-03-01"
+
+    def test_bad_format(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeSingle(type="single", date="03-01-2026")
+
+    def test_empty_date(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeSingle(type="single", date="")
+
+    def test_wrong_type_literal(self) -> None:
+        with pytest.raises(ValidationError):
+            DateRangeSingle(type="range", date="2026-03-01")
+
+
+class TestDateRangeRange:
+    def test_valid(self) -> None:
+        dr = DateRangeRange(type="range", start="2026-01-01", end="2026-03-01")
+        assert dr.start == "2026-01-01"
+        assert dr.end == "2026-03-01"
+
+    def test_equal_dates(self) -> None:
+        dr = DateRangeRange(type="range", start="2026-03-01", end="2026-03-01")
+        assert dr.start == dr.end
+
+    def test_start_after_end(self) -> None:
+        with pytest.raises(ValidationError, match="start must be <= end"):
+            DateRangeRange(type="range", start="2026-12-01", end="2026-01-01")
+
+    def test_bad_start_format(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeRange(type="range", start="bad", end="2026-03-01")
+
+    def test_bad_end_format(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeRange(type="range", start="2026-01-01", end="bad")
+
+
+class TestQueryTuplesRequest:
+    def test_valid_full(self) -> None:
+        req = QueryTuplesRequest(
+            dataset_id="trades_v1",
+            date_range={"type": "single", "date": "2026-03-01"},
+            query={"axis": "rows", "fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        )
+        assert req.dataset_id == "trades_v1"
+        assert isinstance(req.date_range, DateRangeSingle)
+        assert isinstance(req.query, TuplesQueryBody)
+        assert req.query.axis == "rows"
+        assert req.query.paging.limit == 10
+
+    def test_empty_query(self) -> None:
+        req = QueryTuplesRequest(
+            dataset_id="trades_v1",
+            date_range={"type": "single", "date": "2026-03-01"},
+            query={},
+        )
+        assert req.query.axis is None
+        assert req.query.paging is None
+
+    def test_default_query(self) -> None:
+        req = QueryTuplesRequest(
+            dataset_id="trades_v1",
+            date_range={"type": "single", "date": "2026-03-01"},
+        )
+        assert req.query.axis is None
+
+    def test_missing_date_range(self) -> None:
+        with pytest.raises(ValidationError):
+            QueryTuplesRequest(dataset_id="trades_v1", query={})
+
+
+class TestQueryCellsRequest:
+    def test_valid_full(self) -> None:
+        req = QueryCellsRequest(
+            dataset_id="trades_v1",
+            date_range={"type": "range", "start": "2026-01-01", "end": "2026-03-01"},
+            query={
+                "rows": {"start_index": 0, "count": 10},
+                "columns": {"start_index": 0, "count": 5},
+                "axes": {"rows": [], "columns": [], "measures": []},
+                "filters": [],
+            },
+        )
+        assert isinstance(req.query, CellsQueryBody)
+        assert req.query.rows == {"start_index": 0, "count": 10}
+
+
+class TestQueryPicklistRequest:
+    def test_valid_full(self) -> None:
+        req = QueryPicklistRequest(
+            dataset_id="trades_v1",
+            date_range={"type": "single", "date": "2026-03-01"},
+            query={"field": "symbol", "search": "AA*", "filters": [], "paging": {"limit": 50, "offset": 0}},
+        )
+        assert isinstance(req.query, PicklistQueryBody)
+        assert req.query.field == "symbol"
+        assert req.query.search == "AA*"
+        assert req.query.paging.limit == 50
+
+
+class TestExportRequest:
+    def test_valid_full(self) -> None:
+        req = ExportRequest(
+            dataset_id="trades_v1",
+            date_range={"type": "single", "date": "2026-03-01"},
+            query={"export_type": "pivot_results", "axes": {}, "filters": [], "max_rows": 1000, "format": "csv"},
+        )
+        assert isinstance(req.query, ExportQueryBody)
+        assert req.query.export_type == "pivot_results"
+        assert req.query.max_rows == 1000
+
+    def test_defaults(self) -> None:
+        req = ExportRequest(
+            dataset_id="trades_v1",
+            date_range={"type": "single", "date": "2026-03-01"},
+        )
+        assert req.query.max_rows == 10000
+        assert req.query.format == "csv"
+
+
+class TestPagingModels:
+    def test_paging_spec_defaults(self) -> None:
+        ps = PagingSpec()
+        assert ps.limit == 100
+        assert ps.offset == 0
+
+    def test_paging_response(self) -> None:
+        pr = PagingResponse(limit=10, offset=5, returned=3)
+        assert pr.returned == 3

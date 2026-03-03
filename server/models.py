@@ -2,21 +2,50 @@
 Request/response models for QueryService API (tech spec).
 """
 
-from typing import Any, Optional
+import re
+from typing import Annotated, Any, Literal, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 # --- Date range (envelope) ---
 class DateRangeSingle(BaseModel):
-    type: str = "single"
+    type: Literal["single"]
     date: str
+
+    @field_validator("date")
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
+        if not _DATE_RE.match(v):
+            raise ValueError("Invalid date format, use YYYY-MM-DD")
+        return v
 
 
 class DateRangeRange(BaseModel):
-    type: str = "range"
+    type: Literal["range"]
     start: str
     end: str
+
+    @field_validator("start", "end")
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
+        if not _DATE_RE.match(v):
+            raise ValueError("Invalid date format, use YYYY-MM-DD")
+        return v
+
+    @model_validator(mode="after")
+    def check_start_before_end(self) -> "DateRangeRange":
+        if self.start > self.end:
+            raise ValueError("Date range start must be <= end")
+        return self
+
+
+DateRange = Annotated[
+    Union[DateRangeSingle, DateRangeRange],
+    Field(discriminator="type"),
+]
 
 
 # --- Common envelope ---
@@ -26,16 +55,7 @@ class ClientContext(BaseModel):
     huey_version: Optional[str] = None
 
 
-class QueryTuplesRequest(BaseModel):
-    """POST /query/tuples body (envelope)."""
-
-    dataset_id: str
-    date_range: dict[str, Any]  # single: {type, date} | range: {type, start, end}
-    query: dict[str, Any]  # axis, fields, filters, paging
-    client_context: Optional[ClientContext] = None
-
-
-# --- Tuples query (inside query field) ---
+# --- Shared query components ---
 class TupleFieldSpec(BaseModel):
     field: str
     derivation: Optional[str] = None
@@ -54,7 +74,80 @@ class PagingSpec(BaseModel):
     offset: int = 0
 
 
-# --- Tuples response ---
+class PagingResponse(BaseModel):
+    limit: int
+    offset: int
+    returned: int
+
+
+# --- Typed query bodies ---
+class TuplesQueryBody(BaseModel):
+    axis: Optional[str] = None
+    fields: Optional[list[TupleFieldSpec]] = None
+    filters: Optional[list[TupleFilter]] = None
+    paging: Optional[PagingSpec] = None
+
+
+class CellsQueryBody(BaseModel):
+    rows: Optional[dict[str, int]] = None
+    columns: Optional[dict[str, int]] = None
+    axes: Optional[dict[str, Any]] = None
+    filters: Optional[list[TupleFilter]] = None
+
+
+class PicklistQueryBody(BaseModel):
+    field: Optional[str] = None
+    search: Optional[str] = ""
+    filters: Optional[list[TupleFilter]] = None
+    paging: Optional[PagingSpec] = None
+
+
+class ExportQueryBody(BaseModel):
+    export_type: Optional[str] = None
+    axes: Optional[dict[str, Any]] = None
+    filters: Optional[list[TupleFilter]] = None
+    max_rows: Optional[int] = 10000
+    format: Optional[str] = "csv"
+
+
+# --- Request models ---
+class QueryTuplesRequest(BaseModel):
+    """POST /query/tuples body (envelope)."""
+
+    dataset_id: str
+    date_range: DateRange
+    query: TuplesQueryBody = TuplesQueryBody()
+    client_context: Optional[ClientContext] = None
+
+
+class QueryCellsRequest(BaseModel):
+    """POST /query/cells body (envelope)."""
+
+    dataset_id: str
+    date_range: DateRange
+    query: CellsQueryBody = CellsQueryBody()
+    client_context: Optional[ClientContext] = None
+
+
+class QueryPicklistRequest(BaseModel):
+    """POST /query/picklist body (envelope)."""
+
+    dataset_id: str
+    date_range: DateRange
+    query: PicklistQueryBody = PicklistQueryBody()
+    client_context: Optional[ClientContext] = None
+
+
+class ExportRequest(BaseModel):
+    """POST /export body (envelope)."""
+
+    dataset_id: str
+    date_range: DateRange
+    query: ExportQueryBody = ExportQueryBody()
+    client_context: Optional[ClientContext] = None
+
+
+# --- Response models ---
 class TupleItem(BaseModel):
     values: list[Any]
     grouping_id: Optional[int] = None
@@ -63,52 +156,22 @@ class TupleItem(BaseModel):
 class TuplesResponse(BaseModel):
     total_count: int
     items: list[TupleItem]
-    paging: dict[str, int]  # limit, offset, returned
-
-
-# --- Cells (POST /query/cells) ---
-class QueryCellsRequest(BaseModel):
-    """POST /query/cells body (envelope)."""
-
-    dataset_id: str
-    date_range: dict[str, Any]
-    query: dict[str, Any]  # rows, columns, axes, filters
-    client_context: Optional[ClientContext] = None
+    paging: PagingResponse
 
 
 class CellsResponse(BaseModel):
-    cells: list[dict[str, Any]]  # [{row_index, column_index, values: {alias: value}}]
-
-
-# --- Picklist (POST /query/picklist) ---
-class QueryPicklistRequest(BaseModel):
-    """POST /query/picklist body (envelope)."""
-
-    dataset_id: str
-    date_range: dict[str, Any]
-    query: dict[str, Any]  # field, search, filters, paging
-    client_context: Optional[ClientContext] = None
+    cells: list[dict[str, Any]]
 
 
 class PicklistResponse(BaseModel):
     total_count: int
-    values: list[dict[str, str]]  # [{value, label}]
-    paging: dict[str, int]  # limit, offset, returned
-
-
-# --- Export (POST /export, GET /export/{id}) ---
-class ExportRequest(BaseModel):
-    """POST /export body (envelope)."""
-
-    dataset_id: str
-    date_range: dict[str, Any]
-    query: dict[str, Any]  # export_type, axes, filters, max_rows, format
-    client_context: Optional[ClientContext] = None
+    values: list[dict[str, str]]
+    paging: PagingResponse
 
 
 class ExportResponse(BaseModel):
     export_id: str
-    status: str  # pending | complete | failed
+    status: str
 
 
 class ExportStatusResponse(BaseModel):
