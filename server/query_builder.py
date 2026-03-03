@@ -17,11 +17,7 @@ from server.models import (
     TupleFilter,
     TuplesQueryBody,
 )
-
-
-def _quote(identifier: str) -> str:
-    """Double-quote a SQL identifier, escaping any embedded quotes."""
-    return '"' + identifier.replace('"', '""') + '"'
+from server.utils import quote_identifier as _quote
 
 
 def _build_date_clause(date_range: DateRange, params: list[Any]) -> str:

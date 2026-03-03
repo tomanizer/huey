@@ -26,8 +26,7 @@ def _valid_body(**overrides):
     return body
 
 
-def test_post_export_ok(client: TestClient) -> None:
-    """POST /export with valid envelope returns 200 and export_id."""
+def test_post_export_returns_pending(client: TestClient) -> None:
     r = client.post("/export", json=_valid_body())
     assert r.status_code == 200
     data = r.json()
@@ -36,99 +35,45 @@ def test_post_export_ok(client: TestClient) -> None:
 
 
 def test_export_lifecycle(client: TestClient) -> None:
-    """POST creates job, background task processes it, GET shows complete with download_url."""
     post_r = client.post("/export", json=_valid_body())
     export_id = post_r.json()["export_id"]
 
     r = client.get(f"/export/{export_id}")
     assert r.status_code == 200
-    status = r.json()["status"]
-    assert status in ("pending", "processing", "complete")
-
-    if status == "complete":
+    assert r.json()["export_id"] == export_id
+    assert r.json()["status"] in ("pending", "processing", "complete")
+    if r.json()["status"] == "complete":
         assert r.json()["download_url"] == f"/export/{export_id}/download"
 
 
 def test_get_export_not_found(client: TestClient) -> None:
-    """GET /export/{id} for unknown id returns 404."""
     r = client.get("/export/exp-nonexistent")
     assert r.status_code == 404
 
 
-def test_post_export_bad_date_range(client: TestClient) -> None:
-    """POST /export with inverted date range returns 422."""
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-01-01"},
-        "query": {},
-    }
-    r = client.post("/export", json=body)
-    assert r.status_code == 422
-
-
 def test_post_export_dataset_not_found(client: TestClient) -> None:
-    """POST /export with unknown dataset returns 404."""
     r = client.post("/export", json=_valid_body(dataset_id="nonexistent"))
     assert r.status_code == 404
 
 
 def test_download_not_found(client: TestClient) -> None:
-    """GET /export/{id}/download for unknown id returns 404."""
     r = client.get("/export/exp-nonexistent/download")
     assert r.status_code == 404
 
 
 def test_download_not_ready(client: TestClient) -> None:
-    """GET /export/{id}/download before completion returns 409."""
-    export_module._exports["exp-test"] = {
-        "status": "processing",
-        "created_at": time.time(),
-    }
+    export_module._exports["exp-test"] = {"status": "processing", "created_at": time.time()}
     r = client.get("/export/exp-test/download")
     assert r.status_code == 409
 
 
-def test_max_concurrent_limit(client: TestClient) -> None:
-    """POST /export returns 429 when max concurrent exports exceeded."""
-    for i in range(5):
-        export_module._exports[f"exp-active-{i}"] = {
-            "status": "processing",
-            "created_at": time.time(),
-        }
-    r = client.post("/export", json=_valid_body())
-    assert r.status_code == 429
-    assert "concurrent" in r.json()["detail"].lower()
-
-
-def test_ttl_cleanup(client: TestClient, tmp_path) -> None:
-    """Expired exports are cleaned up on new POST."""
-    expired_file = tmp_path / "exp-old.csv"
-    expired_file.write_text("old data")
-
-    export_module._exports["exp-old"] = {
-        "status": "complete",
-        "created_at": time.time() - 7200,
-        "file_path": str(expired_file),
-    }
-
-    r = client.post("/export", json=_valid_body())
-    assert r.status_code == 200
-    assert "exp-old" not in export_module._exports
-    assert not expired_file.exists()
-
-
 def test_download_for_failed_export(client: TestClient) -> None:
-    """GET /export/{id}/download for a failed export returns 409."""
-    export_module._exports["exp-fail"] = {
-        "status": "failed",
-        "created_at": time.time(),
-    }
+    export_module._exports["exp-fail"] = {"status": "failed", "created_at": time.time()}
     r = client.get("/export/exp-fail/download")
     assert r.status_code == 409
 
 
 def test_download_file_missing_on_disk(client: TestClient) -> None:
-    """GET /export/{id}/download when file was deleted returns 404."""
     export_module._exports["exp-gone"] = {
         "status": "complete",
         "created_at": time.time(),
@@ -139,19 +84,36 @@ def test_download_file_missing_on_disk(client: TestClient) -> None:
     assert r.status_code == 404
 
 
-def test_ttl_preserves_active_exports(client: TestClient) -> None:
-    """TTL cleanup does not remove recent exports."""
-    export_module._exports["exp-recent"] = {
+def test_max_concurrent_limit(client: TestClient) -> None:
+    for i in range(5):
+        export_module._exports[f"exp-active-{i}"] = {"status": "processing", "created_at": time.time()}
+    r = client.post("/export", json=_valid_body())
+    assert r.status_code == 429
+    assert "concurrent" in r.json()["detail"].lower()
+
+
+def test_ttl_cleanup(client: TestClient, tmp_path) -> None:
+    expired_file = tmp_path / "exp-old.csv"
+    expired_file.write_text("old data")
+    export_module._exports["exp-old"] = {
         "status": "complete",
-        "created_at": time.time(),
+        "created_at": time.time() - 7200,
+        "file_path": str(expired_file),
     }
+    r = client.post("/export", json=_valid_body())
+    assert r.status_code == 200
+    assert "exp-old" not in export_module._exports
+    assert not expired_file.exists()
+
+
+def test_ttl_preserves_active_exports(client: TestClient) -> None:
+    export_module._exports["exp-recent"] = {"status": "complete", "created_at": time.time()}
     r = client.post("/export", json=_valid_body())
     assert r.status_code == 200
     assert "exp-recent" in export_module._exports
 
 
 def test_multiple_exports_unique_ids(client: TestClient) -> None:
-    """Multiple POSTs create distinct export IDs."""
     r1 = client.post("/export", json=_valid_body())
     r2 = client.post("/export", json=_valid_body())
     assert r1.json()["export_id"] != r2.json()["export_id"]

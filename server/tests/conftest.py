@@ -21,17 +21,3 @@ def _init_test_db():
 def client() -> TestClient:
     """Shared TestClient for API tests."""
     return TestClient(app)
-
-
-@pytest.fixture
-def valid_date_range() -> dict:
-    return {"type": "single", "date": "2026-03-01"}
-
-
-@pytest.fixture
-def valid_tuples_body() -> dict:
-    return {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"axis": "rows", "fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
-    }

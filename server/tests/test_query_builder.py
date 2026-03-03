@@ -58,11 +58,37 @@ class TestBuildTuplesSql:
         )
         sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "NOT IN" in sql
+        assert "TSLA" in params
+
+    def test_like_filter(self) -> None:
+        query = TuplesQueryBody(
+            fields=[TupleFieldSpec(field="symbol")],
+            filters=[TupleFilter(field="symbol", operator="LIKE", values=["AA%"])],
+        )
+        sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"symbol" LIKE ?' in sql
+        assert "AA%" in params
+
+    def test_between_filter(self) -> None:
+        query = TuplesQueryBody(
+            fields=[TupleFieldSpec(field="volume")],
+            filters=[TupleFilter(field="volume", operator="BETWEEN", values=[1000, 2000])],
+        )
+        sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"volume" BETWEEN ? AND ?' in sql
+        assert 1000 in params
+        assert 2000 in params
+
+    def test_between_filter_needs_two_values(self) -> None:
+        query = TuplesQueryBody(
+            fields=[TupleFieldSpec(field="volume")],
+            filters=[TupleFilter(field="volume", operator="BETWEEN", values=[1000])],
+        )
+        sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "BETWEEN" not in sql
 
     def test_sort_desc(self) -> None:
-        query = TuplesQueryBody(
-            fields=[TupleFieldSpec(field="symbol", sort="DESC")],
-        )
+        query = TuplesQueryBody(fields=[TupleFieldSpec(field="symbol", sort="DESC")])
         sql, _ = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "DESC" in sql
 
@@ -84,6 +110,15 @@ class TestBuildTuplesSql:
         sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "unknown_col" not in sql
 
+    def test_multiple_fields(self) -> None:
+        query = TuplesQueryBody(
+            fields=[TupleFieldSpec(field="date"), TupleFieldSpec(field="symbol")],
+            paging=PagingSpec(limit=10, offset=0),
+        )
+        sql, _ = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"date"' in sql
+        assert '"symbol"' in sql
+
 
 class TestBuildTuplesCountSql:
     def test_count_query(self) -> None:
@@ -92,6 +127,11 @@ class TestBuildTuplesCountSql:
         assert "COUNT(*)" in sql
         assert "GROUP BY" in sql
 
+    def test_count_with_no_fields(self) -> None:
+        query = TuplesQueryBody(fields=[])
+        sql, params = build_tuples_count_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert sql == "SELECT 0"
+
 
 class TestBuildCellsSql:
     def test_basic_aggregation(self) -> None:
@@ -99,7 +139,7 @@ class TestBuildCellsSql:
             axes={
                 "rows": [{"field": "symbol"}],
                 "columns": [],
-                "measures": [{"field": "volume", "aggregation": "sum", "alias": "total_volume"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}],
             },
         )
         sql, params = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
@@ -111,6 +151,80 @@ class TestBuildCellsSql:
         query = CellsQueryBody(axes={})
         sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "FALSE" in sql
+
+    def test_with_filter(self) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
+            },
+            filters=[TupleFilter(field="symbol", operator="INCLUDE", values=["AAPL"])],
+        )
+        sql, params = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"symbol" IN (?)' in sql
+        assert "AAPL" in params
+
+    def test_count_aggregation(self) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "COUNT", "alias": "count_vol"}],
+            },
+        )
+        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert 'COUNT("volume")' in sql
+
+    def test_avg_aggregation(self) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "AVG", "alias": "avg_vol"}],
+            },
+        )
+        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert 'AVG("volume")' in sql
+
+    def test_min_max_aggregation(self) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [
+                    {"field": "volume", "aggregation": "MIN", "alias": "min_vol"},
+                    {"field": "volume", "aggregation": "MAX", "alias": "max_vol"},
+                ],
+            },
+        )
+        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert 'MIN("volume")' in sql
+        assert 'MAX("volume")' in sql
+
+    def test_column_fields(self) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "date"}],
+                "columns": [{"field": "symbol"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
+            },
+        )
+        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert '"date"' in sql
+        assert '"symbol"' in sql
+        assert "GROUP BY" in sql
+
+    def test_unknown_measure_field_skipped(self) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "nonexistent", "aggregation": "SUM", "alias": "x"}],
+            },
+        )
+        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "nonexistent" not in sql
 
 
 class TestBuildPicklistSql:
@@ -132,9 +246,24 @@ class TestBuildPicklistSql:
         sql, _ = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "FALSE" in sql
 
+    def test_with_filter(self) -> None:
+        query = PicklistQueryBody(
+            field="symbol",
+            filters=[TupleFilter(field="symbol", operator="EXCLUDE", values=["TSLA"])],
+            paging=PagingSpec(limit=100, offset=0),
+        )
+        sql, params = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert "NOT IN" in sql
+        assert "TSLA" in params
+
 
 class TestBuildPicklistCountSql:
     def test_count_distinct(self) -> None:
         query = PicklistQueryBody(field="symbol")
         sql, _ = build_picklist_count_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "COUNT(DISTINCT" in sql
+
+    def test_no_field(self) -> None:
+        query = PicklistQueryBody(field=None)
+        sql, _ = build_picklist_count_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert sql == "SELECT 0"

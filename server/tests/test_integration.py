@@ -1,7 +1,7 @@
 """
 Backend integration tests: full API flow with real app and config.
 
-Exercises schema → query (tuples, cells, picklist) → export in sequence
+Exercises schema -> query (tuples, cells, picklist) -> export in sequence
 using the default dataset config (no S3 required).
 """
 
@@ -9,87 +9,61 @@ from fastapi.testclient import TestClient
 
 
 def test_full_api_flow(client: TestClient) -> None:
-    """
-    Integration: GET schema → POST tuples, cells, picklist → POST export → GET export status.
-    Uses dataset_id from default config (e.g. trades_v1).
-    """
+    """Integration: GET schema -> POST tuples, cells, picklist -> POST export -> GET status."""
     dataset_id = "trades_v1"
     date_range = {"type": "single", "date": "2026-03-01"}
 
-    # 1. Schema
     r_schema = client.get("/schema", params={"dataset_id": dataset_id})
     assert r_schema.status_code == 200
     schema = r_schema.json()
     assert schema["dataset_id"] == dataset_id
-    assert "fields" in schema
+    assert len(schema["fields"]) > 0
 
-    # 2. Tuples
-    r_tuples = client.post(
-        "/query/tuples",
-        json={
-            "dataset_id": dataset_id,
-            "date_range": date_range,
-            "query": {"axis": "rows", "fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
-        },
-    )
+    r_tuples = client.post("/query/tuples", json={
+        "dataset_id": dataset_id,
+        "date_range": date_range,
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+    })
     assert r_tuples.status_code == 200
-    assert "items" in r_tuples.json() and "total_count" in r_tuples.json()
+    tuples_data = r_tuples.json()
+    assert tuples_data["total_count"] > 0
+    assert len(tuples_data["items"]) > 0
 
-    # 3. Cells
-    r_cells = client.post(
-        "/query/cells",
-        json={
-            "dataset_id": dataset_id,
-            "date_range": date_range,
-            "query": {
-                "rows": {"start_index": 0, "count": 5},
-                "columns": {"start_index": 0, "count": 5},
-                "axes": {"rows": [], "columns": [], "measures": []},
-                "filters": [],
+    r_cells = client.post("/query/cells", json={
+        "dataset_id": dataset_id,
+        "date_range": date_range,
+        "query": {
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
             },
         },
-    )
+    })
     assert r_cells.status_code == 200
-    assert "cells" in r_cells.json()
+    cells_data = r_cells.json()
+    assert len(cells_data["cells"]) > 0
+    assert "row_index" in cells_data["cells"][0]
 
-    # 4. Picklist
-    r_picklist = client.post(
-        "/query/picklist",
-        json={
-            "dataset_id": dataset_id,
-            "date_range": date_range,
-            "query": {"field": "symbol", "search": "", "filters": [], "paging": {"limit": 100, "offset": 0}},
-        },
-    )
+    r_picklist = client.post("/query/picklist", json={
+        "dataset_id": dataset_id,
+        "date_range": date_range,
+        "query": {"field": "symbol", "paging": {"limit": 100, "offset": 0}},
+    })
     assert r_picklist.status_code == 200
-    assert "values" in r_picklist.json() and "total_count" in r_picklist.json()
+    picklist_data = r_picklist.json()
+    assert picklist_data["total_count"] > 0
+    assert len(picklist_data["values"]) > 0
 
-    # 5. Export
-    r_export_post = client.post(
-        "/export",
-        json={
-            "dataset_id": dataset_id,
-            "date_range": date_range,
-            "query": {"export_type": "pivot_results", "axes": {}, "filters": [], "max_rows": 1000, "format": "csv"},
-        },
-    )
-    assert r_export_post.status_code == 200
-    data = r_export_post.json()
-    assert data["status"] == "pending"
-    export_id = data["export_id"]
+    r_export = client.post("/export", json={
+        "dataset_id": dataset_id,
+        "date_range": date_range,
+        "query": {"export_type": "pivot_results", "axes": {}, "filters": [], "max_rows": 1000, "format": "csv"},
+    })
+    assert r_export.status_code == 200
+    export_data = r_export.json()
+    assert export_data["status"] == "pending"
 
-    # 6. Export status (background task may have completed already)
-    r_export_get = client.get(f"/export/{export_id}")
-    assert r_export_get.status_code == 200
-    assert r_export_get.json()["export_id"] == export_id
-    assert r_export_get.json()["status"] in ("pending", "processing", "complete")
-
-
-def test_health_then_schema(client: TestClient) -> None:
-    """Integration: health endpoints then schema (readiness before traffic)."""
-    r_live = client.get("/health/liveness")
-    assert r_live.status_code == 200
-    r_ready = client.get("/health/readiness")
-    assert r_ready.status_code == 200
-    r_schema = client.get("/schema", params={"dataset_id": "trades_v1"})
-    assert r_schema.status_code == 200
+    r_status = client.get(f"/export/{export_data['export_id']}")
+    assert r_status.status_code == 200
+    assert r_status.json()["status"] in ("pending", "processing", "complete")

@@ -95,14 +95,6 @@ class DuckDBManager:
 db_manager = DuckDBManager()
 
 
-# Backward-compatible module-level functions
-def execute_sql(sql: str, parameters: tuple[Any, ...] | None = None) -> list[list[Any]]:
-    """Module-level execute_sql that delegates to db_manager."""
-    if not db_manager.is_initialized:
-        db_manager.initialize()
-    return db_manager.execute_sql(sql, parameters)
-
-
 def get_connection() -> duckdb.DuckDBPyConnection:
-    """Return a new in-memory DuckDB connection for callers that need a standalone connection."""
+    """Return a new in-memory DuckDB connection for callers that need a standalone connection (e.g. S3 reads)."""
     return duckdb.connect(":memory:")

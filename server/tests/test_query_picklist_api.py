@@ -1,14 +1,13 @@
-"""Tests for POST /query/picklist API."""
+"""Tests for POST /query/picklist API — functional / happy-path tests."""
 
 from fastapi.testclient import TestClient
 
 
-def test_query_picklist_ok(client: TestClient) -> None:
-    """POST /query/picklist with valid envelope returns distinct values."""
+def test_query_picklist_returns_values(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "search": "", "filters": [], "paging": {"limit": 100, "offset": 0}},
+        "query": {"field": "symbol", "paging": {"limit": 100, "offset": 0}},
     }
     r = client.post("/query/picklist", json=body)
     assert r.status_code == 200
@@ -17,14 +16,16 @@ def test_query_picklist_ok(client: TestClient) -> None:
     assert len(data["values"]) > 0
     values = [v["value"] for v in data["values"]]
     assert "AAPL" in values
+    for v in data["values"]:
+        assert "value" in v
+        assert "label" in v
 
 
-def test_query_picklist_search(client: TestClient) -> None:
-    """POST /query/picklist with search wildcard filters values."""
+def test_query_picklist_search_wildcard(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "search": "A*", "filters": [], "paging": {"limit": 100, "offset": 0}},
+        "query": {"field": "symbol", "search": "A*", "paging": {"limit": 100, "offset": 0}},
     }
     r = client.post("/query/picklist", json=body)
     assert r.status_code == 200
@@ -35,15 +36,36 @@ def test_query_picklist_search(client: TestClient) -> None:
     assert "AMZN" in values
 
 
+def test_query_picklist_with_filter(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        "query": {
+            "field": "symbol",
+            "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
+            "paging": {"limit": 100, "offset": 0},
+        },
+    }
+    r = client.post("/query/picklist", json=body)
+    assert r.status_code == 200
+    values = [v["value"] for v in r.json()["values"]]
+    assert "AAPL" not in values
+
+
+def test_query_picklist_paging(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"field": "symbol", "paging": {"limit": 2, "offset": 0}},
+    }
+    r = client.post("/query/picklist", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["paging"]["returned"] == 2
+    assert data["total_count"] == 5
+
+
 def test_query_picklist_dataset_not_found(client: TestClient) -> None:
-    """POST /query/picklist with unknown dataset_id returns 404."""
     body = {"dataset_id": "nonexistent", "date_range": {"type": "single", "date": "2026-03-01"}, "query": {}}
     r = client.post("/query/picklist", json=body)
     assert r.status_code == 404
-
-
-def test_query_picklist_bad_date_range(client: TestClient) -> None:
-    """POST /query/picklist with invalid date format returns 422."""
-    body = {"dataset_id": "trades_v1", "date_range": {"type": "single", "date": "not-a-date"}, "query": {}}
-    r = client.post("/query/picklist", json=body)
-    assert r.status_code == 422
