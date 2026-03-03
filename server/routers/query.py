@@ -5,7 +5,7 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from server import datasets
 from server.auth import require_api_key
@@ -25,6 +25,7 @@ from server.models import (
     TupleItem,
     TuplesResponse,
 )
+from server.query_budget import get_query_budget
 from server.query_builder import (
     build_cells_sql,
     build_picklist_count_sql,
@@ -48,7 +49,7 @@ def _apply_client_request_id(body, request: Request) -> None:
 
 @router.post("/tuples", response_model=TuplesResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
+async def post_query_tuples(body: QueryTuplesRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
     queue_wait_ms = 0.0
@@ -100,7 +101,17 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
             "row_count": len(items),
         }
 
-    if getattr(settings, "cache_enabled", False):
+    budget = get_query_budget()
+
+    async def _budgeted_execute() -> dict[str, object]:
+        nonlocal queue_wait_ms, execution_ms
+        async with budget.acquire() as _qwms:
+            queue_wait_ms = _qwms
+            result_inner, exec_ms = await budget.run_with_budget(request, _execute)
+            execution_ms = exec_ms
+        return result_inner
+
+    if settings.cache_enabled:
         cache = await get_query_cache()
         cache_key = build_cache_key(
             "tuples",
@@ -110,14 +121,14 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
         )
         result, meta = await cache.get_or_set(
             cache_key,
-            _execute,
+            _budgeted_execute,
             ttl_seconds=settings.cache_ttl_seconds,
             max_item_bytes=settings.cache_max_item_bytes,
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
     else:
-        result = await _execute()
+        result = await _budgeted_execute()
 
     duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
@@ -145,7 +156,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
 
 @router.post("/cells", response_model=CellsResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: str = Depends(require_api_key)) -> CellsResponse:
+async def post_query_cells(body: QueryCellsRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
     queue_wait_ms = 0.0
@@ -207,7 +218,17 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
         cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
         return {"response": {"cells": cells}, "duration_ms": duration_ms, "row_count": len(rows)}
 
-    if getattr(settings, "cache_enabled", False):
+    budget = get_query_budget()
+
+    async def _budgeted_execute() -> dict[str, object]:
+        nonlocal queue_wait_ms, execution_ms
+        async with budget.acquire() as _qwms:
+            queue_wait_ms = _qwms
+            result_inner, exec_ms = await budget.run_with_budget(request, _execute)
+            execution_ms = exec_ms
+        return result_inner
+
+    if settings.cache_enabled:
         cache = await get_query_cache()
         cache_key = build_cache_key(
             "cells",
@@ -219,14 +240,14 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
         max_item = settings.cache_max_item_bytes // 2 if settings.cache_max_item_bytes else settings.cache_max_item_bytes
         result, meta = await cache.get_or_set(
             cache_key,
-            _execute,
+            _budgeted_execute,
             ttl_seconds=ttl,
             max_item_bytes=max_item,
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
     else:
-        result = await _execute()
+        result = await _budgeted_execute()
 
     duration_ms = result.get("duration_ms", 0.0)
 
@@ -249,7 +270,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
 
 @router.post("/picklist", response_model=PicklistResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
+async def post_query_picklist(body: QueryPicklistRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
     queue_wait_ms = 0.0
@@ -301,7 +322,17 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
             "row_count": len(rows),
         }
 
-    if getattr(settings, "cache_enabled", False):
+    budget = get_query_budget()
+
+    async def _budgeted_execute() -> dict[str, object]:
+        nonlocal queue_wait_ms, execution_ms
+        async with budget.acquire() as _qwms:
+            queue_wait_ms = _qwms
+            result_inner, exec_ms = await budget.run_with_budget(request, _execute)
+            execution_ms = exec_ms
+        return result_inner
+
+    if settings.cache_enabled:
         cache = await get_query_cache()
         cache_key = build_cache_key(
             "picklist",
@@ -311,14 +342,14 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api
         )
         result, meta = await cache.get_or_set(
             cache_key,
-            _execute,
+            _budgeted_execute,
             ttl_seconds=settings.cache_ttl_seconds,
             max_item_bytes=settings.cache_max_item_bytes,
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
     else:
-        result = await _execute()
+        result = await _budgeted_execute()
 
     duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]

@@ -19,7 +19,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -31,6 +30,7 @@ from server.export_service import init_export_service
 from server.export_store import ExportJobStore
 from server.logging_config import setup_logging
 from server.middleware import AccessLogMiddleware, CorrelationIdMiddleware
+from server.rate_limit import get_real_ip
 from server.request_context import get_request_id
 
 settings = get_settings()
@@ -38,7 +38,7 @@ setup_logging(settings.log_level, settings.log_format)
 logger = logging.getLogger("query_service")
 
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=get_real_ip,
     enabled=settings.rate_limit_enabled,
     headers_enabled=True,
 )
