@@ -180,6 +180,17 @@ class CellsWindowTooLargeError(AppError):
         )
 
 
+class AuthError(AppError):
+    """Raised on missing or invalid API key authentication."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(
+            code="AUTH_ERROR",
+            message=message,
+            status_code=401,
+        )
+
+
 class TooManyConcurrentQueriesError(AppError):
     """Raised when the in-flight query limit and queue depth are exceeded."""
 
