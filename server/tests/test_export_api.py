@@ -200,6 +200,32 @@ class TestExportErrors:
         r = client.post("/export", json=_valid_body(dataset_id="nonexistent"))
         assert r.status_code == 404
 
+    def test_dataset_unavailable_in_sample_table_mode(self, client: TestClient, monkeypatch) -> None:
+        """In sample_table mode, missing DuckDB table returns 409 DATASET_UNAVAILABLE."""
+        from server.engine import db_manager
+        monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "sample_table")
+        from server.config import get_settings
+        get_settings.cache_clear()
+        monkeypatch.setattr(db_manager, "table_exists", lambda _: False)
+        r = client.post("/export", json=_valid_body())
+        get_settings.cache_clear()
+        assert r.status_code == 409
+        assert r.json()["code"] == "DATASET_UNAVAILABLE"
+
+    def test_dataset_available_in_parquet_partitioned_mode(self, client: TestClient, monkeypatch) -> None:
+        """In parquet_partitioned mode, no DuckDB table check is performed at submission time."""
+        from server.engine import db_manager
+        monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "parquet_partitioned")
+        from server.config import get_settings
+        get_settings.cache_clear()
+        # Ensure table_exists would return False — should not matter in parquet_partitioned mode.
+        monkeypatch.setattr(db_manager, "table_exists", lambda _: False)
+        r = client.post("/export", json=_valid_body())
+        get_settings.cache_clear()
+        # Job is accepted (200) even though no local table exists.
+        assert r.status_code == 200
+        assert r.json()["status"] == "pending"
+
     def test_get_export_not_found(self, client: TestClient) -> None:
         r = client.get("/export/exp-nonexistent")
         assert r.status_code == 404
