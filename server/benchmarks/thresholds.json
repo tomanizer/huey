@@ -1,0 +1,9 @@
+{
+  "mode": "warn",
+  "endpoints": {
+    "tuples": {"max_p95_ms": 500, "max_timeout_error_rate": 0.02},
+    "cells": {"max_p95_ms": 750, "max_timeout_error_rate": 0.02},
+    "picklist": {"max_p95_ms": 500, "max_timeout_error_rate": 0.02},
+    "export": {"max_p95_ms": 1500, "max_timeout_error_rate": 0.05}
+  }
+}
