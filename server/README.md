@@ -7,9 +7,9 @@ Huey OLAP query service backend (Python, FastAPI, DuckDB). Serves health checks 
 From the repo root:
 
 ```bash
+python3 --version  # requires Python 3.11+
 python3 -m venv .venv-server
-. .venv-server/bin/activate  # or .venv-server\Scripts\activate on Windows
-pip install -r server/requirements.txt
+./.venv-server/bin/pip install -r server/requirements.txt
 ```
 
 ## Run
@@ -17,14 +17,13 @@ pip install -r server/requirements.txt
 From the repo root (so `server` is the package):
 
 ```bash
-. .venv-server/bin/activate
-uvicorn server.main:app --host 0.0.0.0 --port 8000
+./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000
 ```
 
 Or:
 
 ```bash
-PYTHONPATH=. python -m server.main
+PYTHONPATH=. ./.venv-server/bin/python -m server.main
 ```
 
 ## Health
@@ -49,14 +48,13 @@ PYTHONPATH=. python -m server.main
 From the repo root:
 
 ```bash
-. .venv-server/bin/activate
-PYTHONPATH=. python -m pytest server/tests -v
+PYTHONPATH=. ./.venv-server/bin/python -m pytest server/tests -v
 ```
 
 To include coverage:
 
 ```bash
-PYTHONPATH=. python -m pytest server/tests --cov=server --cov-report=term-missing
+PYTHONPATH=. ./.venv-server/bin/python -m pytest server/tests --cov=server --cov-report=term-missing
 ```
 
 ## Docker

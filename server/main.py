@@ -7,6 +7,11 @@ FastAPI application with health endpoints, config loader, and structured logging
 import logging
 from contextlib import asynccontextmanager
 
+# Fail fast with a clear message before importing modules that require modern syntax.
+from server.runtime import ensure_supported_python
+
+ensure_supported_python()
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
