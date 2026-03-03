@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
     s3_region: str | None = None
 
+    # Rate limiting
+    rate_limit_query: str = "100/minute"
+    rate_limit_export: str = "10/minute"
+    rate_limit_enabled: bool = False
     # Query result cache
     cache_enabled: bool = False
     cache_ttl_seconds: int = 120

@@ -5,6 +5,10 @@ Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 import logging
 import time
 
+from fastapi import APIRouter, Request, Response
+
+from server import datasets
+from server.config import get_settings
 from fastapi import APIRouter, Depends, Request
 
 from server import datasets
@@ -35,6 +39,7 @@ from server.query_builder import (
 from server.config import get_settings
 from server.query_budget import get_query_budget
 from server.request_context import set_request_id
+from server.main import limiter
 
 logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
@@ -57,6 +62,8 @@ async def _execute_with_budget(request: Request, coro):
 
 
 @router.post("/tuples", response_model=TuplesResponse)
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def post_query_tuples(request: Request, body: QueryTuplesRequest, response: Response) -> TuplesResponse:
 async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
@@ -168,6 +175,8 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, _api_key
 
 
 @router.post("/cells", response_model=CellsResponse)
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def post_query_cells(request: Request, body: QueryCellsRequest, response: Response) -> CellsResponse:
 async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: str = Depends(require_api_key)) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
@@ -282,6 +291,8 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, _api_key: 
 
 
 @router.post("/picklist", response_model=PicklistResponse)
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def post_query_picklist(request: Request, body: QueryPicklistRequest, response: Response) -> PicklistResponse:
 async def post_query_picklist(body: QueryPicklistRequest, request: Request, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
