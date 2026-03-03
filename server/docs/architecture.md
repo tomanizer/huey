@@ -63,6 +63,8 @@ Environment variables (all prefixed `QUERYSERVICE_`, defaults shown):
 - `QUERYSERVICE_EXPORT_DB_PATH` (`/tmp/huey-exports/jobs.db`)
 - `QUERYSERVICE_S3_BUCKET` (`None`)
 - `QUERYSERVICE_S3_REGION` (`None`)
+- `QUERYSERVICE_EXECUTION_MODE` (`sample_table`; set `parquet_partitioned` for partition-native parquet scans)
+- `QUERYSERVICE_PARTITION_BASE_PATH` (`None`; filesystem base for partitions when not using S3)
 
 ## Observability
 

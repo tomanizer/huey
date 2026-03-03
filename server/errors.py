@@ -109,6 +109,27 @@ class TooManyConcurrentExportsError(AppError):
         )
 
 
+class PartitionConfigError(AppError):
+    """Raised when partition-native execution is requested without required config."""
+
+    def __init__(self, details: dict[str, Any]) -> None:
+        super().__init__(
+            code="PARTITION_CONFIG_ERROR",
+            message="Partitioned execution requires a bucket or base path",
+            status_code=500,
+            details=details,
+        )
+
+
+class PartitionNotFoundError(AppError):
+    """Raised when requested partitions are missing on disk/remote storage."""
+
+    def __init__(self, dataset_id: str, dates: list[str]) -> None:
+        super().__init__(
+            code="PARTITION_NOT_FOUND",
+            message=f"Partitions not found for dataset {dataset_id}",
+            status_code=404,
+            details={"dataset_id": dataset_id, "dates": dates},
 class QueryTimeoutError(AppError):
     """Raised when a query exceeds the configured timeout budget."""
 
