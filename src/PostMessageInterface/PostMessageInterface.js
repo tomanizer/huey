@@ -118,7 +118,7 @@ class PostMessageInterface {
   }
   
   async #messageHandler(event){
-    var request = event.data;
+    const request = event.data;
 
     if (!PostMessageInterface.isTrustedOrigin(event.origin)) {
       console.warn('Ignoring postMessage request from untrusted origin:', event.origin);
@@ -142,10 +142,10 @@ class PostMessageInterface {
       return;
     }
 
-    var requestType = request.messageType;
+    const requestType = request.messageType;
     
-    var requestId = request.requestId;
-    var response = {
+    const requestId = request.requestId;
+    const response = {
       messageType: PostMessageProtocol.RESPONSE,
       request: {
         messageType: requestType,
@@ -206,8 +206,8 @@ class PostMessageInterface {
   
   #handleSetRouteRequest(request, response){
     try{
-      var body;
-      var route;
+      let body;
+      let route;
       try {
         body = request.body;
         if (typeof body !== 'object' || body === null) {
@@ -234,17 +234,17 @@ class PostMessageInterface {
   
   async #handleCreateDatasourceRequest(request, response){
     try {
-      var body;
-      var duckDbDataSource;
+      let body;
+      let duckDbDataSource;
       try {
         body = request.body;
         if (typeof body !== 'object' || body === null) {
           throw new Error('Request body is mandatory', {cause: 'body is null or not an object'});
         }
         
-        var duckdb = window.hueyDb.duckdb;
-        var duckDbInstance = window.hueyDb.instance;
-        var datasourceConfig = body.datasourceConfig;
+        const duckdb = window.hueyDb.duckdb;
+        const duckDbInstance = window.hueyDb.instance;
+        const datasourceConfig = body.datasourceConfig;
         duckDbDataSource = new DuckDbDataSource(duckdb, duckDbInstance, datasourceConfig);
 
       }
@@ -253,7 +253,7 @@ class PostMessageInterface {
         return;
       }
       
-      var datasources = [duckDbDataSource];
+      const datasources = [duckDbDataSource];
       await datasourcesUi.addDatasources(datasources);
       
       if (body.selectForAnalysis === true){
@@ -295,20 +295,20 @@ class PostMessageInterface {
       return;
     }
     
-    var search = window.location.search;
-    var params = {};
+    let search = window.location.search;
+    const params = {};
     if (search && search.length){
-      search = search.substring(1).split('&').reduce(function(params, param){
-        var nameValue = param.split('=');
-        var name = nameValue[0];
-        var value = nameValue[1];
+      search = search.substring(1).split('&').reduce((params, param) =>{
+        const nameValue = param.split('=');
+        const name = nameValue[0];
+        const value = nameValue[1];
         params[name] = value;
         return params;
       }, params);
     }
     
-    var hostingWindow = PostMessageInterface.getHostingWindow();
-    var targetOrigin = PostMessageInterface.getTargetOriginForHostingWindow();
+    const hostingWindow = PostMessageInterface.getHostingWindow();
+    const targetOrigin = PostMessageInterface.getTargetOriginForHostingWindow();
     if (!targetOrigin) {
       console.warn('Could not determine trusted hosting window origin for ready message. Configure postMessageOrigins or use a trusted referrer origin.');
       return;
@@ -328,7 +328,7 @@ class PostMessageInterface {
   
 }
 
-var postMessageInterface = undefined;
+let postMessageInterface = undefined;
 function initPostMessageInterface(skipHostingWindowCheck){
   if (!skipHostingWindowCheck && !PostMessageInterface.getHostingWindow()) {
     return;

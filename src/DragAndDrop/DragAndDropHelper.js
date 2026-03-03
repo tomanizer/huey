@@ -31,7 +31,7 @@ class DragAndDropHelper {
   * DragAndDropHelper.encodeDataTransferKey('ABC') === '65,66,67'
   */
   static encodeDataTransferKey(string){
-    return string.split('').map(function(ch){
+    return string.split('').map((ch) =>{
       return ch.charCodeAt(0);
     }).join(',');    
   }
@@ -43,13 +43,13 @@ class DragAndDropHelper {
   * DragAndDropHelper.decodeDataTransferKey('65,66,67') === 'ABC'
   */
   static decodeDataTransferKey(string){
-    return string.split(',').map(function(charCode){
+    return string.split(',').map((charCode) =>{
         return String.fromCharCode(charCode);
     }).join('');
   }
   
   static #getDataTransferInstance(event){
-    var dataTransfer;
+    let dataTransfer;
     if (event instanceof Event) {
       dataTransfer = event.dataTransfer;
     }
@@ -64,14 +64,14 @@ class DragAndDropHelper {
   }
   
   static setData(event, data){
-    var dataTransfer = DragAndDropHelper.#getDataTransferInstance(event);
-    for (var property in data) {
+    const dataTransfer = DragAndDropHelper.#getDataTransferInstance(event);
+    for (let property in data) {
       if (property !== property.toLowerCase()){
         throw new Error(`Invalid property "${property}": name should be lower-case`);
       }
 
-      var value = data[property];
-      var keys;
+      let value = data[property];
+      let keys;
       if (value instanceof File){
         dataTransfer.setData(property, value);
         continue;
@@ -86,7 +86,7 @@ class DragAndDropHelper {
         if (property.indexOf('/') !== -1){
           throw new Error(`Invalid property value "${property}" for keyed values - the property should not contain a slash.`);
         }
-        var key = value['key'];
+        let key = value['key'];
         key = JSON.stringify(key);
         key = DragAndDropHelper.encodeDataTransferKey(key);
         property = `${property}/${key}`;
@@ -108,24 +108,24 @@ class DragAndDropHelper {
   }
   
   static getData(event){
-    var dataTransfer = DragAndDropHelper.#getDataTransferInstance(event);
-    var types = dataTransfer.types;
-    var data = {};
-    for (var i = 0; i < types.length; i++){
-      var type = types[i];
-      var match = /^(?<property>[^\/]+)((\/(?<keydata>\d+(,\d+)*)?)|(?<noKeydata>.+))?$/.exec(type);
+    const dataTransfer = DragAndDropHelper.#getDataTransferInstance(event);
+    const types = dataTransfer.types;
+    const data = {};
+    for (let i = 0; i < types.length; i++){
+      const type = types[i];
+      const match = /^(?<property>[^\/]+)((\/(?<keydata>\d+(,\d+)*)?)|(?<noKeydata>.+))?$/.exec(type);
       if (match === null){
         throw new Error(`Invalid DataTransfer type key "${type}".`);
       }
-      var property = match.groups.property;
-      var keydata = match.groups.keydata;
-      var noKeydata = match.groups.noKeydata || '';
+      let property = match.groups.property;
+      const keydata = match.groups.keydata;
+      const noKeydata = match.groups.noKeydata || '';
       
-      var storedValue;
+      let storedValue;
       switch(event.type){
         case 'dragstart':
         case 'drop':
-          var rawData = dataTransfer.getData(type);
+          const rawData = dataTransfer.getData(type);
           if (rawData instanceof File){
             // noop
             storedValue = rawData;
@@ -142,9 +142,9 @@ class DragAndDropHelper {
           storedValue = undefined;
       }
       
-      var value;
+      let value;
       if (keydata){
-        var decodedKeydata = JSON.parse(DragAndDropHelper.decodeDataTransferKey(keydata));
+        const decodedKeydata = JSON.parse(DragAndDropHelper.decodeDataTransferKey(keydata));
         value = {
           key: decodedKeydata,
           value: storedValue
@@ -160,26 +160,26 @@ class DragAndDropHelper {
   }
   
   static getEncodedQueryAxisItemId(queryAxisItem) {
-    var id = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
+    const id = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
     return DragAndDropHelper.encodeDataTransferKey(id);
   }
   
   static addTextDataForQueryItem(queryAxisItem, data) {
-    var csvData = [];
-    for (var property in queryAxisItem){
-      var value = queryAxisItem[property];
-      var typeOfValue = typeof value;
+    let csvData = [];
+    for (const property in queryAxisItem){
+      const value = queryAxisItem[property];
+      const typeOfValue = typeof value;
       if(property === 'filter') {
-        var filter = value;
-        var filterType = filter.filterType;
+        const filter = value;
+        const filterType = filter.filterType;
         csvData.push(['filterType', filterType]);
-        Object.keys(filter.values).forEach(function(key, index){
+        Object.keys(filter.values).forEach((key, index) =>{
           csvData.push(['filterValue' + (1 + index), key]);
         });
         if (!FilterDialog.isRangeFilterType(filterType)) {
           continue
         }
-        Object.keys(filter.toValues).forEach(function(key, index){
+        Object.keys(filter.toValues).forEach((key, index) =>{
           csvData.push(['toFilterValue' + (1 + index), key]);
         });
       }
@@ -200,7 +200,7 @@ class DragAndDropHelper {
     csvData = getCsv(csvData);
     
     data['text/plain'] = csvData;
-    var itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
+    const itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
     data['text/csv'] = new File([csvData], `${itemId}.csv`);
     
   }

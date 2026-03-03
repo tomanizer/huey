@@ -19,9 +19,9 @@ class DuckDbConnection extends EventEmitter {
   }
   
   async prepareStatement(sql){
-    var connection = await this.getPhysicalConnection();
+    const connection = await this.getPhysicalConnection();
     this.#state = 'preparing';
-    var preparedStatement = await connection.prepare(sql);
+    const preparedStatement = await connection.prepare(sql);
     this.#state = 'prepared';
     return preparedStatement;
   }
@@ -34,7 +34,7 @@ class DuckDbConnection extends EventEmitter {
   }
   
   async query(sql){
-    var connection = await this.getPhysicalConnection();
+    const connection = await this.getPhysicalConnection();
     
     // TODO: allow query to be canceled?
     this.fireEvent('beforequery', {
@@ -43,9 +43,9 @@ class DuckDbConnection extends EventEmitter {
     });
     
     this.#state = 'querying';
-    var msg = `Executing ${sql} on connection ${this.getConnectionId()}`;
+    const msg = `Executing ${sql} on connection ${this.getConnectionId()}`;
     console.time(msg);
-    var result = await connection.query(sql);
+    const result = await connection.query(sql);
     console.timeEnd(msg);
     this.#state = 'queried';
     
@@ -65,7 +65,7 @@ class DuckDbConnection extends EventEmitter {
     console.log(`canceling pending queries for ${this.getConnectionId()}, current state: ${this.#state}.`);
     this.#state = 'canceling';
     try {
-      var canceled = await this.#duckDbInstance.cancelPendingQuery(this.#physicalConnection);
+      const canceled = await this.#duckDbInstance.cancelPendingQuery(this.#physicalConnection);
       console.log(`canceled pending queries for ${this.getConnectionId()}, result: ${canceled}.`);
       if (canceled) {
         this.#state = 'canceled';
@@ -87,11 +87,11 @@ class DuckDbConnection extends EventEmitter {
     if (! (file instanceof File)){
       throw new Error(`Invalid argument! Need instance of File.`);
     }
-    var protocol = protocol || window.hueyDb.duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
+    const dataProtocol = protocol || window.hueyDb.duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
     return this.#duckDbInstance.registerFileHandle(
       file.name, 
       file, 
-      protocol
+      dataProtocol
     );
   }
  
@@ -107,7 +107,7 @@ class DuckDbConnection extends EventEmitter {
     if (this.#physicalConnection){
       try {
         this.#state = 'closing';        
-        var result = await this.#physicalConnection.close();
+        const result = await this.#physicalConnection.close();
         this.#state = 'closed';
         return result;
       }

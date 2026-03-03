@@ -6,43 +6,12 @@ class CellSet extends DataSetComponent {
   #cells = [];
   #cellValueFields = {};
 
-  #tupleSets = [];
-
+    const queryModel = this.getQueryModel();
   static datasetRelationName = '__data';
-  static #tupleDataRelationName = '__huey_tuples';
-  static #cellIndexColumnName = '__huey_cellIndex';
-  static #countStarExpressionAlias = '__huey_count_star';
-
-  constructor(queryModel, tupleSets, settings){
-    super(queryModel, settings);
-    this.#tupleSets = tupleSets;
-  }
-
-  clear(){
-    this.#cells = [];
-    this.#cellValueFields = {};
-  }
-
-  getCellValueFields(){
-    return this.#cellValueFields;
-  }
-
-  // variable argument list,
-  // each argument should be a tuple index
-  // tuple indexes should by in order of tupleSets
-  getCellIndex(){
-    var cellIndex = 0;
-    var tupleSets = this.#tupleSets;
-    var numTupleSets = tupleSets.length || 0;
-
-    // for each tupleset ...
-    for (var i = 0; i < numTupleSets; i++){
-      var tupleIndex = arguments[i];
-      var factor = tupleIndex;
       // ...get the factor for all downstream tuplesets.
-      for (var j = i + 1; j < numTupleSets; j++){
-        var tupleSet = tupleSets[j];
-        var numTuples = tupleSet.getTupleCountSync();
+      for (let j = i + 1; j < numTupleSets; j++){
+        const tupleSet = tupleSets[j];
+        const numTuples = tupleSet.getTupleCountSync();
         if (!numTuples) {
           continue;
         }
@@ -57,9 +26,9 @@ class CellSet extends DataSetComponent {
   // calls getCellIndex and returns the corresponding (cached) cell
   // returns undefined if the cell does not exist.
   #getCell(){
-    var cellIndex = this.getCellIndex.apply(this, arguments);
-    var cells = this.#cells;
-    var cell = cells[cellIndex];
+    const cellIndex = this.getCellIndex.apply(this, arguments);
+    const cells = this.#cells;
+    const cell = cells[cellIndex];
     return cell;
   }
 
@@ -71,22 +40,22 @@ class CellSet extends DataSetComponent {
       previousTupleIndices = [];
     }
 
-    var numRanges = ranges.length;
+    const numRanges = ranges.length;
     if (numRanges === 0) {
       allRanges.push(previousTupleIndices);
       return allRanges;
     }
 
-    var tupleSets = this.#tupleSets;
-    var numTupleSets = tupleSets.length;
+    const tupleSets = this.#tupleSets;
+    const numTupleSets = tupleSets.length;
 
-    var tupleSetIndex = numTupleSets - numRanges;
-    var tupleSet = tupleSets[tupleSetIndex];
-    var tupleCount = tupleSet.getTupleCountSync();
+    const tupleSetIndex = numTupleSets - numRanges;
+    const tupleSet = tupleSets[tupleSetIndex];
+    const tupleCount = tupleSet.getTupleCountSync();
 
-    var range = ranges.shift();
-    var fromTuple = range[0];
-    var toTuple = range[1];
+    const range = ranges.shift();
+    const fromTuple = range[0];
+    let toTuple = range[1];
 
     if (fromTuple === 0 && toTuple === 0) {
       toTuple = 1;
@@ -97,9 +66,9 @@ class CellSet extends DataSetComponent {
       toTuple = tupleCount;
     }
 
-    for (var i = fromTuple; i < toTuple; i++){
-      var rangesCopy = [].concat(ranges);
-      var previousTupleIndicesCopy = [].concat(previousTupleIndices);
+    for (let i = fromTuple; i < toTuple; i++){
+      const rangesCopy = [].concat(ranges);
+      const previousTupleIndicesCopy = [].concat(previousTupleIndices);
       previousTupleIndicesCopy.push(i);
       this.getTupleRanges(rangesCopy, previousTupleIndicesCopy, allRanges);
     }
@@ -107,38 +76,38 @@ class CellSet extends DataSetComponent {
   }
 
   #getTuplesCte(tuplesToQuery, tuplesFields, includeGroupingId){
-    var tupleSets = this.#tupleSets;
-    var totalsItems = [];
-    var combinationTuples = [];
-    var allQueryAxisItems = [];
-    var cellIndices = Object.keys(tuplesToQuery);
-    _cells: for (var i = 0; i < cellIndices.length; i++) {
-      var groupingId = 0;
-      var cellIndex = cellIndices[i];
-      var combinationTuple = [cellIndex];
-      var tuples = tuplesToQuery[cellIndex];
-      _tuples: for (var j = 0; j < tuples.length; j++){
-        var tupleSet = tupleSets[j];
-        var queryAxisItems = tupleSet.getQueryAxisItems();
+    const tupleSets = this.#tupleSets;
+    const totalsItems = [];
+    const combinationTuples = [];
+    let allQueryAxisItems = [];
+    const cellIndices = Object.keys(tuplesToQuery);
+    for (let i = 0; i < cellIndices.length; i++) {
+      let groupingId = 0;
+      const cellIndex = cellIndices[i];
+      const combinationTuple = [cellIndex];
+      const tuples = tuplesToQuery[cellIndex];
+      for (let j = 0; j < tuples.length; j++){
+        const tupleSet = tupleSets[j];
+        const queryAxisItems = tupleSet.getQueryAxisItems();
         if (i === 0) {
           allQueryAxisItems = allQueryAxisItems.concat(queryAxisItems);
-          totalsItems[j] = queryAxisItems.filter(function(queryAxisItem){
+          totalsItems[j] = queryAxisItems.filter((queryAxisItem) =>{
             return queryAxisItem.includeTotals;
           });
         }
         if (j && totalsItems[j] && totalsItems[j].length){
           groupingId <<= totalsItems[j].length;
         }
-        var tuple = tuples[j];
+        const tuple = tuples[j];
         if (tuple){
           groupingId |= parseInt(tuple[TupleSet.groupingIdAlias]) || 0;
-          var tupleValues = tuple.values;
-          var fields = tuplesFields[j];
-          _fields: for (var k = 0; k < queryAxisItems.length; k++){
-            var queryAxisItem = queryAxisItems[k];
-            var tupleValue = tupleValues[k];
-            var tupleValueField = fields[k];
-            var literal = queryAxisItem.literalWriter ? queryAxisItem.literalWriter(tupleValue, tupleValueField) : String(tupleValue);
+          const tupleValues = tuple.values;
+          const fields = tuplesFields[j];
+          for (let k = 0; k < queryAxisItems.length; k++){
+            const queryAxisItem = queryAxisItems[k];
+            const tupleValue = tupleValues[k];
+            const tupleValueField = fields[k];
+            const literal = queryAxisItem.literalWriter ? queryAxisItem.literalWriter(tupleValue, tupleValueField) : String(tupleValue);
             combinationTuple.push(literal);
           }
         }
@@ -152,11 +121,11 @@ class CellSet extends DataSetComponent {
     if (cellIndices.length === 0){
       combinationTuples.push([0]);
     }
-    var tuplesSql = combinationTuples.map(function(combinationTuple){
+    let tuplesSql = combinationTuples.map((combinationTuple) =>{
       return `(${combinationTuple.join(', ')})`;
     }).join('\n  , ');
     
-    var relationDefinition = allQueryAxisItems.map(function(queryAxisItem){
+    let relationDefinition = allQueryAxisItems.map((queryAxisItem) =>{
       return quoteIdentifierWhenRequired( QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem) );
     });
     relationDefinition.unshift(quoteIdentifierWhenRequired(CellSet.#cellIndexColumnName));
@@ -188,42 +157,42 @@ class CellSet extends DataSetComponent {
     // the cell axis items for which to generate aggregates
     cellsAxisItemsToFetch
   ){
-    var tupleSets = this.#tupleSets;
-    var queryModel = this.getQueryModel();
-    var filterAxis = queryModel.getFiltersAxis();
-    var originalFilterAxisItems = filterAxis.getItems();
+    const tupleSets = this.#tupleSets;
+    const queryModel = this.getQueryModel();
+    const filterAxis = queryModel.getFiltersAxis();
+    const originalFilterAxisItems = filterAxis.getItems();
     
     /*
     // most basic optimization: IN clause for all non-derived items (=columns)
     // we will make a special tuple filter item for this:
     // - a filter item that combines multiple axis items, and a array of tuple value arrays
-    var first = true;
-    var columnItems = [];
-    var fields = [];
-    var tupleValues = [];
-    var tuplesFilterItem;
-    for (var tupleIndex in tuplesToQuery){
-      var filterTupleValues = [];
-      var tupleToQuery = tuplesToQuery[tupleIndex];
-      for (var i = 0; i < tupleSets.length; i++){
-        var tuple = tupleToQuery[i];
+    let first = true;
+    let columnItems = [];
+    let fields = [];
+    let tupleValues = [];
+    let tuplesFilterItem;
+    for (let tupleIndex in tuplesToQuery){
+      let filterTupleValues = [];
+      let tupleToQuery = tuplesToQuery[tupleIndex];
+      for (let i = 0; i < tupleSets.length; i++){
+        let tuple = tupleToQuery[i];
         if (!tuple) {
           continue;
         }
-        var tupleFields = tuplesFields[i];
-        var tupleValues = tuple.values;
+        let tupleFields = tuplesFields[i];
+        let tupleValues = tuple.values;
 
-        var tupleSet = tupleSets[i];
-        var queryAxisItems = tupleSet.getQueryAxisItems();
+        let tupleSet = tupleSets[i];
+        let queryAxisItems = tupleSet.getQueryAxisItems();
         
-        for (var j = 0; j < queryAxisItems.length; j++){
-          var queryAxisItem = queryAxisItems[j];
+        for (let j = 0; j < queryAxisItems.length; j++){
+          let queryAxisItem = queryAxisItems[j];
           if (queryAxisItem.derivation) {
             continue;
           }
           // check if this tuple item appears in the filters axis
-          var sqlForQueryAxisItem = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem);
-          var originalFilterAxisItemIndex = originalFilterAxisItems.findIndex(function(filterAxisItem){
+          let sqlForQueryAxisItem = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem);
+          let originalFilterAxisItemIndex = originalFilterAxisItems.findIndex(function(filterAxisItem){
             return QueryAxisItem.getSqlForQueryAxisItem(filterAxisItem) === sqlForQueryAxisItem;
           });
           // If it exists as fitler axis item, we can now remove it since the condition we're generating is stronger
@@ -233,10 +202,10 @@ class CellSet extends DataSetComponent {
             
           if (first){
             columnItems.push(queryAxisItem);
-            var tupleField = tupleFields[j];
+            let tupleField = tupleFields[j];
             fields.push(tupleField);
           }
-          var tupleValue = tupleValues[j];
+          let tupleValue = tupleValues[j];
           filterTupleValues.push(tupleValue);
         }
       }
@@ -274,21 +243,21 @@ class CellSet extends DataSetComponent {
     // the cell axis items for which to generate aggregates
     cellsAxisItemsToFetch
   ){
-    var queryModel = this.getQueryModel();
-    var datasource = queryModel.getDatasource();
+    const queryModel = this.getQueryModel();
+    const datasource = queryModel.getDatasource();
 
-    var rowsAxisItems = queryModel.getRowsAxis().getItems();
-    var columnsAxisItems = queryModel.getColumnsAxis().getItems();
-    var axisItems = [].concat(rowsAxisItems, columnsAxisItems);
-    var allItems = [].concat(axisItems, cellsAxisItemsToFetch || []);
-    var filterAxisItems = this.#getFilterAxisItemsForCells(
+    const rowsAxisItems = queryModel.getRowsAxis().getItems();
+    const columnsAxisItems = queryModel.getColumnsAxis().getItems();
+    const axisItems = [].concat(rowsAxisItems, columnsAxisItems);
+    const allItems = [].concat(axisItems, cellsAxisItemsToFetch || []);
+    const filterAxisItems = this.#getFilterAxisItemsForCells(
       tuplesToQuery,
       tuplesFields,
       cellsAxisItemsToFetch
     );
     
-    var samplingConfig = queryModel.getSampling(QueryModel.AXIS_CELLS);
-    var sql = SqlQueryGenerator.getSqlSelectStatementForAxisItems({
+    const samplingConfig = queryModel.getSampling(QueryModel.AXIS_CELLS);
+    let sql = SqlQueryGenerator.getSqlSelectStatementForAxisItems({
       datasource: datasource, 
       queryAxisItems: allItems, 
       filterAxisItems: filterAxisItems,
@@ -298,18 +267,18 @@ class CellSet extends DataSetComponent {
       samplingConfig: samplingConfig
     });
 
-    var totalsItems = allItems.filter(function(queryAxisItem){
+    const totalsItems = allItems.filter((queryAxisItem) =>{
       return queryAxisItem.includeTotals === true;
     });
-    var hasTotalsItems = Boolean(totalsItems.length);
-    var tuples = this.#getTuplesCte(tuplesToQuery, tuplesFields, hasTotalsItems);
+    const hasTotalsItems = Boolean(totalsItems.length);
+    const tuples = this.#getTuplesCte(tuplesToQuery, tuplesFields, hasTotalsItems);
     
     sql += `, ${tuples}`;
     
-    var select = cellsAxisItemsToFetch.map(function(axisItem){
-      var expression = QueryAxisItem.getCaptionForQueryAxisItem(axisItem);
-      var qualifiedIdentifier = getQualifiedIdentifier('__huey_cells', expression);
-      var alias = QueryAxisItem.getSqlForQueryAxisItem(axisItem, CellSet.datasetRelationName);
+    const select = cellsAxisItemsToFetch.map((axisItem) =>{
+      const expression = QueryAxisItem.getCaptionForQueryAxisItem(axisItem);
+      const qualifiedIdentifier = getQualifiedIdentifier('__huey_cells', expression);
+      const alias = QueryAxisItem.getSqlForQueryAxisItem(axisItem, CellSet.datasetRelationName);
       return `${qualifiedIdentifier} AS ${quoteIdentifierWhenRequired(alias)}`;
     });
     select.unshift(
@@ -318,14 +287,14 @@ class CellSet extends DataSetComponent {
         CellSet.#cellIndexColumnName
       )
     );
-    var from = `FROM ${quoteIdentifierWhenRequired(CellSet.#tupleDataRelationName)}`;
-    var joinSql, onCondition;
+    let from = `FROM ${quoteIdentifierWhenRequired(CellSet.#tupleDataRelationName)}`;
+    let joinSql, onCondition;
     if (axisItems.length) {
       joinSql = `LEFT JOIN`;
-      onCondition = axisItems.map(function(axisItem){
-        var axisExpression = QueryAxisItem.getCaptionForQueryAxisItem(axisItem)
-        var leftExpression = getQualifiedIdentifier(CellSet.#tupleDataRelationName, axisExpression);
-        var rightExpression = getQualifiedIdentifier('__huey_cells', axisExpression);
+      onCondition = axisItems.map((axisItem) =>{
+        const axisExpression = QueryAxisItem.getCaptionForQueryAxisItem(axisItem)
+        const leftExpression = getQualifiedIdentifier(CellSet.#tupleDataRelationName, axisExpression);
+        const rightExpression = getQualifiedIdentifier('__huey_cells', axisExpression);
         return `${leftExpression} is not distinct from ${rightExpression}`;
       });
     }
@@ -343,8 +312,8 @@ class CellSet extends DataSetComponent {
           TupleSet.groupingIdAlias
         )
       );
-      var leftExpression = getQualifiedIdentifier(CellSet.#tupleDataRelationName, TupleSet.groupingIdAlias);
-      var rightExpression = getQualifiedIdentifier('__huey_cells', TupleSet.groupingIdAlias);
+      const leftExpression = getQualifiedIdentifier(CellSet.#tupleDataRelationName, TupleSet.groupingIdAlias);
+      const rightExpression = getQualifiedIdentifier('__huey_cells', TupleSet.groupingIdAlias);
       onCondition.push(`${leftExpression} = ${rightExpression}`);
     }
 
@@ -360,33 +329,33 @@ class CellSet extends DataSetComponent {
   }
 
   #buildRemoteCellsQuery(tuplesToQuery, tuplesFields, cellsAxisItemsToFetch){
-    var queryModel = this.getQueryModel();
-    var rowCount = 0, colCount = 0;
-    var tupleSets = this.#tupleSets;
+    const queryModel = this.getQueryModel();
+    let rowCount = 0, colCount = 0;
+    const tupleSets = this.#tupleSets;
     if (tupleSets[0]) rowCount = Math.max(1, tupleSets[0].getTupleCountSync() || 0);
     if (tupleSets[1]) colCount = Math.max(1, tupleSets[1].getTupleCountSync() || 0);
     return RemoteQueryAdapter.createRemoteCellsQuery(queryModel, rowCount, colCount, cellsAxisItemsToFetch);
   }
 
   #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount, measureAliases){
-    var cells = apiResponse.cells || [];
-    var colCount = columnCount || 1;
-    var items = cellsAxisItemsToFetch || [];
-    var aliases = measureAliases || [];
+    const cells = apiResponse.cells || [];
+    const colCount = columnCount || 1;
+    const items = cellsAxisItemsToFetch || [];
+    const aliases = measureAliases || [];
     // Use same key as pivot: getSqlForQueryAxisItem (e.g. "sum(volume)") so cell.values[sqlExpression] finds the value
-    var fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map(function(item) {
+    const fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map((item) => {
       return { name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName) };
     }));
-    var numRows = cells.length;
-    var get = function(i) {
-      var c = cells[i];
+    const numRows = cells.length;
+    const get = function(i) {
+      const c = cells[i];
       if (!c) return {};
-      var row = {};
+      const row = {};
       row[CellSet.#cellIndexColumnName] = (c.row_index || 0) * colCount + (c.column_index || 0);
-      var vals = c.values || {};
-      items.forEach(function(item, index) {
-        var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
-        var alias = aliases[index] || item.columnName;
+      const vals = c.values || {};
+      items.forEach((item, index) => {
+        const sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
+        const alias = aliases[index] || item.columnName;
         row[sqlExpression] = vals[alias];
       });
       return row;
@@ -399,44 +368,44 @@ class CellSet extends DataSetComponent {
     tuplesFields,
     cellsAxisItemsToFetch
   ) {
-    var queryModel = this.getQueryModel();
-    var datasource = queryModel.getDatasource();
-    var isRemote = datasource && datasource.getType && datasource.getType() === 'remote';
+    const queryModel = this.getQueryModel();
+    const datasource = queryModel.getDatasource();
+    const isRemote = datasource && datasource.getType && datasource.getType() === 'remote';
 
     if (isRemote && datasource.getManagedConnection().fetchCells) {
-      var query = this.#buildRemoteCellsQuery(tuplesToQuery, tuplesFields, cellsAxisItemsToFetch);
-      var colCount = query.columns && query.columns.count ? query.columns.count : 1;
-      var measureAliases = query.axes && query.axes.measures ? query.axes.measures.map(function(measure) { return measure.alias; }) : [];
-      var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
-      var connection = await this.getManagedConnection();
-      var apiResponse = await connection.fetchCells(dateRange, query);
-      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases);
+      const query = this.#buildRemoteCellsQuery(tuplesToQuery, tuplesFields, cellsAxisItemsToFetch);
+      const colCount = query.columns && query.columns.count ? query.columns.count : 1;
+      const measureAliases = query.axes && query.axes.measures ? query.axes.measures.map((measure) => { return measure.alias; }) : [];
+      const dateRange = RemoteQueryAdapter.getDateRange(queryModel);
+      const connection = await this.getManagedConnection();
+      const apiResponse = await connection.fetchCells(dateRange, query);
+      const resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases);
       return resultSet;
     }
 
-    var sql = this.#getSqlQueryForCells(
+    const sql = this.#getSqlQueryForCells(
       tuplesToQuery,
       tuplesFields,
       cellsAxisItemsToFetch
     );
-    var connection = await this.getManagedConnection();
-    var resultSet = await connection.query(sql);
+    const connection = await this.getManagedConnection();
+    const resultSet = await connection.query(sql);
     return resultSet;
   }
 
   #extractCellsFromResultset(resultSet){
-    var cells = {};
-    var fields = resultSet.schema.fields;
-    for (var i = 0; i < resultSet.numRows; i++){
-      var row = resultSet.get(i);
-      var cellIndex, cell;
-      for (var j = 0; j < fields.length; j++){
-        var field = fields[j];
-        var fieldName = field.name;
+    const cells = {};
+    const fields = resultSet.schema.fields;
+    for (let i = 0; i < resultSet.numRows; i++){
+      const row = resultSet.get(i);
+      let cellIndex, cell;
+      for (let j = 0; j < fields.length; j++){
+        const field = fields[j];
+        const fieldName = field.name;
         if (this.#cellValueFields[fieldName] === undefined) {
           this.#cellValueFields[fieldName] = field;
         }
-        var value = row[fieldName];
+        const value = row[fieldName];
 
         if (j === 0) {
           cellIndex = value;
@@ -459,43 +428,43 @@ class CellSet extends DataSetComponent {
 
   // ranges is aa list of tuple index pairs
   async getCells(ranges){
-    var queryModel = this.getQueryModel();
-    var cellsAxis = queryModel.getCellsAxis();
-    var cellsAxisItems = cellsAxis.getItems();
+    const queryModel = this.getQueryModel();
+    const cellsAxis = queryModel.getCellsAxis();
+    const cellsAxisItems = cellsAxis.getItems();
 
     if (cellsAxisItems.length === 0){
       return undefined;
     }
 
-    var tupleIndices = this.getTupleRanges(ranges);
-    var tupleSets = this.#tupleSets;
-    var cells = this.#cells;
+    const tupleIndices = this.getTupleRanges(ranges);
+    const tupleSets = this.#tupleSets;
+    const cells = this.#cells;
 
     // this is where we collect the cells, keyed by cellIndex,
-    var availableCells = {};
+    const availableCells = {};
 
     // this is where we keep  the collection of values of the tuples
     // for which we currently don't have all required cell values
     // along with the tuple values, we store the cellIndex
-    var tuplesToQuery = {};
-    var tuplesFields = [];
+    const tuplesToQuery = {};
+    const tuplesFields = [];
     // this is where we store the cell axis items that need to be fetched.
     // If there are cells missing, or cells present that still didn't have a value for a required cell axis item,
     // this will contain all cell axis items that need to be queried.
-    var cellsAxisItemsToFetch = [];
+    const cellsAxisItemsToFetch = [];
 
     // combine values from tuples of different axes into one 'supertuple'
-    _combinedTuples: for (var i = 0; i < tupleIndices.length; i++){
-      var tupleIndicesItem = tupleIndices[i];
-      var cellIndex = this.getCellIndex(...tupleIndicesItem);
-      var cell = cells[cellIndex];
+    for (let i = 0; i < tupleIndices.length; i++){
+      const tupleIndicesItem = tupleIndices[i];
+      const cellIndex = this.getCellIndex(...tupleIndicesItem);
+      let cell = cells[cellIndex];
 
-      for (var j = 0; j < cellsAxisItems.length; j++){
-        var cellsAxisItem = cellsAxisItems[j];
+      for (let j = 0; j < cellsAxisItems.length; j++){
+        const cellsAxisItem = cellsAxisItems[j];
         // we get the sql expression for the cells axis item just as a key to store the cell value.
         // it might be conceptually cleaner to use the caption for the item but captions are always unique, whereas the resulting SQL might not be.
         // not however we don't use it here to generate SQL queries - that is the job of #getSqlQueryForCells
-        var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(cellsAxisItem, CellSet.datasetRelationName);
+        const sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(cellsAxisItem, CellSet.datasetRelationName);
         if (!cell || cell.values[sqlExpression] === undefined ){
           // we have a cell, but the cell doesn't have a value for this axis item.
           // this means the cell is not complete so we must fetch it.
@@ -520,17 +489,17 @@ class CellSet extends DataSetComponent {
       // If we arrive here, the cell is either not cached, or incomplete,
       // i.e. it lacks one or more values corresponding to the requested cells axis items.
       // If even one cells axis item value is missing, we have to include the cell in our query.
-      var tuplesForCell = [];
+      const tuplesForCell = [];
 
       // get the actual tuples and store them along with the cell index.
       // we need this to construct a query to fetch only the cells we're missing
-      _tuplesetIndices: for (var j = 0; j < tupleIndicesItem.length; j++){
+      for (let j = 0; j < tupleIndicesItem.length; j++){
 
         // ...get the tuple,...
-        var tupleIndex = tupleIndicesItem[j];
-        var tupleSet = tupleSets[j];
+        const tupleIndex = tupleIndicesItem[j];
+        const tupleSet = tupleSets[j];
 
-        var tuple = tupleSet.getTupleSync(tupleIndex);
+        const tuple = tupleSet.getTupleSync(tupleIndex);
         if (!tuple) {
           // this shouldn't happen!
           // if we arrive here it means we messed up while calculating the tuple ranges.
@@ -546,17 +515,17 @@ class CellSet extends DataSetComponent {
     }
 
     if (cellsAxisItemsToFetch.length){
-      for (var i = 0; i < tupleIndicesItem.length; i++){
-        var tupleset = this.#tupleSets[i];
-        var fields = tupleset.getTupleValueFields();
+      for (let i = 0; i < tupleIndicesItem.length; i++){
+        const tupleset = this.#tupleSets[i];
+        const fields = tupleset.getTupleValueFields();
         tuplesFields[i] = fields;
       }
-      var resultset = await this.#executeCellsQuery(
+      const resultset = await this.#executeCellsQuery(
         tuplesToQuery,
         tuplesFields,
         cellsAxisItemsToFetch
       );
-      var newCells = this.#extractCellsFromResultset(resultset);
+      const newCells = this.#extractCellsFromResultset(resultset);
       Object.assign(availableCells, newCells);
     }
 
