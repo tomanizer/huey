@@ -13,7 +13,8 @@ COPY server/ server/
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV UVICORN_WORKERS=1
 
 EXPOSE 8000
 
-CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn server.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS}"]

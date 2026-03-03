@@ -27,7 +27,7 @@ Exports follow a sibling path:
 ## Data flow
 
 - **Dataset configuration**: YAML at `datasets_config/datasets.yaml` (override via `QUERYSERVICE_DATASETS_CONFIG_PATH`) lists datasets and field metadata. The schema guards allowed fields in query builder and validation.
-- **Sample data**: On startup `datasets.load_sample_data` seeds deterministic rows into DuckDB tables when `QUERYSERVICE_SEED_SAMPLE_DATA` is true (default).
+- **Sample data**: On startup `datasets.load_sample_data` seeds deterministic rows into DuckDB tables when `QUERYSERVICE_SEED_SAMPLE_DATA` is true (default is false; opt-in).
 - **Validation linkage**: The schema-derived field names drive filter/axis allowlists so only configured fields become SQL identifiers.
 
 ## Export system
@@ -53,8 +53,9 @@ Environment variables (all prefixed `QUERYSERVICE_`, defaults shown):
 - `QUERYSERVICE_PORT` (`8000`)
 - `QUERYSERVICE_LOG_LEVEL` (`INFO`)
 - `QUERYSERVICE_LOG_FORMAT` (`text`, or `json`)
+- `QUERYSERVICE_CORS_ORIGINS` (`[]`, comma-separated list or JSON array)
 - `QUERYSERVICE_DATASETS_CONFIG_PATH` (`None`, falls back to bundled YAML)
-- `QUERYSERVICE_SEED_SAMPLE_DATA` (`true`)
+- `QUERYSERVICE_SEED_SAMPLE_DATA` (`false`)
 - `QUERYSERVICE_DATA_DIR` (`None`, DuckDB in-memory; set path for file-backed DB)
 - `QUERYSERVICE_EXPORT_TTL_SECONDS` (`3600`)
 - `QUERYSERVICE_EXPORT_MAX_CONCURRENT` (`5`)

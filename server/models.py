@@ -5,19 +5,28 @@ All user-facing fields use Literal types and Pydantic Field constraints
 so invalid requests fail fast with clear 422 errors.
 """
 
-import re
+from datetime import date
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
 FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
 SortDirection = Literal["ASC", "DESC"]
-ExportFormat = Literal["csv"]
+ExportFormat = Literal["parquet", "csv"]
 
 MAX_PAGE_LIMIT = 10000
 MAX_EXPORT_ROWS = 100000
+
+
+def _parse_iso_date(value: str) -> str:
+    """Validate strict calendar date strings in YYYY-MM-DD format."""
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError("Invalid date, use real YYYY-MM-DD date") from exc
+    if parsed.isoformat() != value:
+        raise ValueError("Invalid date, use real YYYY-MM-DD date")
+    return value
 
 
 # --- Date range (envelope) ---
@@ -30,10 +39,8 @@ class DateRangeSingle(BaseModel):
     @field_validator("date")
     @classmethod
     def validate_date_format(cls, v: str) -> str:
-        """Ensure date strings follow YYYY-MM-DD."""
-        if not _DATE_RE.match(v):
-            raise ValueError("Invalid date format, use YYYY-MM-DD")
-        return v
+        """Ensure date strings follow real calendar dates in YYYY-MM-DD."""
+        return _parse_iso_date(v)
 
 
 class DateRangeRange(BaseModel):
@@ -46,15 +53,13 @@ class DateRangeRange(BaseModel):
     @field_validator("start", "end")
     @classmethod
     def validate_date_format(cls, v: str) -> str:
-        """Ensure start/end date strings follow YYYY-MM-DD."""
-        if not _DATE_RE.match(v):
-            raise ValueError("Invalid date format, use YYYY-MM-DD")
-        return v
+        """Ensure start/end strings are real calendar dates in YYYY-MM-DD."""
+        return _parse_iso_date(v)
 
     @model_validator(mode="after")
     def check_start_before_end(self) -> "DateRangeRange":
         """Validate that the range start is not after the end."""
-        if self.start > self.end:
+        if date.fromisoformat(self.start) > date.fromisoformat(self.end):
             raise ValueError("Date range start must be <= end")
         return self
 
@@ -142,7 +147,7 @@ class ExportQueryBody(BaseModel):
     axes: dict[str, Any] | None = None
     filters: list[TupleFilter] | None = None
     max_rows: int = Field(default=10000, ge=1, le=MAX_EXPORT_ROWS)
-    format: ExportFormat = "csv"
+    format: ExportFormat = "parquet"
 
 
 # --- Request models ---

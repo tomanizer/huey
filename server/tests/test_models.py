@@ -34,6 +34,14 @@ class TestDateRangeSingle:
         with pytest.raises(ValidationError, match="YYYY-MM-DD"):
             DateRangeSingle(type="single", date="")
 
+    def test_invalid_calendar_day(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeSingle(type="single", date="2026-02-30")
+
+    def test_invalid_calendar_month(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeSingle(type="single", date="2026-13-01")
+
     def test_wrong_type_literal(self) -> None:
         with pytest.raises(ValidationError):
             DateRangeSingle(type="range", date="2026-03-01")
@@ -60,6 +68,14 @@ class TestDateRangeRange:
     def test_bad_end_format(self) -> None:
         with pytest.raises(ValidationError, match="YYYY-MM-DD"):
             DateRangeRange(type="range", start="2026-01-01", end="bad")
+
+    def test_bad_start_calendar_date(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeRange(type="range", start="2026-02-30", end="2026-03-01")
+
+    def test_bad_end_calendar_date(self) -> None:
+        with pytest.raises(ValidationError, match="YYYY-MM-DD"):
+            DateRangeRange(type="range", start="2026-03-01", end="2026-13-01")
 
 
 class TestTupleFieldSpec:
@@ -128,7 +144,7 @@ class TestExportQueryBody:
     def test_defaults(self) -> None:
         eq = ExportQueryBody()
         assert eq.max_rows == 10000
-        assert eq.format == "csv"
+        assert eq.format == "parquet"
 
     def test_valid_max_rows(self) -> None:
         eq = ExportQueryBody(max_rows=1)
@@ -233,7 +249,7 @@ class TestExportRequest:
             date_range={"type": "single", "date": "2026-03-01"},
         )
         assert req.query.max_rows == 10000
-        assert req.query.format == "csv"
+        assert req.query.format == "parquet"
 
 
 class TestPagingModels:

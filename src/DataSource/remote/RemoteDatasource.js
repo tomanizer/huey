@@ -16,6 +16,18 @@
     return envelope;
   }
 
+  function buildHeaders(datasource, includeJson) {
+    var headers = {};
+    if (includeJson) {
+      headers['Content-Type'] = 'application/json';
+    }
+    var apiKey = datasource.getApiKey && datasource.getApiKey();
+    if (apiKey) {
+      headers['X-API-Key'] = apiKey;
+    }
+    return headers;
+  }
+
   function RemoteConnection(datasource) {
     this._datasource = datasource;
     this._abortController = null;
@@ -35,7 +47,7 @@
     var datasetId = this._datasource.getDatasetId();
     var url = baseUrl + '/schema?dataset_id=' + encodeURIComponent(datasetId);
     this._abortController = new AbortController();
-    return fetch(url, { signal: this._abortController.signal })
+    return fetch(url, { signal: this._abortController.signal, headers: buildHeaders(this._datasource, false) })
       .then(function (res) {
         if (!res.ok) {
           return res.json().then(function (body) {
@@ -57,7 +69,7 @@
     this._abortController = new AbortController();
     return fetch(baseUrl + '/query/tuples', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildHeaders(this._datasource, true),
       body: JSON.stringify(envelope),
       signal: this._abortController.signal
     }).then(function (res) {
@@ -81,7 +93,7 @@
     this._abortController = new AbortController();
     return fetch(baseUrl + '/query/cells', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildHeaders(this._datasource, true),
       body: JSON.stringify(envelope),
       signal: this._abortController.signal
     }).then(function (res) {
@@ -105,7 +117,7 @@
     this._abortController = new AbortController();
     return fetch(baseUrl + '/query/picklist', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildHeaders(this._datasource, true),
       body: JSON.stringify(envelope),
       signal: this._abortController.signal
     }).then(function (res) {
@@ -143,6 +155,7 @@
       }
       this._baseUrl = config.baseUrl.replace(/\/$/, '');
       this._datasetId = config.datasetId;
+      this._apiKey = config.apiKey;
       this._id = config.id || ('remote:' + this._baseUrl + ':' + this._datasetId);
       this._connection = new RemoteConnection(this);
     }
@@ -161,6 +174,10 @@
 
     getDatasetId() {
       return this._datasetId;
+    }
+
+    getApiKey() {
+      return this._apiKey;
     }
 
     getManagedConnection() {
