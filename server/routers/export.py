@@ -13,7 +13,8 @@ from fastapi.responses import FileResponse
 
 from server import datasets
 from server.auth import require_api_key
-from server.errors import DatasetNotFoundError
+from server.engine import db_manager
+from server.errors import DatasetNotFoundError, DatasetUnavailableError
 from server.export_service import get_export_service
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
 from server.request_context import set_request_id
@@ -37,6 +38,8 @@ async def post_export(
         request.state.request_id = rid
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
+    if not db_manager.table_exists(body.dataset_id):
+        raise DatasetUnavailableError(body.dataset_id)
 
     service = get_export_service()
     job = service.submit(body)

@@ -1,8 +1,9 @@
 """Shared test fixtures for backend tests."""
 
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 from server.config import get_settings
 from server.datasets import load_sample_data
