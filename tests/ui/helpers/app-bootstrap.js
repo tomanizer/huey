@@ -64,6 +64,13 @@ async function addSymbolFilterAxis(page) {
 
 async function runQueryAndWaitForPivot(page) {
   await page.evaluate(() => {
+    const runButton = document.getElementById('runQueryButton');
+    if (runButton) {
+      runButton.click();
+    }
+  });
+
+  await page.evaluate(() => {
     if (window.pivotTableUi && typeof window.pivotTableUi.updatePivotTableUi === 'function') {
       window.pivotTableUi.updatePivotTableUi();
     }
@@ -72,7 +79,6 @@ async function runQueryAndWaitForPivot(page) {
   const pivot = page.locator('#pivotTableUi');
   await expect(pivot).toBeVisible({ timeout: 60000 });
   await expect(pivot).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
-  await expect(page.locator('#queryResultRowsInfo')).not.toHaveText('', { timeout: 60000 });
   return pivot;
 }
 

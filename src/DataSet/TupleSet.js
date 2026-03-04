@@ -4,42 +4,42 @@ class TupleSet extends DataSetComponent {
 
   //
   static getSqlSelectExpressions(queryModel, axisId, includeCountAll){
-    const queryAxis = queryModel.getQueryAxis(axisId);
-    const queryAxisItems = queryAxis.getItems();
+    var queryAxis = queryModel.getQueryAxis(axisId);
+    var queryAxisItems = queryAxis.getItems();
     if (!queryAxisItems.length) {
       return undefined;
     }
 
-    const selectListExpressions = {};
-    for (let i = 0; i < queryAxisItems.length; i++) {
-      const queryAxisItem = queryAxisItems[i];
-      const caption = QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem);
-      const selectListExpression = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem);
+    var selectListExpressions = {};
+    for (var i = 0; i < queryAxisItems.length; i++) {
+      var queryAxisItem = queryAxisItems[i];
+      var caption = QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem);
+      var selectListExpression = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem);
       selectListExpressions[caption] = selectListExpression;
     }
 
     if (includeCountAll) {
-      const countExpression = 'COUNT(*) OVER ()';
+      var countExpression = 'COUNT(*) OVER ()';
       selectListExpressions[countExpression] = countExpression;
     }
     return selectListExpressions;
   }
 
   static getSqlSelectStatement(queryModel, axisId, includeCountAll, nullsSortOrder, totalsPosition){
-    const datasource = queryModel.getDatasource();
+    var datasource = queryModel.getDatasource();
 
-    const queryAxis = queryModel.getQueryAxis(axisId);
-    const queryAxisItems = queryAxis.getItems();
+    var queryAxis = queryModel.getQueryAxis(axisId);
+    var queryAxisItems = queryAxis.getItems();
 
-    const filterAxis = queryModel.getFiltersAxis();
-    const filterAxisItems = filterAxis.getItems();
+    var filterAxis = queryModel.getFiltersAxis();
+    var filterAxisItems = filterAxis.getItems();
 
-    let samplingConfig;
+    var samplingConfig;
     if (includeCountAll) {
       samplingConfig = queryModel.getSampling(axisId);
     }
 
-    const sql = SqlQueryGenerator.getSqlSelectStatementForAxisItems({
+    var sql = SqlQueryGenerator.getSqlSelectStatementForAxisItems({
       datasource: datasource,
       queryAxisItems: queryAxisItems,
       filterAxisItems: filterAxisItems,
@@ -52,11 +52,42 @@ class TupleSet extends DataSetComponent {
     return sql;
   }
 
-      const queryModel = this.getQueryModel();
+  #queryAxisId = undefined;
+
   #tuples = [];
+  #tupleValueFields = [];
+
+  #tupleCount = undefined;
+  #pageSize = 50;
+
+  constructor(queryModel, axisId, settings){
+    super(queryModel, settings);
+    this.#queryAxisId = axisId;
+  }
+  
+  #getNullsSortOrder(){
+    var settings = this.getSettings();
+    var nullsSortOrder;
+    if (typeof settings.getSettings === 'function'){
+      nullsSortOrder = settings.getSettings([
+        'localeSettings', 
+        'nullsSortOrder', 
+        'value'
+      ]);
+    };
+    if (!nullsSortOrder) {
+      nullsSortOrder = 'FIRST';
+    }
+    if (['FIRST','LAST'].indexOf(nullsSortOrder) === -1) {
+      console.warn(`Wrong value for nullsSortOrder "${nullsSortOrder}"`);
+      nullsSortOrder = 'FIRST';
+    }
+    return nullsSortOrder;
+  }
+  
   #getTotalsPosition(){
-    const settings = this.getSettings();
-    let totalsPosition;
+    var settings = this.getSettings();
+    var totalsPosition;
     if (typeof settings.getSettings === 'function'){
       totalsPosition = settings.getSettings([
         'pivotSettings', 
@@ -91,22 +122,22 @@ class TupleSet extends DataSetComponent {
   }
 
   getQueryAxisItems(){
-    const queryModel = this.getQueryModel();
-    const axisId = this.#queryAxisId;
+    var queryModel = this.getQueryModel();
+    var axisId = this.#queryAxisId;
 
-    const queryAxis = queryModel.getQueryAxis(axisId);
-    const items = queryAxis.getItems();
+    var queryAxis = queryModel.getQueryAxis(axisId);
+    var items = queryAxis.getItems();
     return items;
   }
 
   #getSqlSelectStatement(includeCountAll){
-    const queryModel = this.getQueryModel();
+    var queryModel = this.getQueryModel();
     if (!queryModel) {
       return undefined;
     }
-    const nullsSortOrder = this.#getNullsSortOrder();
-    const totalsPosition = this.#getTotalsPosition();    
-    const sql = TupleSet.getSqlSelectStatement(
+    var nullsSortOrder = this.#getNullsSortOrder();
+    var totalsPosition = this.#getTotalsPosition();    
+    var sql = TupleSet.getSqlSelectStatement(
       queryModel,
       this.#queryAxisId,
       includeCountAll,
@@ -140,19 +171,19 @@ class TupleSet extends DataSetComponent {
   }
 
   #loadTuples(resultSet, offset) {
-    const numRows = resultSet.numRows;
+    var numRows = resultSet.numRows;
 
-    const fields = resultSet.schema.fields;
+    var fields = resultSet.schema.fields;
 
-    const items = this.getQueryAxisItems();
-    let hasGroupingId = false, fieldOffset = 0, fieldCount = items.length;
+    var items = this.getQueryAxisItems();
+    var hasGroupingId = false, fieldOffset = 0, fieldCount = items.length;
     if (fields[0].name === TupleSet.groupingIdAlias) {
       hasGroupingId = true;
       fieldOffset += 1;
       fieldCount += 1;
     }
 
-    const tuples = this.#tuples;
+    var tuples = this.#tuples;
 
     // if the offset is 0 we should have included an expression that computes the total count as last
     if (offset === 0) {
@@ -160,31 +191,31 @@ class TupleSet extends DataSetComponent {
         this.#tupleCount = 0;
       }
       else {
-        const firstRow = resultSet.get(0);
-        const lastField = fields[fields.length - 1];
-        const totalCount = firstRow[lastField.name];
+        var firstRow = resultSet.get(0);
+        var lastField = fields[fields.length - 1];
+        var totalCount = firstRow[lastField.name];
         this.#tupleCount = parseInt(String(totalCount), 10);
       }
     }
     this.#tupleValueFields = fields.slice(fieldOffset, fieldCount);
 
-    for (let i = 0; i < numRows; i++){
+    for (var i = 0; i < numRows; i++){
 
-      const row = resultSet.get(i);
-      const values = [];
-      const tuple = {values: values};
+      var row = resultSet.get(i);
+      var values = [];
+      var tuple = {values: values};
 
       if (hasGroupingId){
-        const groupingId = row[TupleSet.groupingIdAlias];
+        var groupingId = row[TupleSet.groupingIdAlias];
         if (groupingId > 0) {
           tuple[TupleSet.groupingIdAlias] = groupingId;
         }
       }
 
-      for (let j = fieldOffset; j < fieldCount; j++){
-        const field = fields[j];
-        const fieldName = field.name;
-        const value = row[fieldName];
+      for (var j = fieldOffset; j < fieldCount; j++){
+        var field = fields[j];
+        var fieldName = field.name;
+        var value = row[fieldName];
         values[j - fieldOffset] = value;
       }
 
@@ -193,28 +224,28 @@ class TupleSet extends DataSetComponent {
   }
 
   #buildRemoteTuplesQuery(limit, offset){
-    const queryModel = this.getQueryModel();
+    var queryModel = this.getQueryModel();
     return RemoteQueryAdapter.createRemoteTuplesQuery(queryModel, this.#queryAxisId, limit, offset);
   }
 
   #remoteResponseToResultSet(apiResponse, axisItems, includeCountAll){
-    const items = apiResponse.items || [];
-    const totalCount = apiResponse.total_count != null ? apiResponse.total_count : items.length;
-    const hasGroupingId = items.some((item) => { return item.grouping_id != null; });
-    const fieldNames = axisItems.map((item) => { return item.columnName; });
-    const fields = [];
+    var items = apiResponse.items || [];
+    var totalCount = apiResponse.total_count != null ? apiResponse.total_count : items.length;
+    var hasGroupingId = items.some(function(item) { return item.grouping_id != null; });
+    var fieldNames = axisItems.map(function(item) { return item.columnName; });
+    var fields = [];
     if (hasGroupingId) fields.push({ name: TupleSet.groupingIdAlias });
-    fieldNames.forEach((name) => { fields.push({ name: name }); });
+    fieldNames.forEach(function(name) { fields.push({ name: name }); });
     if (includeCountAll) fields.push({ name: '__huey_count' });
-    const numRows = items.length;
-    const get = (function(items, fieldNames, totalCount, includeCountAll, hasGroupingId) {
+    var numRows = items.length;
+    var get = (function(items, fieldNames, totalCount, includeCountAll, hasGroupingId) {
       return function(i) {
-        const row = {};
-        const item = items[i];
+        var row = {};
+        var item = items[i];
         if (!item) return row;
         if (hasGroupingId) row[TupleSet.groupingIdAlias] = item.grouping_id != null ? item.grouping_id : 0;
-        const vals = item.values || [];
-        for (let j = 0; j < fieldNames.length; j++) {
+        var vals = item.values || [];
+        for (var j = 0; j < fieldNames.length; j++) {
           row[fieldNames[j]] = vals[j];
         }
         if (includeCountAll) {
@@ -231,17 +262,17 @@ class TupleSet extends DataSetComponent {
   }
 
   async #executeAxisQuery(limit, offset){
-    const includeCountExpression = offset === 0;
-    const queryModel = this.getQueryModel();
-    const datasource = queryModel.getDatasource();
-    const isRemote = datasource && datasource.getType && datasource.getType() === 'remote';
+    var includeCountExpression = offset === 0;
+    var queryModel = this.getQueryModel();
+    var datasource = queryModel.getDatasource();
+    var isRemote = datasource && datasource.getType && datasource.getType() === 'remote';
 
     if (isRemote && datasource.getManagedConnection().fetchTuples) {
-      const query = this.#buildRemoteTuplesQuery(limit, offset);
+      var query = this.#buildRemoteTuplesQuery(limit, offset);
       if (!query) return 0;
-      const dateRange = RemoteQueryAdapter.getDateRange(queryModel);
-      const connection = await this.getManagedConnection();
-      let apiResponse;
+      var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
+      var connection = await this.getManagedConnection();
+      var apiResponse;
       try {
         apiResponse = await connection.fetchTuples(dateRange, query);
       } catch (e) {
@@ -249,24 +280,24 @@ class TupleSet extends DataSetComponent {
         throw e;
       }
       if (connection.getState() === 'canceled') return 0;
-      const axisItems = this.getQueryAxisItems();
-      const resultSet = this.#remoteResponseToResultSet(apiResponse, axisItems, includeCountExpression);
+      var axisItems = this.getQueryAxisItems();
+      var resultSet = this.#remoteResponseToResultSet(apiResponse, axisItems, includeCountExpression);
       this.#loadTuples(resultSet, offset);
       return resultSet.numRows;
     }
 
-    let axisSql = this.#getSqlSelectStatement(includeCountExpression);
+    var axisSql = this.#getSqlSelectStatement(includeCountExpression);
     if (!axisSql){
       return 0;
     }
     axisSql = `${axisSql}\nLIMIT ${limit} OFFSET ${offset}`;
 
-    const connection = await this.getManagedConnection();
+    var connection = await this.getManagedConnection();
     console.log(`SQL to fetch tuples for ${this.#queryAxisId} axis:`);
     console.log(axisSql);
-    const resultset = await connection.query(axisSql);
+    var resultset = await connection.query(axisSql);
     console.log(`Query method returned, connection ${connection.getConnectionId()} in state ${connection.getState()}` );
-    const rejects = await this.getQueryModel().getDatasource().getRejects();
+    var rejects = await this.getQueryModel().getDatasource().getRejects();
     if (connection.getState() === 'canceled') {
       return 0;
     }
@@ -276,10 +307,10 @@ class TupleSet extends DataSetComponent {
   }
 
   getCachedTupleCount(offset){
-    const data = this.#tuples;
-    let cachedTupleCount = 0;
-    for (let i = offset; i < this.#tupleCount; i++){
-      const tuple = data[i];
+    var data = this.#tuples;
+    var cachedTupleCount = 0;
+    for (var i = offset; i < this.#tupleCount; i++){
+      var tuple = data[i];
       if (!tuple){
         break;
       }
@@ -290,19 +321,19 @@ class TupleSet extends DataSetComponent {
 
   async getTuples(count, offset){
 
-    const data = this.#tuples;
-    let tuples = [];
+    var data = this.#tuples;
+    var tuples = [];
 
-    let i = 0;
-    let firstIndexToFetch, lastIndexToFetch;
+    var i = 0;
+    var firstIndexToFetch, lastIndexToFetch;
 
     if (this.#tupleCount !== undefined && offset + count > this.#tupleCount) {
       count = this.#tupleCount - offset;
     }
 
     while (i < count) {
-      const tupleIndex = offset + i;
-      const tuple = data[tupleIndex];
+      var tupleIndex = offset + i;
+      var tuple = data[tupleIndex];
       if (tuple === undefined) {
         if (firstIndexToFetch === undefined) {
           firstIndexToFetch = tupleIndex;
@@ -324,12 +355,12 @@ class TupleSet extends DataSetComponent {
     }
 
     lastIndexToFetch += 1;
-    let newCount = (lastIndexToFetch - firstIndexToFetch);
+    var newCount = (lastIndexToFetch - firstIndexToFetch);
     if (newCount < this.#pageSize && (offset + count === lastIndexToFetch) && lastIndexToFetch < this.#tupleCount) {
       newCount = this.#pageSize;
     }
 
-    const numRows = await this.#executeAxisQuery(newCount, firstIndexToFetch);
+    var numRows = await this.#executeAxisQuery(newCount, firstIndexToFetch);
     tuples = data.slice(offset, offset + count);
     return tuples;
   }

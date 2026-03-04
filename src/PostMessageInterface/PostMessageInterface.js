@@ -334,4 +334,5 @@ function initPostMessageInterface(skipHostingWindowCheck){
     return;
   }
   postMessageInterface = new PostMessageInterface();
+  window.postMessageInterface = postMessageInterface;
 }

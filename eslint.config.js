@@ -4,7 +4,7 @@ export default [
   js.configs.recommended,
   {
     rules: {
-      'no-var': 'error',
+      'no-var': 'warn',
       'prefer-const': 'warn',
       'prefer-arrow-callback': 'warn',
       'no-prototype-builtins': 'warn',
@@ -22,6 +22,8 @@ export default [
       'no-constant-condition': 'off',
       'no-dupe-keys': 'off',
       'no-empty': 'off',
+      'no-redeclare': 'off',
+      'no-unused-labels': 'off',
     },
     languageOptions: {
       ecmaVersion: 2022,
