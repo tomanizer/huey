@@ -1,9 +1,9 @@
 class QueryAxisItem {
 
   static createFormatter(axisItem){
-    var dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
+    let dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
     if (axisItem.aggregator) {
-      var aggregatorInfo = AttributeUi.aggregators[axisItem.aggregator];
+      const aggregatorInfo = AttributeUi.aggregators[axisItem.aggregator];
       if (aggregatorInfo.createFormatter){
         return aggregatorInfo.createFormatter(axisItem);
       }
@@ -21,7 +21,7 @@ class QueryAxisItem {
     }
     else
     if (axisItem.derivation){
-      var derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
+      const derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
       if (derivationInfo.createFormatter) {
         return derivationInfo.createFormatter(axisItem);
       }
@@ -32,7 +32,7 @@ class QueryAxisItem {
     }
 
     if (dataType) {
-      var dataTypeInfo = getDataTypeInfo(dataType);
+      const dataTypeInfo = getDataTypeInfo(dataType);
       if (dataTypeInfo) {
         if (dataTypeInfo.createFormatter){
           return dataTypeInfo.createFormatter();
@@ -52,7 +52,7 @@ class QueryAxisItem {
   
   static createParser(axisItem){
     if (axisItem.derivation){
-      var derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
+      const derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
       if (derivationInfo.createParser) {
         return derivationInfo.createParser(axisItem);
       }
@@ -60,14 +60,14 @@ class QueryAxisItem {
   }
 
   static createLiteralWriter(axisItem){
-    var dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
+    const dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
     if (!dataType) {
       // this may happen in case the item has an aggregator like sum() - in these cases we don't know what the datatype of the resulting values will be.
       // we need to find a better solution for this but for now just bail out - we currently don't need a literalwriter for aggregated values.
       return null;
     }
-    var dataTypeInfo = getDataTypeInfo(dataType);
-    var literalWriter;
+    const dataTypeInfo = getDataTypeInfo(dataType);
+    let literalWriter;
     if (typeof dataTypeInfo.createLiteralWriter === 'function') {
       literalWriter = dataTypeInfo.createLiteralWriter(dataTypeInfo, dataType);
     }
@@ -78,7 +78,7 @@ class QueryAxisItem {
   }
 
   static getLiteralWriter(axisItem) {
-    var literalWriter = axisItem.literalWriter;
+    let literalWriter = axisItem.literalWriter;
     if (literalWriter) {
       return literalWriter;
     }
@@ -87,7 +87,7 @@ class QueryAxisItem {
   }
 
   static getCaptionForQueryAxisItem(axisItem){
-    var caption = axisItem.caption;
+    let caption = axisItem.caption;
     if (caption){
       return caption;
     }
@@ -95,23 +95,23 @@ class QueryAxisItem {
     caption = QueryAxisItem.createCaptionForQueryAxisItem(axisItem);
 
     if (axisItem.axis === QueryModel.AXIS_FILTERS) {
-      var filterItemCaption = `: No filters set.`;
-      var filter = axisItem.filter;
+      let filterItemCaption = `: No filters set.`;
+      const filter = axisItem.filter;
       if (filter) {
-        var values = filter.values;
+        const values = filter.values;
         if (values) {
-          var valueKeys = Object.keys(values);
+          const valueKeys = Object.keys(values);
           if (valueKeys.length){
-            var valueLabels = [];
-            var toValues = filter.toValues;
-            var toValueKeys = toValues? Object.keys(toValues) : undefined;
-            for (var i = 0; i < valueKeys.length; i++){
-              var valueKey = valueKeys[i];
-              var valueObject = values[valueKey];
-              var valueLabel = valueObject.label;
+            const valueLabels = [];
+            const toValues = filter.toValues;
+            const toValueKeys = toValues? Object.keys(toValues) : undefined;
+            for (let i = 0; i < valueKeys.length; i++){
+              const valueKey = valueKeys[i];
+              const valueObject = values[valueKey];
+              let valueLabel = valueObject.label;
               if (toValueKeys && i < toValueKeys.length){
-                var toValueKey = toValueKeys[i];
-                var toValueObject = toValues[toValueKey];
+                const toValueKey = toValueKeys[i];
+                const toValueObject = toValues[toValueKey];
                 valueLabel += ' - ' + toValueObject.label;
               }
               valueLabels.push(valueLabel);
@@ -128,9 +128,9 @@ class QueryAxisItem {
   }
 
   static createCaptionForQueryAxisItem(axisItem){
-    var caption = axisItem.columnName;
+    let caption = axisItem.columnName;
     if (axisItem.memberExpressionPath) {
-      var path = Object.assign([], axisItem.memberExpressionPath);
+      const path = Object.assign([], axisItem.memberExpressionPath);
       switch (axisItem.derivation) {
         case 'elements':
         case 'element indices':
@@ -140,7 +140,7 @@ class QueryAxisItem {
     }
 
     if (axisItem.derivation) {
-      var translatedDerivation = Internationalization.getText(axisItem.derivation);
+      const translatedDerivation = Internationalization.getText(axisItem.derivation);
       if (caption) {        
         caption = Internationalization.getText('{1} of {2}', translatedDerivation, caption);
       }
@@ -150,7 +150,7 @@ class QueryAxisItem {
     }
     else 
     if (axisItem.aggregator) {
-      var translatedAggregator = Internationalization.getText(axisItem.aggregator);
+      const translatedAggregator = Internationalization.getText(axisItem.aggregator);
       if (caption) {
         caption = Internationalization.getText('{1} of {2}', translatedAggregator, caption);
       }
@@ -169,15 +169,15 @@ class QueryAxisItem {
     // the caption should be unique but to be on the safe side 
     // we'll take the combination of sql expression and caption
     // and we'll stylize it as an aliased SQL expression
-    var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(axisItem);
-    var caption = QueryAxisItem.getCaptionForQueryAxisItem(axisItem);
-    var alias = quoteIdentifierWhenRequired(caption);
-    var id = `${sqlExpression} AS ${alias}`;
+    const sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(axisItem);
+    const caption = QueryAxisItem.getCaptionForQueryAxisItem(axisItem);
+    const alias = quoteIdentifierWhenRequired(caption);
+    const id = `${sqlExpression} AS ${alias}`;
     return id;
   }
 
   static getSqlForColumnExpression(item, alias, sqlOptions) {
-    var sqlExpression = [item.columnName];
+    let sqlExpression = [item.columnName];
 
     if (alias){
       sqlExpression.unshift(alias);
@@ -185,7 +185,7 @@ class QueryAxisItem {
     sqlExpression = getQualifiedIdentifier(sqlExpression, sqlOptions);
 
     if (item.memberExpressionPath) {
-      sqlExpression = item.memberExpressionPath.reduce(function(acc, curr){
+      sqlExpression = item.memberExpressionPath.reduce((acc, curr) =>{
         if ( curr.endsWith('()') ) {
           acc = `${curr.slice(0, -2)}( ${acc} )`;
         }
@@ -199,7 +199,7 @@ class QueryAxisItem {
   }
 
   static getSqlForAggregatedQueryAxisItem(item, alias, sqlOptions){
-    var columnExpression = item.columnName;
+    let columnExpression = item.columnName;
 
     if (columnExpression === '*') {
       if (alias) {
@@ -214,20 +214,20 @@ class QueryAxisItem {
       columnExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
     }
 
-    var aggregator = item.aggregator;
-    var aggregatorInfo = AttributeUi.aggregators[aggregator];
-    var expressionTemplate = aggregatorInfo.expressionTemplate;
+    const aggregator = item.aggregator;
+    const aggregatorInfo = AttributeUi.aggregators[aggregator];
+    const expressionTemplate = aggregatorInfo.expressionTemplate;
     columnExpression = extrapolateColumnExpression(expressionTemplate, columnExpression);
     return columnExpression;
   }
 
   static getSqlForDerivedQueryAxisItem(item, alias, sqlOptions){
-    var columnExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
+    let columnExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
 
-    var derivation = item.derivation;
-    var derivationInfo;
+    const derivation = item.derivation;
+    let derivationInfo;
     derivationInfo = AttributeUi.getDerivationInfo(derivation);
-    var derivationExpressionTemplate = derivationInfo.expressionTemplate;
+    const derivationExpressionTemplate = derivationInfo.expressionTemplate;
     columnExpression = extrapolateColumnExpression(derivationExpressionTemplate, columnExpression);
 
     return columnExpression;
@@ -235,7 +235,7 @@ class QueryAxisItem {
 
   static getSqlForQueryAxisItem(item, alias, sqlOptions){
     sqlOptions = normalizeSqlOptions(sqlOptions);
-    var sqlExpression;
+    let sqlExpression;
     if (item.aggregator) {
       sqlExpression = QueryAxisItem.getSqlForAggregatedQueryAxisItem(item, alias, sqlOptions);
     }
@@ -250,8 +250,8 @@ class QueryAxisItem {
   }
 
   static getQueryAxisItemDataType(queryAxisItem){
-    var columnType = queryAxisItem.columnType;
-    var dataType = columnType;
+    const columnType = queryAxisItem.columnType;
+    let dataType = columnType;
 
     /* 
       see https://github.com/rpbouman/huey/issues/505
@@ -259,14 +259,14 @@ class QueryAxisItem {
       Once we have that, we can evaluate type hints like hasElementDataType, hasKeyArrayDataType, preservesColumnType
     */
     if (queryAxisItem.memberExpressionPath) {
-      var memberExpressionPath = queryAxisItem.memberExpressionPath;
+      const memberExpressionPath = queryAxisItem.memberExpressionPath;
       dataType = getMemberExpressionType(columnType, memberExpressionPath);
       if (memberExpressionPath[memberExpressionPath.length - 1].endsWith('()')){
         return dataType;
       }
     }
 
-    var derivationInfo, derivation = queryAxisItem.derivation;
+    let derivationInfo, derivation = queryAxisItem.derivation;
     if (derivation) {
       derivationInfo = AttributeUi.getDerivationInfo(derivation);
       if (derivationInfo.columnType) {
@@ -309,7 +309,7 @@ class QueryAxisItem {
       }
     }
 
-    var aggregatorInfo, aggregator = queryAxisItem.aggregator;
+    let aggregatorInfo, aggregator = queryAxisItem.aggregator;
     if (aggregator) {
       aggregatorInfo = AttributeUi.getAggregatorInfo(aggregator);
       if (aggregatorInfo.columnType) {
@@ -333,26 +333,26 @@ class QueryAxisItem {
 
   // includeDisabledItems: if true then return all values, if not true then exclude values that have enabled===false;
   static #getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem, includeDisabledItems){
-    var sql;
-    var filter = queryAxisItem.filter;
+    let sql;
+    const filter = queryAxisItem.filter;
 
-    var values = filter.values;
-    var toValues = filter.toValues;
+    const values = filter.values;
+    const toValues = filter.toValues;
 
-    var keys = Object.keys(values);
+    let keys = Object.keys(values);
     
     if (includeDisabledItems !== true) {
-      keys = keys.filter(function(key){
-        var valueObject = values[key];
+      keys = keys.filter((key) =>{
+        const valueObject = values[key];
         return valueObject.enabled !== false;
       });
     }
     
-    var isRangeFilterType = FilterDialog.isRangeFilterType(filter.filterType);
-    var toValueKeys = isRangeFilterType ? Object.keys(toValues) : undefined;
-    var toValueLiterals = isRangeFilterType ? [] : undefined;
-    var valueLiterals = keys.map(function(key, index){
-      var entry = values[key];
+    const isRangeFilterType = FilterDialog.isRangeFilterType(filter.filterType);
+    const toValueKeys = isRangeFilterType ? Object.keys(toValues) : undefined;
+    const toValueLiterals = isRangeFilterType ? [] : undefined;
+    const valueLiterals = keys.map((key, index) =>{
+      const entry = values[key];
       if (isRangeFilterType) {
         toValueLiterals.push( toValues[toValueKeys[index]].literal );
       }
@@ -365,11 +365,11 @@ class QueryAxisItem {
   }
 
   static isFilterItemEffective(queryAxisItem){
-    var filter = queryAxisItem.filter;
+    const filter = queryAxisItem.filter;
     if (!filter) {
       return undefined;
     }
-    var literalLists = QueryAxisItem.#getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem);
+    const literalLists = QueryAxisItem.#getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem);
     return literalLists.valueLiterals.length !== 0;
   }
 
@@ -377,19 +377,19 @@ class QueryAxisItem {
     if (!QueryAxisItem.isFilterItemEffective(queryAxisItem)) {
       return undefined;
     }
-    var filter = queryAxisItem.filter;
+    const filter = queryAxisItem.filter;
 
-    var columnExpression = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem, alias);
-    var dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);          
+    let columnExpression = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem, alias);
+    let dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);          
     if (dataType === 'VARCHAR' && filter.caseSensitive === false) {
       columnExpression = `${columnExpression} COLLATE NOCASE`;
     }
 
-    var operator = '';
+    let operator = '';
 
-    var nullCondition;
-    var literalLists = QueryAxisItem.#getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem);
-    var indexOfNull = literalLists.valueLiterals.findIndex(function(value){
+    let nullCondition;
+    const literalLists = QueryAxisItem.#getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem);
+    const indexOfNull = literalLists.valueLiterals.findIndex((value) =>{
       return value === 'NULL' || value.startsWith('NULL::');
     });
 
@@ -406,8 +406,8 @@ class QueryAxisItem {
       operator = '';
     }
 
-    var sql = '', logicalOperator;
-    var needsParentheses = false;
+    let sql = '', logicalOperator;
+    let needsParentheses = false;
     if (literalLists.valueLiterals.length > 0) {
       switch (filter.filterType) {
 
@@ -424,7 +424,7 @@ class QueryAxisItem {
           logicalOperator = 'AND';
         case FilterDialog.filterTypes.INCLUDE:
           operator += literalLists.valueLiterals.length === 1 ? '=' : ' IN';
-          var values = literalLists.valueLiterals.length === 1 ? literalLists.valueLiterals[0] : `( ${literalLists.valueLiterals.join('\n,')} )`;
+          let values = literalLists.valueLiterals.length === 1 ? literalLists.valueLiterals[0] : `( ${literalLists.valueLiterals.join('\n,')} )`;
           
           sql += `${columnExpression} ${operator} ${values}`;
 
@@ -443,12 +443,12 @@ class QueryAxisItem {
           operator = 'NOT ';
           logicalOperator = 'AND';
         case FilterDialog.filterTypes.LIKE:
-          var dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);
+          let dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);
           if (dataType !== 'VARCHAR'){
             columnExpression = `${columnExpression}::VARCHAR`;
           }
           operator += 'LIKE';
-          sql = literalLists.valueLiterals.reduce(function(acc, curr, currIndex){
+          sql = literalLists.valueLiterals.reduce((acc, curr, currIndex) =>{
             acc += '\n';
             if (currIndex) {
               if (!logicalOperator) {
@@ -457,7 +457,7 @@ class QueryAxisItem {
               }
               acc += logicalOperator + ' ';
             }
-            var value = literalLists.valueLiterals[currIndex];
+            const value = literalLists.valueLiterals[currIndex];
             acc += `${columnExpression} ${operator} ${value}`;
             return acc;
           }, '');
@@ -493,7 +493,7 @@ class QueryAxisItem {
           logicalOperator = 'AND';
         case FilterDialog.filterTypes.BETWEEN:
           operator += 'BETWEEN';
-          sql = literalLists.valueLiterals.reduce(function(acc, curr, currIndex){
+          sql = literalLists.valueLiterals.reduce((acc, curr, currIndex) =>{
             acc += '\n';
             if (currIndex) {
               if (!logicalOperator){
@@ -502,8 +502,8 @@ class QueryAxisItem {
               }
               acc += logicalOperator + ' ';
             }
-            var fromValue = literalLists.valueLiterals[currIndex];
-            var toValue = literalLists.toValueLiterals[currIndex];
+            const fromValue = literalLists.valueLiterals[currIndex];
+            const toValue = literalLists.toValueLiterals[currIndex];
             acc += `${columnExpression} ${operator} ${fromValue} AND ${toValue}`;
             return acc;
           }, '');
@@ -520,7 +520,7 @@ class QueryAxisItem {
         case FilterDialog.filterTypes.NOTHASALL:
         case FilterDialog.filterTypes.HASANY:
         case FilterDialog.filterTypes.HASALL:
-          var arrayFunction;
+          let arrayFunction;
           switch (filter.filterType){
             case FilterDialog.filterTypes.HASANY:
             case FilterDialog.filterTypes.NOTHASANY:
@@ -531,8 +531,8 @@ class QueryAxisItem {
               arrayFunction = 'list_has_all';
               break;
           }
-          var valueList = literalLists.valueLiterals.reduce(function(acc, curr, currIndex){
-            var valueLiteral = literalLists.valueLiterals[currIndex];
+          let valueList = literalLists.valueLiterals.reduce((acc, curr, currIndex) =>{
+            const valueLiteral = literalLists.valueLiterals[currIndex];
             acc.push(valueLiteral);
             return acc;
           }, []);
@@ -559,14 +559,14 @@ class QueryAxis {
   #items = [];
 
   static getCaptionForQueryAxis(queryAxis){
-    var items = queryAxis.getItems();
+    const items = queryAxis.getItems();
     if (items.length === 0){
       return '<empty>';
     }
-    var itemKeys = Object.keys(items);
-    var captions = itemKeys.map(function(itemKey){
-      var item = items[itemKey];
-      var caption = QueryAxisItem.getCaptionForQueryAxisItem(item);
+    const itemKeys = Object.keys(items);
+    const captions = itemKeys.map((itemKey) =>{
+      const item = items[itemKey];
+      const caption = QueryAxisItem.getCaptionForQueryAxisItem(item);
       return `"${caption}"`;
     });
     return captions.join(', ');
@@ -577,16 +577,16 @@ class QueryAxis {
   }
 
   findItem(config){
-    var columnName = config.columnName || '';
-    var derivation = config.derivation;
-    var aggregator = config.aggregator;
-    var memberExpressionPath = config.memberExpressionPath;
+    const columnName = config.columnName || '';
+    const derivation = config.derivation;
+    const aggregator = config.aggregator;
+    let memberExpressionPath = config.memberExpressionPath;
     if (memberExpressionPath instanceof Array){
       memberExpressionPath = JSON.stringify(memberExpressionPath);
     }
 
-    var items = this.#items;
-    var itemIndex = items.findIndex(function(item){
+    const items = this.#items;
+    const itemIndex = items.findIndex((item) =>{
       // check column name
       if ((item.columnName || '') !== columnName){
         return false;
@@ -635,8 +635,8 @@ class QueryAxis {
     if (itemIndex === -1) {
       return undefined;
     }
-    var item = items[itemIndex];
-    var copyOfItem = Object.assign({}, item);
+    const item = items[itemIndex];
+    const copyOfItem = Object.assign({}, item);
     if (item.filter) {
       copyOfItem.filter = JSON.parse(JSON.stringify(item.filter));
     }
@@ -645,7 +645,7 @@ class QueryAxis {
   }
 
   addItem(config){
-    var copyOfConfig = Object.assign({}, config);
+    const copyOfConfig = Object.assign({}, config);
     if (copyOfConfig.index === undefined) {
       copyOfConfig.index = this.#items.length;
     }
@@ -664,7 +664,7 @@ class QueryAxis {
   }
 
   removeItem(config){
-    var item = this.findItem(config);
+    const item = this.findItem(config);
     if (!item){
       return undefined;
     }
@@ -681,13 +681,13 @@ class QueryAxis {
   }
   
   syncItemIndices(){
-    this.#items.forEach(function(item, index){
+    this.#items.forEach((item, index) =>{
       item.index = index;
     })
   }
 
   getTotalsItems(){
-    var totalsItems = this.#items.filter(function(axisItem){
+    const totalsItems = this.#items.filter((axisItem) =>{
       return axisItem.includeTotals === true;
     });
     return totalsItems.length ? totalsItems : undefined;
@@ -722,14 +722,14 @@ class QueryModel extends EventEmitter {
 
   constructor(config){
     super(['change', 'beforechange']);
-    var config = Object.assign({}, QueryModel.#defaultConfig, config);
-    if (config.settings){
+    const resolvedConfig = Object.assign({}, QueryModel.#defaultConfig, config);
+    if (resolvedConfig.settings){
       this.#settings = settings;
     }
   }
 
   getSampling(axisId){
-    var sampling = this.#sampling;
+    const sampling = this.#sampling;
     if (!sampling){
       return undefined;
     }
@@ -742,11 +742,11 @@ class QueryModel extends EventEmitter {
   }
   
   setCellHeadersAxis(cellheadersaxis) {
-    var oldCellHeadersAxis = this.#cellheadersaxis;
+    const oldCellHeadersAxis = this.#cellheadersaxis;
     if (cellheadersaxis === oldCellHeadersAxis) {
       return;
     }
-    var eventData = {
+    const eventData = {
       propertiesChanged: {
         cellHeadersAxis: {
           previousValue: oldCellHeadersAxis,
@@ -773,8 +773,8 @@ class QueryModel extends EventEmitter {
   }
 
   getCaptionForQueryAxis(axisId){
-    var queryAxis = this.getQueryAxis(axisId);
-    var caption = queryAxis = queryAxis.getCaption();
+    let queryAxis = this.getQueryAxis(axisId);
+    const caption = queryAxis = queryAxis.getCaption();
     return caption;
   }
 
@@ -802,12 +802,12 @@ class QueryModel extends EventEmitter {
   }
 
   setDatasource(datasource, dontClear){
-    var oldDatasource = this.#datasource;
+    const oldDatasource = this.#datasource;
     if (datasource === oldDatasource) {
       return;
     }
 
-    var eventData = {
+    const eventData = {
       propertiesChanged: {
         datasource: {
           previousValue: oldDatasource,
@@ -840,12 +840,12 @@ class QueryModel extends EventEmitter {
   }
 
   findItem(config){
-    var columnName = config.columnName;
-    var memberExpressionPath = config.memberExpressionPath;
-    var derivation = config.derivation;
-    var aggregator = config.aggregator;
+    const columnName = config.columnName;
+    const memberExpressionPath = config.memberExpressionPath;
+    const derivation = config.derivation;
+    const aggregator = config.aggregator;
 
-    var axisIds, axisId = config.axis;
+    let axisIds, axisId = config.axis;
     if (axisId) {
       axisIds = [axisId];
     }
@@ -854,19 +854,19 @@ class QueryModel extends EventEmitter {
       axisIds = ['cells'];
     }
     else {
-      axisIds = Object.keys(this.#axes).filter(function(axisId){
+      axisIds = Object.keys(this.#axes).filter((axisId) =>{
         return axisId !== QueryModel.AXIS_FILTERS;
       });
     }
 
-    var findConfig = {
+    const findConfig = {
       columnName: config.columnName,
       memberExpressionPath: memberExpressionPath,
       derivation: config.derivation,
       aggregator: config.aggregator
     };
-    var axis, item;
-    for (var i = 0; i < axisIds.length; i++){
+    let axis, item;
+    for (let i = 0; i < axisIds.length; i++){
       axisId = axisIds[i];
       axis = this.getQueryAxis(axisId);
       item = axis.findItem(findConfig);
@@ -879,23 +879,23 @@ class QueryModel extends EventEmitter {
   }
 
   #addItem(config){
-    var axisId = config.axis;
-    var axis = this.getQueryAxis(config.axis);
-    var addedItem = axis.addItem(config);
+    const axisId = config.axis;
+    const axis = this.getQueryAxis(config.axis);
+    const addedItem = axis.addItem(config);
     addedItem.axis = axisId;
     return addedItem;
   }
 
   #removeItem(config) {
-    var axisId = config.axis;
-    var axis = this.getQueryAxis(config.axis);
-    var removedItem = axis.removeItem(config);
+    const axisId = config.axis;
+    const axis = this.getQueryAxis(config.axis);
+    const removedItem = axis.removeItem(config);
     removedItem.axis = axisId;
     return removedItem;
   }
 
   async addItem(config){
-    var axis = config.axis;
+    let axis = config.axis;
 
     if (!axis) {
       if (config.aggregator) {
@@ -908,23 +908,23 @@ class QueryModel extends EventEmitter {
     }
 
     // make an axis-less version of the item so we can locate it in case it's already added to the model.
-    var copyOfConfig = Object.assign({}, config);
+    const copyOfConfig = Object.assign({}, config);
     // filter items are special because they can appear on multiple axes.
     // if the item is a filter axis item, we should not remove the axis.
     if (axis !== QueryModel.AXIS_FILTERS){
       delete copyOfConfig['axis'];
     }
-    var foundItem = this.findItem(copyOfConfig);
+    const foundItem = this.findItem(copyOfConfig);
 
     if (!config.columnType) {
       if (foundItem && foundItem.columnType) {
         config.columnType = foundItem.columnType;
       }
       else {
-        var datasource = this.#datasource;
-        var columnMetadata = await datasource.getColumnMetadata();
-        for (var i = 0; i < columnMetadata.numRows; i++){
-          var row = columnMetadata.get(i);
+        const datasource = this.#datasource;
+        const columnMetadata = await datasource.getColumnMetadata();
+        for (let i = 0; i < columnMetadata.numRows; i++){
+          const row = columnMetadata.get(i);
           if (row.column_name === config.columnName) {
             config.columnType = row.column_type;
           }
@@ -937,7 +937,7 @@ class QueryModel extends EventEmitter {
         config.formatter = foundItem.formatter;
       }
       else {
-        var formatter = QueryAxisItem.createFormatter(config);
+        const formatter = QueryAxisItem.createFormatter(config);
         if (formatter){
           config.formatter = formatter;
         }
@@ -949,7 +949,7 @@ class QueryModel extends EventEmitter {
         config.literalWriter = foundItem.literalWriter;
       }
       else {
-        var literalWriter = QueryAxisItem.createLiteralWriter(config);
+        const literalWriter = QueryAxisItem.createLiteralWriter(config);
         if (literalWriter){
           config.literalWriter = literalWriter;
         }
@@ -961,7 +961,7 @@ class QueryModel extends EventEmitter {
         config.parser = foundItem.parser;
       }
       else {
-        var parser = QueryAxisItem.createParser(config);
+        const parser = QueryAxisItem.createParser(config);
         if (parser){
           config.parser = parser;
         }
@@ -972,8 +972,8 @@ class QueryModel extends EventEmitter {
       config.filter = foundItem.filter;
     }
     
-    var axesChangeInfo = {};
-    var eventData = {
+    const axesChangeInfo = {};
+    const eventData = {
       axesChanged: axesChangeInfo
     };
     axesChangeInfo[config.axis] = {
@@ -981,7 +981,7 @@ class QueryModel extends EventEmitter {
     };
     
     if (foundItem){
-      var axisChangeInfo = axesChangeInfo[foundItem.axis];
+      let axisChangeInfo = axesChangeInfo[foundItem.axis];
       if (!axisChangeInfo) {
         axisChangeInfo = {};
         axesChangeInfo[foundItem.axis] = axisChangeInfo;
@@ -990,13 +990,13 @@ class QueryModel extends EventEmitter {
     }
     this.fireEvent('beforechange', eventData);
 
-    var removedItem;
+    let removedItem;
     if (foundItem) {
       // if the item already exits in this model, we first remove it.
       removedItem = this.#removeItem(foundItem);
       axesChangeInfo[removedItem.axis].removed = [removedItem];
     }
-    var addedItem = this.#addItem(config);
+    const addedItem = this.#addItem(config);
     axesChangeInfo[addedItem.axis].added = [addedItem];
 
     this.getQueryAxis(axis).syncItemIndices();
@@ -1009,31 +1009,31 @@ class QueryModel extends EventEmitter {
   }
 
   removeItem(config){
-    var copyOfConfig = Object.assign({}, config);
+    const copyOfConfig = Object.assign({}, config);
 
-    var newAxisId = copyOfConfig.axis;
+    const newAxisId = copyOfConfig.axis;
     if (newAxisId && newAxisId !== QueryModel.AXIS_FILTERS) {
       delete copyOfConfig.axis;
     }
 
-    var item = this.findItem(copyOfConfig);
+    const item = this.findItem(copyOfConfig);
     if (!item){
       return undefined;
     }
 
-    var axesChangeInfo = {};
-    var eventData = {
+    const axesChangeInfo = {};
+    const eventData = {
       axesChanged: axesChangeInfo
     };
     
-    var oldAxisId = item.axis;
+    const oldAxisId = item.axis;
     axesChangeInfo[oldAxisId] = {
       removed: [item]
     };
     this.fireEvent('beforechange', eventData);
     
-    var axis = this.getQueryAxis(oldAxisId);
-    var removedItem = axis.removeItem(item);
+    const axis = this.getQueryAxis(oldAxisId);
+    const removedItem = axis.removeItem(item);
     axis.syncItemIndices();
 
     axesChangeInfo[oldAxisId] = {
@@ -1045,16 +1045,16 @@ class QueryModel extends EventEmitter {
   }
 
   static #getAxisItemChangeInfo(queryModelItem, propertyName, newValue){
-    var itemChangeInfo = {}, propertyChangeInfo = {};
-    var itemId = QueryAxisItem.getIdForQueryAxisItem(queryModelItem);
+    const itemChangeInfo = {}, propertyChangeInfo = {};
+    const itemId = QueryAxisItem.getIdForQueryAxisItem(queryModelItem);
     itemChangeInfo[itemId] = propertyChangeInfo;
     propertyChangeInfo[propertyName] = {
       oldValue: queryModelItem[propertyName],
       newValue: newValue
     };
 
-    var axesChangeInfo = {};
-    var axisId = queryModelItem.axis;
+    const axesChangeInfo = {};
+    const axisId = queryModelItem.axis;
     axesChangeInfo[axisId] = {
       changed: itemChangeInfo
     };
@@ -1066,23 +1066,23 @@ class QueryModel extends EventEmitter {
     if (Boolean(value) !== value) {
       return;
     }
-    var queryModelItem = this.findItem(queryItemConfig);
+    const queryModelItem = this.findItem(queryItemConfig);
     if (!queryModelItem) {
       return;
     }
 
-    var axesChangeInfo = {};
-    var eventData = {
+    let axesChangeInfo = {};
+    const eventData = {
       axesChanged: axesChangeInfo
     };
     
-    var axisId = queryModelItem.axis;
-    var axis = this.getQueryAxis(axisId);
-    var items = axis.getItems();
-    var item = items[queryModelItem.index];
+    const axisId = queryModelItem.axis;
+    const axis = this.getQueryAxis(axisId);
+    const items = axis.getItems();
+    const item = items[queryModelItem.index];
     
-    var propertyName = 'includeTotals';
-    var axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
+    const propertyName = 'includeTotals';
+    axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
       item, 
       propertyName, 
       value
@@ -1096,26 +1096,26 @@ class QueryModel extends EventEmitter {
   }
 
   #clear(axisId){
-    var axisIds;
+    let axisIds;
     if (axisId) {
       axisIds = [axisId];
     }
     else {
       axisIds = Object.keys(this.#axes);
     }
-    for (var i = 0; i < axisIds.length; i++) {
-      var axisId = axisIds[i];
-      var axis = this.getQueryAxis(axisId);
+    for (let i = 0; i < axisIds.length; i++) {
+      let axisId = axisIds[i];
+      const axis = this.getQueryAxis(axisId);
       axis.clear();
     }
   }
 
   clear(axisId) {
-    var axesChangeInfo = {};
-    var eventData = {
+    const axesChangeInfo = {};
+    const eventData = {
       axesChanged: axesChangeInfo
     }
-    var axisIds;
+    let axisIds;
     if (axisId) {
       axisIds = [axisId];
     }
@@ -1123,10 +1123,10 @@ class QueryModel extends EventEmitter {
       axisIds = Object.keys(this.#axes);
     }
 
-    for (var i = 0; i < axisIds.length; i++) {
-      var localAxisId = axisIds[i];
-      var axis = this.getQueryAxis(localAxisId);
-      var items = axis.getItems();
+    for (let i = 0; i < axisIds.length; i++) {
+      const localAxisId = axisIds[i];
+      const axis = this.getQueryAxis(localAxisId);
+      const items = axis.getItems();
 
       if (!items.length) {
         continue;
@@ -1161,18 +1161,18 @@ class QueryModel extends EventEmitter {
       }
     }
 
-    var axis1 = this.getQueryAxis(axisId1);
-    var axis1Items = axis1.getItems();
+    const axis1 = this.getQueryAxis(axisId1);
+    const axis1Items = axis1.getItems();
 
-    var axis2 = this.getQueryAxis(axisId2);
-    var axis2Items = axis2.getItems();
+    const axis2 = this.getQueryAxis(axisId2);
+    const axis2Items = axis2.getItems();
 
     if (!axis1Items.length && !axis2Items.length) {
       return;
     }
 
-    var axesChangeInfo = {};
-    var eventData = {
+    const axesChangeInfo = {};
+    const eventData = {
       axesChanged: axesChangeInfo
     }
     
@@ -1181,7 +1181,7 @@ class QueryModel extends EventEmitter {
 
     if (axis1Items.length) {
       axesChangeInfo[axisId1].removed = axis1Items;
-      axesChangeInfo[axisId2].added = axis1Items.map(function(axisItem){
+      axesChangeInfo[axisId2].added = axis1Items.map((axisItem) =>{
         return Object.assign({}, axisItem, {
           axis: axisId2
         });
@@ -1189,7 +1189,7 @@ class QueryModel extends EventEmitter {
     }
     if (axis2Items.length) {
       axesChangeInfo[axisId2].removed = axis2Items;
-      axesChangeInfo[axisId1].added = axis2Items.map(function(axisItem){
+      axesChangeInfo[axisId1].added = axis2Items.map((axisItem) =>{
         return Object.assign({}, axisItem, {
           axis: axisId1
         });
@@ -1203,21 +1203,21 @@ class QueryModel extends EventEmitter {
   }
 
   setQueryAxisItemFilter(queryAxisItem, filter){
-    var axisId = queryAxisItem.axis;
+    const axisId = queryAxisItem.axis;
     if (axisId !== QueryModel.AXIS_FILTERS){
       throw new Error(`Item is not a filter axis item!`);
     }
     
-    var queryModelItem = this.findItem(queryAxisItem);
+    const queryModelItem = this.findItem(queryAxisItem);
     if (!queryModelItem) {
       throw new Error(`Item is not part of the model!`);
     }
-    var oldFilter = queryAxisItem.filter;
+    const oldFilter = queryAxisItem.filter;
 
     // update the real item stored in the axis
     // (note that the normal getters return copies)
-    var axis = this.getQueryAxis(queryModelItem.axis);
-    var items = axis.getItems();
+    const axis = this.getQueryAxis(queryModelItem.axis);
+    const items = axis.getItems();
 
     if (Object.keys(filter.values).length){
       filter.toggleState = oldFilter ? oldFilter.toggleState : 'closed';
@@ -1225,19 +1225,19 @@ class QueryModel extends EventEmitter {
     else {
       filter = undefined;
     }
-    var queryAxisItem = items[queryModelItem.index];
+    const updatedQueryAxisItem = items[queryModelItem.index];
     
-    var propertyName = 'filter';
-    var axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
-      queryAxisItem, 
+    const propertyName = 'filter';
+    const axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
+      updatedQueryAxisItem, 
       propertyName, 
       filter
     );
-    var eventData = {
+    const eventData = {
       axesChanged: axesChangeInfo
     }
     this.fireEvent('beforechange', eventData);
-    queryAxisItem[propertyName] = filter;
+    updatedQueryAxisItem[propertyName] = filter;
     this.fireEvent('change', eventData);
   }
   
@@ -1246,22 +1246,22 @@ class QueryModel extends EventEmitter {
       throw new Error(`Item is not a filter axis item!`);
     }
     
-    var queryModelItem = this.findItem(queryAxisItem);
+    const queryModelItem = this.findItem(queryAxisItem);
     if (!queryModelItem) {
       throw new Error(`Item is not part of the model!`);
     }
 
-    var axis = this.getQueryAxis(queryModelItem.axis);
-    var items = axis.getItems();
-    var item = items[queryModelItem.index];
+    const axis = this.getQueryAxis(queryModelItem.axis);
+    const items = axis.getItems();
+    const item = items[queryModelItem.index];
 
-    var propertyName = 'toggleState';
-    var axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
+    const propertyName = 'toggleState';
+    const axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
       item, 
       propertyName, 
       toggleState
     );
-    var eventData = {
+    const eventData = {
       axesChanged: axesChangeInfo
     }
     this.fireEvent('beforechange', eventData);
@@ -1280,16 +1280,16 @@ class QueryModel extends EventEmitter {
   * for example, if there are subtotals required, it will result in wrong results.
   */
   getFilterConditionSql(excludeTupleItems, alias){
-    var queryAxis = this.getFiltersAxis();
-    var items = queryAxis.getItems();
+    const queryAxis = this.getFiltersAxis();
+    let items = queryAxis.getItems();
     if (items.length === 0){
       return undefined;
     }
 
     if (excludeTupleItems === true){
-      var rowsAxis = this.getRowsAxis();
-      var columnsAxis = this.getColumnsAxis();
-      items = items.filter(function(item){
+      const rowsAxis = this.getRowsAxis();
+      const columnsAxis = this.getColumnsAxis();
+      items = items.filter((item) =>{
         if (rowsAxis.findItem(item)) {
           return false;
         }
@@ -1302,7 +1302,7 @@ class QueryModel extends EventEmitter {
 
     // Only keep items that can contribute to the filter.
     // This means less work for the next steps and easier debugging.
-    items = items.filter(function(item){
+    items = items.filter((item) =>{
       return QueryAxisItem.isFilterItemEffective(item);
     });
 
@@ -1310,9 +1310,9 @@ class QueryModel extends EventEmitter {
     // The implied SQL condition is independent of the order of the items
     // and by sorting, we make it easy to see if a change in the filter axis 
     // could actually affect the result.
-    items = items.sort(function(filterItem1, filterItem2){
-      var id1 = QueryAxisItem.getIdForQueryAxisItem(filterItem1);
-      var id2 = QueryAxisItem.getIdForQueryAxisItem(filterItem2);
+    items = items.sort((filterItem1, filterItem2) =>{
+      const id1 = QueryAxisItem.getIdForQueryAxisItem(filterItem1);
+      const id2 = QueryAxisItem.getIdForQueryAxisItem(filterItem2);
       if (id1 > id2) {
         return 1;
       }
@@ -1324,8 +1324,8 @@ class QueryModel extends EventEmitter {
     });
     
     // Generate the SQL for each item.
-    var conditions = items.map(function(item){
-      var itemCondition = QueryAxisItem.getFilterConditionSql(item, alias);
+    const conditions = items.map((item) =>{
+      const itemCondition = QueryAxisItem.getFilterConditionSql(item, alias);
       return itemCondition;
     });
     
@@ -1333,7 +1333,7 @@ class QueryModel extends EventEmitter {
       return undefined;
     }
     // Combine the individual item conditions
-    var condition = conditions.join('\nAND ');
+    const condition = conditions.join('\nAND ');
     return condition;
   }
 
@@ -1342,13 +1342,13 @@ class QueryModel extends EventEmitter {
     newState = newState || {};
     
     function getPropertyNames(){
-      var propertyNames = {};
-      for (var i = 0; i < arguments.length; i++){
-        var object = arguments[i];
+      const propertyNames = {};
+      for (let i = 0; i < arguments.length; i++){
+        const object = arguments[i];
         if (!object) {
           continue;
         }
-        Object.keys(arguments[i]).forEach(function(propertyName){
+        Object.keys(arguments[i]).forEach((propertyName) =>{
           propertyNames[propertyName] = propertyName;
         });
       }
@@ -1356,15 +1356,15 @@ class QueryModel extends EventEmitter {
     }
     
     function compareObjects(oldState, newState, ignoreProperties){
-      var propertiesChanged = {};
-      var propertyNames = getPropertyNames(oldState, newState);
-      for (var i = 0; i < propertyNames.length; i++){
-        var propertyName = propertyNames[i];
+      const propertiesChanged = {};
+      const propertyNames = getPropertyNames(oldState, newState);
+      for (let i = 0; i < propertyNames.length; i++){
+        const propertyName = propertyNames[i];
         if (ignoreProperties && ignoreProperties.indexOf(propertyName) !== -1){
           continue;
         }
-        var oldValue = oldState[propertyName];
-        var newValue = newState[propertyName];
+        const oldValue = oldState[propertyName];
+        const newValue = newState[propertyName];
         
         if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
           continue;
@@ -1379,34 +1379,34 @@ class QueryModel extends EventEmitter {
     }
     
     function axisAsObject(axis){
-      return axis.reduce(function(acc, curr){
-        var id = QueryAxisItem.getIdForQueryAxisItem(curr);
+      return axis.reduce((acc, curr) =>{
+        const id = QueryAxisItem.getIdForQueryAxisItem(curr);
         acc[id] = curr;
         return acc;
       }, {});
     }
     
-    var axesChanged = {};
-    var oldAxes = oldState.axes || {};
-    var newAxes = newState.axes || {};
-    var axisIds = getPropertyNames(oldAxes, newAxes);
-    for (var i = 0; i < axisIds.length; i++){
-      var axisChange = {
+    const axesChanged = {};
+    const oldAxes = oldState.axes || {};
+    const newAxes = newState.axes || {};
+    const axisIds = getPropertyNames(oldAxes, newAxes);
+    for (let i = 0; i < axisIds.length; i++){
+      const axisChange = {
         added: [],
         removed: [],
         changed: {}
       };
-      var axisId = axisIds[i];
-      var oldAxisItems = axisAsObject(oldAxes[axisId] || []);
-      var newAxisItems = axisAsObject(newAxes[axisId] || []);
-      var itemIds = getPropertyNames(oldAxisItems, newAxisItems);
-      for (var j = 0; j < itemIds.length; j++){
-        var itemId = itemIds[j];
-        var oldAxisItem = oldAxisItems[itemId];
-        var newAxisItem = newAxisItems[itemId];
+      const axisId = axisIds[i];
+      const oldAxisItems = axisAsObject(oldAxes[axisId] || []);
+      const newAxisItems = axisAsObject(newAxes[axisId] || []);
+      const itemIds = getPropertyNames(oldAxisItems, newAxisItems);
+      for (let j = 0; j < itemIds.length; j++){
+        const itemId = itemIds[j];
+        const oldAxisItem = oldAxisItems[itemId];
+        const newAxisItem = newAxisItems[itemId];
         if (oldAxisItem) {
           if (newAxisItem){
-            var change = compareObjects(oldAxisItem, newAxisItem);
+            const change = compareObjects(oldAxisItem, newAxisItem);
             if (change) {
               axisChange.changed[itemId] = change;
             }
@@ -1435,8 +1435,8 @@ class QueryModel extends EventEmitter {
       }
     }
     
-    var stateChange = {};
-    var propertiesChanged = compareObjects(oldState, newState, ['axes']) || {};
+    const stateChange = {};
+    const propertiesChanged = compareObjects(oldState, newState, ['axes']) || {};
     if (Object.keys(propertiesChanged)){
       stateChange.propertiesChanged = Object.assign({}, propertiesChanged);
     }
@@ -1447,30 +1447,30 @@ class QueryModel extends EventEmitter {
   }
 
   getState(options){
-    var datasource = this.getDatasource();
+    const datasource = this.getDatasource();
     if (!datasource) {
       return null;
     }
-    var datasourceId = datasource.getId();
+    const datasourceId = datasource.getId();
 
-    var queryModelObject = {
+    const queryModelObject = {
       datasourceId: datasourceId,
       cellsHeaders: this.getCellHeadersAxis(),
       axes: {},
       sampling: this.#sampling
     };
 
-    var axisIds = this.getAxisIds().sort();
-    var hasItems = false;
-    axisIds.forEach(function(axisId){
-      var axis = this.getQueryAxis(axisId);
-      var items = axis.getItems();
+    const axisIds = this.getAxisIds().sort();
+    let hasItems = false;
+    axisIds.forEach((axisId) =>{
+      const axis = this.getQueryAxis(axisId);
+      const items = axis.getItems();
       if (items.length === 0) {
         return '';
       }
       hasItems = true;
-      queryModelObject.axes[axisId] = items.map(function(axisItem){
-        var strippedItem = {columnName: axisItem.columnName};
+      queryModelObject.axes[axisId] = items.map((axisItem) =>{
+        const strippedItem = {columnName: axisItem.columnName};
         strippedItem.columnType = axisItem.columnType;
         if (axisItem.memberExpressionPath){
           strippedItem.memberExpressionPath = axisItem.memberExpressionPath;
@@ -1495,7 +1495,7 @@ class QueryModel extends EventEmitter {
 
         return strippedItem;
       });
-    }.bind(this));
+    });
     if (!hasItems){
       return null;
     }
@@ -1503,8 +1503,8 @@ class QueryModel extends EventEmitter {
   }
 
   get #autoUpdate(){
-    var autoUpdate;
-    var settings = this.#settings || {};
+    let autoUpdate;
+    let settings = this.#settings || {};
     if (settings && typeof settings.getSettings === 'function'){
       settings = settings.getSettings('querySettings');
     }
@@ -1519,16 +1519,16 @@ class QueryModel extends EventEmitter {
 
   async setState(queryModelState){
 
-    var autoRunQuery = this.#autoUpdate;
-    var canAssignSettings = this.#settings && typeof this.#settings.assignSettings === 'function';
+    const autoRunQuery = this.#autoUpdate;
+    const canAssignSettings = this.#settings && typeof this.#settings.assignSettings === 'function';
 
     if (canAssignSettings){
       settings.assignSettings(['querySettings', 'autoRunQuery'], false);
     }
 
     try {
-      var datasourceId = queryModelState.datasourceId;
-      var datasource;
+      const datasourceId = queryModelState.datasourceId;
+      let datasource;
       if (datasourceId){
         datasource = datasourcesUi.getDatasource(datasourceId);
       }
@@ -1547,18 +1547,18 @@ class QueryModel extends EventEmitter {
         this.setDatasource(datasource);
       }
 
-      var cellsHeaders = queryModelState.cellsHeaders || QueryModel.AXIS_COLUMNS;
+      const cellsHeaders = queryModelState.cellsHeaders || QueryModel.AXIS_COLUMNS;
       this.setCellHeadersAxis(cellsHeaders);
 
-      var axes = queryModelState.axes || {};
-      for (var axisId in axes){
-        var items = axes[axisId];
+      const axes = queryModelState.axes || {};
+      for (const axisId in axes){
+        const items = axes[axisId];
         if(!items) {
           continue;
         }
-        for (var i = 0 ; i < items.length; i++){
-          var item = items[i];
-          var config = { columnName: item.column || item.columnName };
+        for (let i = 0 ; i < items.length; i++){
+          const item = items[i];
+          const config = { columnName: item.column || item.columnName };
 
           config.columnType = item.columnType;
           config.derivation = item.derivation;
@@ -1571,7 +1571,7 @@ class QueryModel extends EventEmitter {
 
 
           if (axisId === QueryModel.AXIS_FILTERS) {
-            var filter = item.filter;
+            const filter = item.filter;
             if (filter) {
               config.filter = filter;
             }
@@ -1581,7 +1581,7 @@ class QueryModel extends EventEmitter {
         }
       }
       
-      var sampling = queryModelState.sampling || undefined;
+      const sampling = queryModelState.sampling || undefined;
       this.#sampling = sampling;
     }
     catch(e){
@@ -1598,11 +1598,11 @@ class QueryModel extends EventEmitter {
     if (!queryModelState){
       return null;
     }
-    var axes = queryModelState.axes;
-    var referencedColumns = Object.keys(axes).reduce(function(acc, curr){
-      var items = axes[curr];
-      items.forEach(function(item, index){
-        var columnName = item.column || item.columnName;
+    const axes = queryModelState.axes;
+    const referencedColumns = Object.keys(axes).reduce((acc, curr) =>{
+      const items = axes[curr];
+      items.forEach((item, index) =>{
+        const columnName = item.column || item.columnName;
         if (columnName === undefined || columnName === '*'){
           return;
         }
@@ -1617,7 +1617,7 @@ class QueryModel extends EventEmitter {
 
 }
 
-var queryModel;
+let queryModel;
 function initQueryModel(){
   queryModel = new QueryModel({
     settings: settings

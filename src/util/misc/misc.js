@@ -1,12 +1,12 @@
 function getCsv(data, options) {
   options = options || {};
-  var lineSeparator = options.lineSeparator || '\n';
-  var fieldSeparator = options.fieldSeparator || '\t';
-  var quoteChar = options.quoteChar || '"';
-  var escapeChar = options.escapeChar || quoteChar;
+  const lineSeparator = options.lineSeparator || '\n';
+  const fieldSeparator = options.fieldSeparator || '\t';
+  const quoteChar = options.quoteChar || '"';
+  const escapeChar = options.escapeChar || quoteChar;
   
-  return data.map(function(line){
-    return line.map(function(value){
+  return data.map((line) =>{
+    return line.map((value) =>{
       switch (typeof value) {
         case 'string':
           if (value.indexOf(fieldSeparator) !== -1 || value.indexOf(lineSeparator) !== -1 || value.indexOf(quoteChar) !== -1){

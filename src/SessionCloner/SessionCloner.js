@@ -10,11 +10,11 @@ class SessionCloner {
   }
   
   #messageHandler(event){
-    var request = event.data;
+    const request = event.data;
     if (!PostMessageInterface.isTrustedOrigin(event.origin)) {
       return;
     }
-    var requestType = request.messageType;
+    const requestType = request.messageType;
     
     if (requestType) {
       return;
@@ -34,13 +34,13 @@ class SessionCloner {
   }
   
   #copyWindowStateToHueyClone(clonedWindow){
-    var targetOrigin = window.location.origin;
-    var datasourceIds = datasourcesUi.getDatasourceIds();
-    for (var i = 0; i < datasourceIds.length; i++) {
-      var datasourceId = datasourceIds[i];
-      var datasource = datasourcesUi.getDatasource(datasourceId);
-      var originalConfig = datasource.getOriginalConfig();
-      var request = {
+    const targetOrigin = window.location.origin;
+    const datasourceIds = datasourcesUi.getDatasourceIds();
+    for (let i = 0; i < datasourceIds.length; i++) {
+      const datasourceId = datasourceIds[i];
+      const datasource = datasourcesUi.getDatasource(datasourceId);
+      const originalConfig = datasource.getOriginalConfig();
+      const request = {
         requestId: i,
         messageType: PostMessageProtocol.REQUEST_CREATE_DATASOURCE,
         body: {
@@ -49,9 +49,9 @@ class SessionCloner {
       };
       clonedWindow.postMessage(request, {targetOrigin: targetOrigin});
     }
-    var route = Routing.getCurrentRoute();
+    const route = Routing.getCurrentRoute();
     if (route) {
-      var request = {
+      const request = {
         requestId: i+1,
         messageType: PostMessageProtocol.REQUEST_SET_ROUTE,
         body: {
@@ -63,21 +63,21 @@ class SessionCloner {
   }
 
   #initCloneHueySession(){
-    byId('cloneHueySession').addEventListener('click', function(event){
-      var location = document.location;
-      var url = `${location.protocol}//${location.hostname}${location.pathname}?cloneHueySession=true`;
+    byId('cloneHueySession').addEventListener('click', (event) =>{
+      const location = document.location;
+      const url = `${location.protocol}//${location.hostname}${location.pathname}?cloneHueySession=true`;
       
       if (!postMessageInterface) {
         initPostMessageInterface(true);
       }
       
-      var windowProxy = window.open(url);
+      const windowProxy = window.open(url);
     });
   }
 
 }
 
-var sessionCloner = undefined;
+let sessionCloner = undefined;
 function initSessionCloner() {
   sessionCloner = new SessionCloner();
 }

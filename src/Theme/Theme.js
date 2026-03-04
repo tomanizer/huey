@@ -7,12 +7,12 @@ class Theme {
   }
 
   static #setCssVariable(variableName, variableValue){
-    var style = Theme.#getRootStyle();
+    const style = Theme.#getRootStyle();
     style.setProperty(variableName, variableValue);
   }
   
   static #setCssVariables(themeVariables) {
-    for (var property in themeVariables){ 
+    for (const property in themeVariables){ 
       if (!property.startsWith(Theme.#variablePrefix)){
         continue;
       }
@@ -21,9 +21,9 @@ class Theme {
   }
 
   static getAllThemeCSSVariables(){
-    var variables = {};
-    var rootStyle = this.#getRootStyle();
-    for (var property in rootStyle){ 
+    const variables = {};
+    const rootStyle = this.#getRootStyle();
+    for (const property in rootStyle){ 
       if (!property.startsWith(Theme.#variablePrefix)){
         continue;
       }
@@ -33,16 +33,16 @@ class Theme {
   }
 
   static applyTheme(themeId){
-    var theme = settings.getSettings(['themeSettings', 'themes', 'options', themeId]);
-    var themeVariables = theme.value;
+    const theme = settings.getSettings(['themeSettings', 'themes', 'options', themeId]);
+    const themeVariables = theme.value;
     Theme.#setCssVariables(themeVariables);
   }
   
   static updateCssVariable(control){
-    var id = control.id;
-    var previousIndex = 0;
-    var variableName = id.split('').reduce(function(acc, curr){
-      var lowerCase = curr.toLowerCase();
+    const id = control.id;
+    const previousIndex = 0;
+    const variableName = id.split('').reduce((acc, curr) =>{
+      const lowerCase = curr.toLowerCase();
       if (curr !== lowerCase){
         acc.push('');
       }
@@ -54,14 +54,14 @@ class Theme {
   }
     
   static {
-    var themeVariables = settings.getSettings(['themeSettings', 'themes', 'value']);
+    const themeVariables = settings.getSettings(['themeSettings', 'themes', 'value']);
     Theme.#setCssVariables(themeVariables);
   }
   
 }
 
-settings.addEventListener('change', function(event){
-  var themes = byId('themes');
+settings.addEventListener('change', (event) =>{
+  const themes = byId('themes');
   Theme.applyTheme( themes.selectedIndex );  
 });
 
@@ -99,5 +99,4 @@ Theme editor - put it on ice for now.
               <input type="color" id="iconColorHighlight" onchange="updateCssVariable(this)"/>
 
 */
-
 

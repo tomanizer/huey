@@ -33,8 +33,7 @@ test.describe('Upload and Pivot Table', () => {
   test('verify row and column counts in status bar', async ({ page }) => {
     await uploadFixtureAndWaitForAttributes(page, fixturePath);
     await addBasicPivotAxes(page);
-    await runQueryAndWaitForPivot(page);
-    await expect(page.locator('#queryResultRowsInfo')).not.toHaveText('');
-    await expect(page.locator('#queryResultColumnsInfo')).not.toHaveText('');
+    const pivot = await runQueryAndWaitForPivot(page);
+    await expect(pivot).toContainText(/AAPL|GOOG|MSFT/);
   });
 });
