@@ -4,7 +4,8 @@ import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { QueryAxisItem, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
-import { getDataTypeInfo, quoteStringLiteral } from '../util/sql/SQLHelper.js';
+import { getArrowDecimalAsString, getDataTypeInfo, getDuckDbLiteralForValue, quoteStringLiteral } from '../util/sql/SQLHelper.js';
+import { SqlQueryGenerator } from '../DataSet/SqlQueryGenerator.js';
 
 export class FilterDialog {
 

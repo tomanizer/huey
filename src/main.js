@@ -21,7 +21,7 @@ document.styleSheets[0]?.insertRule(`
 `);
 
 try {
-  const duckdb = await import(duckDbLibraryUrl);
+  const duckdb = await import(/* @vite-ignore */ duckDbLibraryUrl);
   const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
   const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
 

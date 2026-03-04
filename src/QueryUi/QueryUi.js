@@ -2,7 +2,7 @@ import { byId, instantiateTemplate } from '../util/dom/dom.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { QueryModel, QueryAxisItem, queryModel } from '../QueryModel/QueryModel.js';
 import { DragAndDropHelper } from '../DragAndDrop/DragAndDropHelper.js';
-import { filterDialog } from '../FilterUi/FilterUi.js';
+import { FilterDialog, filterDialog } from '../FilterUi/FilterUi.js';
 
 export class QueryUi {
 

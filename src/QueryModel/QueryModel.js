@@ -4,6 +4,8 @@ import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { EventEmitter } from '../util/event/EventEmitter.js';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import {
   getDataTypeInfo,
   fallbackFormatter,

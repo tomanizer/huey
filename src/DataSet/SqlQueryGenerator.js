@@ -288,7 +288,7 @@ export class SqlQueryGenerator {
         items: newItems,
         alias: alias,
         from: `FROM ${cte.alias} AS "${alias}"`,
-        filters: filters
+        filters: cte.filters
       });
     }
     

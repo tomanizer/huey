@@ -21,6 +21,10 @@ import { initQuickQueryMenu } from '../QuickQueryMenu/QuickQueryMenu.js';
 import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
 import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
 import { analyzeDatasource } from './analyzeDatasource.js';
+import { Theme } from '../Theme/Theme.js';
+import duckdbLogoUrl from '../spinner/DuckDB_Logo-horizontal.svg';
+
+window.Theme = Theme;
 
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
 
@@ -85,8 +89,7 @@ export function initDuckdbVersion(){
     duckdbVersionLabel.textContent = `DuckDB ${version}, API: ${api}`;
     
     const duckdbAvatar = byId('duckdb-version-specific-avatar');
-    const duckdbVersionParts = /v(\d+)\.(\d+).(\d)/.exec(version);
-    duckdbAvatar.src = `https://duckdb.org/images/release-icons/${duckdbVersionParts[1]}.${duckdbVersionParts[2]}.0.svg`
+    duckdbAvatar.src = duckdbLogoUrl;
   })
   .catch(() =>{
     console.error(`Error fetching duckdb version info.`);

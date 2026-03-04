@@ -69,9 +69,7 @@
       <option value=";">semi-colon</option>
       <option value="|">pipe</option>
       <option value="\t">horizontal tab</option>
-      <option value="&#11;">vertical tab</option>
-      <option value="&#30;">record separator</option>
-      <option value="&#31;">unit separator</option>
+      <!-- Vertical tab, record separator, unit separator (&#11;, &#30;, &#31;) omitted: HTML disallows control-character refs in attributes; add via JS if needed -->
       <option value="!">exclamation mark</option>
       <option value=" ">space</option>
     </datalist>
@@ -1314,7 +1312,7 @@
     <dialog
       id="aboutDialog"
       draggable="true"
-      aria-labelledby"aboutDialogTitle"
+      aria-labelledby="aboutDialogTitle"
       popover="auto"
     >
       <header>
@@ -1328,7 +1326,7 @@
           <li id="hueyVersion" translate="no"></li>
           <li>
             <a href="https://duckdb.org/" target="_duckdb" id="duckdbVersionLabel" translate="no"></a>
-            <img id="duckdb-version-specific-avatar" width="16px" src="https://duckdb.org/images/release-icons/1.3.0.svg"/>
+            <img id="duckdb-version-specific-avatar" width="16px" alt="" />
           </li>
           <li><a id="duckDbLibraryUrl" target="_duckdb-jsdelivr" translate="no"></a></li>
           <li><a id="tablerIconsUrl" href="https://tabler.io/icons" target="_tabler-icons" translate="no"></a></li>
@@ -2300,7 +2298,7 @@
             </template>
             
             <template id="attribute-node-axis-dummybutton">
-              <span class="attributeUiAxisButton" data-axis=""/>
+              <span class="attributeUiAxisButton" data-axis=""></span>
             </template>
             
             <template id="attribute-node-axis-checkbox">

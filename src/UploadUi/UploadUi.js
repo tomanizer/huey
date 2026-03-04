@@ -4,6 +4,7 @@ import { Routing } from '../Routing/Routing.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { PromptUi } from '../PromptUi/PromptUi.js';
 import { queryModel } from '../QueryModel/QueryModel.js';
 import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';

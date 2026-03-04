@@ -1,6 +1,7 @@
 import { byId } from '../util/dom/dom.js';
-import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { QueryAxisItem, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
 import { AttributeUi } from '../AttributeUi/AttributeUi.js';
+import { pivotTableUi } from '../PivotTableUi/PivotTableUi.js';
 
 export class QuickQueryMenu {
   
@@ -86,6 +87,7 @@ export class QuickQueryMenu {
     const queryModelState = this.#newQueryModelState();
     const queryModel = this.#queryModel;
     await queryModel.setState(queryModelState);
+    await pivotTableUi.updatePivotTableUi();
   }
   
   #initColumnStatisticsButton(){
@@ -115,6 +117,7 @@ export class QuickQueryMenu {
 
     const queryModel = this.#queryModel;
     await queryModel.setState(queryModelState);
+    await pivotTableUi.updatePivotTableUi();
   }
   
   #initDataPreviewButton(){
@@ -160,6 +163,7 @@ export class QuickQueryMenu {
 
     const queryModel = this.#queryModel;
     await queryModel.setState(queryModelState);
+    await pivotTableUi.updatePivotTableUi();
   }
   
   #initDestructuredDataPreviewButton(){

@@ -58,6 +58,10 @@ export class Internationalization {
       scripElement.setAttribute('id', elementId);
       document.body.appendChild(scripElement);
       scripElement.addEventListener('load', Internationalization.textsLoaded);
+      scripElement.addEventListener('error', () => {
+        console.log(`Attempt to load Internationalization texts from "${scripElement.src}" failed.`);
+        Internationalization.#loadTexts();
+      });
     }
     return scripElement;
   }
@@ -71,22 +75,21 @@ export class Internationalization {
       console.log(`Internationalization: No more languages to attempt.`);
     }
     const language = languages[ Internationalization.#languageIndex++ ];
-    if (language === Internationalization.#hueyNativeLanguage){
-      console.log(`No need to load Internationalization texts for Huey native language "${Internationalization.#hueyNativeLanguage}".`);
+    if (language === Internationalization.#hueyNativeLanguage || language.startsWith('en')){
       Internationalization.#applyTexts(true);
       Internationalization.#setCurrentLocale(language);
       return;
     }
     
     const url = `Internationalization/i18n/${language}.js`;
-    console.log(`Attempt to load Internationzalization texts from "${url}"`);    
+    console.log(`Attempt to load Internationalization texts from "${url}"`);
     const scriptElement = Internationalization.#getScriptElement();
     scriptElement.src = url;
   }
   
   static textsLoaded(event){
     const scriptElement = event.target;
-    const message = `Attempt to load Internationzalization texts from "${scriptElement.src}"`;
+    const message = `Attempt to load Internationalization texts from "${scriptElement.src}"`;
     if (Internationalization.#texts === undefined){
       console.log(message + ' failed.');
       Internationalization.#loadTexts();
