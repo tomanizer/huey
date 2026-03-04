@@ -11,6 +11,9 @@ class SessionCloner {
   
   #messageHandler(event){
     var request = event.data;
+    if (!PostMessageInterface.isTrustedOrigin(event.origin)) {
+      return;
+    }
     var requestType = request.messageType;
     
     if (requestType) {
@@ -31,6 +34,7 @@ class SessionCloner {
   }
   
   #copyWindowStateToHueyClone(clonedWindow){
+    var targetOrigin = window.location.origin;
     var datasourceIds = datasourcesUi.getDatasourceIds();
     for (var i = 0; i < datasourceIds.length; i++) {
       var datasourceId = datasourceIds[i];
@@ -43,7 +47,7 @@ class SessionCloner {
           datasourceConfig: originalConfig
         }        
       };
-      clonedWindow.postMessage(request, {targetOrigin: '*'});
+      clonedWindow.postMessage(request, {targetOrigin: targetOrigin});
     }
     var route = Routing.getCurrentRoute();
     if (route) {
@@ -54,7 +58,7 @@ class SessionCloner {
           route: route
         }        
       };
-      clonedWindow.postMessage(request, {targetOrigin: '*'});
+      clonedWindow.postMessage(request, {targetOrigin: targetOrigin});
     }
   }
 
