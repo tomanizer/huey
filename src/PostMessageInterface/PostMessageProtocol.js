@@ -1,4 +1,4 @@
-class PostMessageProtocol {
+export class PostMessageProtocol {
   
   // Values for messageType: requests:
   

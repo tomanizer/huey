@@ -1,4 +1,19 @@
-class PivotTableUi extends EventEmitter {
+import { EventEmitter } from '../util/event/EventEmitter.js';
+import { bufferEvents } from '../util/event/EventBuffer.js';
+import { byId, instantiateTemplate, hasClass, getChildWithClassName, createEl } from '../util/dom/dom.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { ContextMenu } from '../ContextMenu/ContextMenu.js';
+import { TupleSet } from '../DataSet/TupleSet.js';
+import { CellSet } from '../DataSet/CellSet.js';
+import { QueryModel, QueryAxisItem, queryModel } from '../QueryModel/QueryModel.js';
+import { AttributeUi } from '../AttributeUi/AttributeUi.js';
+import { FilterDialog } from '../FilterUi/FilterUi.js';
+import { PivotTableUiHighlighting } from './PivotTableUiHighlighting.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { copyToClipboard } from '../util/clipboard/clipboard.js';
+import { getDuckDbLiteralForValue } from '../util/sql/SQLHelper.js';
+
+export class PivotTableUi extends EventEmitter {
 
   static #templateId = 'pivotTableUiTemplate';
 
@@ -20,6 +35,8 @@ class PivotTableUi extends EventEmitter {
 
   // the maximum width in ch units
   static #maximumCellWidth = 30;
+
+  #lastMetrics = undefined;
 
   constructor(config){
     super(['updated', 'busy']);
@@ -428,7 +445,8 @@ class PivotTableUi extends EventEmitter {
     
     const status = {
       status: 'success',
-      tupleCounts: tupleCounts
+      tupleCounts: tupleCounts,
+      metrics: this.#lastMetrics
     }
     this.fireEvent('updated', status);
   }
@@ -1271,14 +1289,13 @@ class PivotTableUi extends EventEmitter {
       });
       tableHeaderDom.appendChild(tableRow);
 
-      let tableCell, labelText, label;
+    let tableCell, labelText, label, columnWidth;
       for (let j = 0; j < numRowAxisColumns; j++) {
         tableCell = createEl('div', {
           "class": 'pivotTableUiCell pivotTableUiHeaderCell'
         });
         tableRow.appendChild(tableCell);
 
-        let columnWidth;
         // last row in the header section: headers for the  row axis columns
         if (i === (numColumnAxisRows - 1)) {
           if (j < rowsAxisItems.length){
@@ -1816,6 +1833,8 @@ class PivotTableUi extends EventEmitter {
       this.#setBusy(true);
       this.clear();
 
+      const totalStart = performance.now();
+
       const columnsTupleSet = this.#columnsTupleSet;
       const rowsTupleSet = this.#rowsTupleSet;
 
@@ -1837,8 +1856,9 @@ class PivotTableUi extends EventEmitter {
       ];
 
       const renderAxisPromisesResults = await Promise.all(renderAxisPromises);
-      //tableDom.setAttribute('data-max-row-tuple-index', rowsTupleSet.getTupleCountSync()-1);
-      //tableDom.setAttribute('data-max-column-tuple-index', columnsTupleSet.getTupleCountSync()-1);
+
+      const queryTimeMs = Math.round(performance.now() - totalStart);
+      const renderStart = performance.now();
 
       const columnTuples = renderAxisPromisesResults[0];
       this.#setHorizontalSize(0);
@@ -1854,8 +1874,15 @@ class PivotTableUi extends EventEmitter {
 
       this.#renderCells();
 
-      //await this.#updateCellData(0, 0);
       await this.#updateDataToScrollPosition();
+
+      const renderTimeMs = Math.round(performance.now() - renderStart);
+      this.#lastMetrics = {
+        queryTimeMs: queryTimeMs,
+        renderTimeMs: renderTimeMs,
+        totalTimeMs: Math.round(performance.now() - totalStart)
+      };
+
       setTimeout(() =>{
         this.#removeExcessColumns();
         this.#updateHorizontalSizer();
@@ -2536,9 +2563,9 @@ class PivotTableUi extends EventEmitter {
   }
 }
 
-let pivotTableUi;
-let pivotTableUiHighlighting;
-function initPivotTableUi(){
+export let pivotTableUi;
+export let pivotTableUiHighlighting;
+export function initPivotTableUi(){
   pivotTableUi = new PivotTableUi({
     container: 'workarea',
     id: 'pivotTableUi',

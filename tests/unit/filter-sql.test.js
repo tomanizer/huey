@@ -1,15 +1,31 @@
-const { loadScripts } = require('./setup');
+vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
+  settings: {
+    getSettings(keyPath) {
+      const key = Array.isArray(keyPath) ? keyPath[keyPath.length - 1] : keyPath;
+      const defaults = {
+        sqlSettings: { alwaysQuoteIdentifiers: false, keywordLetterCase: 'upperCase', commaStyle: 'newlineBefore' },
+        localeSettings: { nullString: 'NULL', locale: ['en-US'], minimumIntegerDigits: 1, minimumFractionDigits: 0, maximumFractionDigits: 3, linkMinimumAndMaximumDecimals: false, nullsSortOrder: { value: 'FIRST' } },
+        querySettings: { autoRunQuery: true, filterValuePicklistPageSize: 100, filterSearchAutoWildcards: false, filterSearchApplyAll: false, autoRunQueryTimeout: 1000 },
+        filterDialogSettings: { filterSearchApplyAll: false, filterSearchAutoWildcards: false },
+      };
+      return defaults[key] || {};
+    },
+    assignSettings() {},
+    addEventListener() {},
+    removeEventListener() {},
+  },
+}));
+
+vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
+  showErrorDialog: vi.fn(),
+  getDataFromError: vi.fn((e) => ({ title: String(e), description: String(e) })),
+  initErrorDialog: vi.fn(),
+}));
+
+import { QueryAxisItem } from '../../src/QueryModel/QueryModel.js';
+import { FilterDialog } from '../../src/FilterUi/FilterUi.js';
 
 describe('QueryAxisItem.getFilterConditionSql', () => {
-  let window;
-  let QueryAxisItem;
-  let FilterDialog;
-
-  beforeAll(() => {
-    window = loadScripts();
-    ({ QueryAxisItem, FilterDialog } = window);
-  });
-
   function createFilterItem(overrides) {
     return Object.assign(
       {

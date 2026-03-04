@@ -1,4 +1,7 @@
-class Theme {
+import { byId } from '../util/dom/dom.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+
+export class Theme {
 
   static #variablePrefix = '--huey-';
 

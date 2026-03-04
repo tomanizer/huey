@@ -1,20 +1,33 @@
-const { loadScripts } = require('./setup');
+vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
+  settings: {
+    getSettings(keyPath) {
+      const key = Array.isArray(keyPath) ? keyPath[keyPath.length - 1] : keyPath;
+      const defaults = {
+        sqlSettings: { alwaysQuoteIdentifiers: false, keywordLetterCase: 'upperCase', commaStyle: 'newlineBefore' },
+        localeSettings: { nullString: 'NULL', locale: ['en-US'], minimumIntegerDigits: 1, minimumFractionDigits: 0, maximumFractionDigits: 3, linkMinimumAndMaximumDecimals: false, nullsSortOrder: { value: 'FIRST' } },
+        querySettings: { autoRunQuery: true, filterValuePicklistPageSize: 100, filterSearchAutoWildcards: false, filterSearchApplyAll: false, autoRunQueryTimeout: 1000 },
+        filterDialogSettings: { filterSearchApplyAll: false, filterSearchAutoWildcards: false },
+      };
+      return defaults[key] || {};
+    },
+    assignSettings() {},
+    addEventListener() {},
+    removeEventListener() {},
+  },
+}));
+
+vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
+  showErrorDialog: vi.fn(),
+  getDataFromError: vi.fn((e) => ({ title: String(e), description: String(e) })),
+  initErrorDialog: vi.fn(),
+}));
+
+import { RemoteQueryAdapter } from '../../src/DataSource/remote/RemoteQueryAdapter.js';
+import { FilterDialog } from '../../src/FilterUi/FilterUi.js';
 
 describe('RemoteQueryAdapter', () => {
-  let window;
-  let RemoteQueryAdapter;
-  let FilterDialog;
-
-  beforeAll(() => {
-    window = loadScripts();
-    ({ RemoteQueryAdapter, FilterDialog } = window);
-  });
-
   function makeFilterAxisItem(columnName, filter) {
-    return {
-      columnName,
-      filter,
-    };
+    return { columnName, filter };
   }
 
   test('maps include filter to INCLUDE with enabled values only', () => {

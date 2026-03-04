@@ -8,7 +8,7 @@
  * - datasetId: string (logical dataset id, e.g. 'trades_v1')
  * - id: string (optional; stable id for this datasource instance in the UI)
  */
-const RemoteDatasourceConfig = (function () {
+export const RemoteDatasourceConfig = (function () {
   const REMOTE_DATASOURCE_TYPE = 'remote';
   const REMOTE_CONFIG_KEYS = ['type', 'baseUrl', 'datasetId', 'apiKey'];
 

@@ -1,8 +1,8 @@
-function byId(id){
+export function byId(id){
   return document.getElementById(id);
 }
 
-function createEl(tagName, attributes, content){
+export function createEl(tagName, attributes, content){
   const el = document.createElement(tagName);
   if (content) {
     switch (typeof content){
@@ -18,7 +18,7 @@ function createEl(tagName, attributes, content){
   return el;
 }
 
-function instantiateTemplate(templateId, idOrAttributes) {
+export function instantiateTemplate(templateId, idOrAttributes) {
   const template = byId(templateId);
   const clone = template.content.cloneNode(true);
   let index = 0, node;
@@ -82,7 +82,7 @@ function setStyle(dom, styleValue){
   dom.setAttribute('style', styleValue);
 }
 
-function setClass(dom, classNames){
+export function setClass(dom, classNames){
   switch (typeof classNames) {
     case 'undefined':
     case 'object':
@@ -99,14 +99,14 @@ function setClass(dom, classNames){
   dom.className = classNames;
 }
 
-function setAttributes(dom, attributes){
+export function setAttributes(dom, attributes){
   for (const attName in attributes) {
     const attValue = attributes[attName];
     setAttribute(dom, attName, attValue);
   }
 }
 
-function getClassNames(dom){
+export function getClassNames(dom){
   const className = dom.className;
   if (!className) {
     return undefined;
@@ -115,7 +115,7 @@ function getClassNames(dom){
   return classNames.length ? classNames : undefined;
 }
 
-function hasClass(dom, classNames, allOrSome){
+export function hasClass(dom, classNames, allOrSome){
   if (typeof classNames === 'string'){
     classNames = [classNames];
   }
@@ -141,7 +141,7 @@ function hasClass(dom, classNames, allOrSome){
   return !noMatch;
 }
 
-function replaceClass(dom, oldClass, newClass){
+export function replaceClass(dom, oldClass, newClass){
   const classNames = getClassNames(dom);
   const indexOfOldClass = classNames.indexOf(oldClass);
   if (indexOfOldClass === -1){
@@ -155,7 +155,7 @@ function replaceClass(dom, oldClass, newClass){
   dom.className = classNames.join(' ');
 }
 
-function getAncestorWithTagName(dom, tagName, includeSelf){
+export function getAncestorWithTagName(dom, tagName, includeSelf){
   if (!dom) {
     return undefined;
   }
@@ -175,7 +175,7 @@ function getAncestorWithTagName(dom, tagName, includeSelf){
   return undefined;
 }
 
-function getAncestorWithClassName(dom, classNames, allOrSome, includeSelf){
+export function getAncestorWithClassName(dom, classNames, allOrSome, includeSelf){
   if (!dom) {
     return undefined;
   }
@@ -194,7 +194,7 @@ function getAncestorWithClassName(dom, classNames, allOrSome, includeSelf){
   return undefined;
 }
 
-function getAncestorWithAttributeValue(dom, attributeName, attributeValue, includeSelf){
+export function getAncestorWithAttributeValue(dom, attributeName, attributeValue, includeSelf){
   if (!dom) {
     return undefined;
   }
@@ -214,11 +214,11 @@ function getAncestorWithAttributeValue(dom, attributeName, attributeValue, inclu
   return undefined;
 }
 
-function isEl(node){
+export function isEl(node){
   return node && node.nodeType === 1;
 }
 
-function getChildWithClassName(dom, className){
+export function getChildWithClassName(dom, className){
   const childNodes = dom.childNodes;
   for (let i = 0; i < childNodes.length; i++){
     const childNode = childNodes.item(i);
@@ -233,7 +233,7 @@ function getChildWithClassName(dom, className){
   //throw new Error(`Couldn't find element with classname ${className}`);
 }
 
-function escapeHtmlText(text){
+export function escapeHtmlText(text){
   return text.replace(/[&<>]/g, (match) =>{
     switch(match) {
       case '&':

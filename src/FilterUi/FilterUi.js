@@ -1,4 +1,12 @@
-class FilterDialog {
+import { byId, createEl } from '../util/dom/dom.js';
+import { bufferEvents } from '../util/event/EventBuffer.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { Internationalization } from '../Internationalization/Internationalization.js';
+import { QueryAxisItem, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { getDataTypeInfo, quoteStringLiteral } from '../util/sql/SQLHelper.js';
+
+export class FilterDialog {
 
   static MULTIPLE_VALUES_SEPARATOR = ';';
 
@@ -1329,8 +1337,8 @@ class FilterDialog {
   }
 }
 
-let filterDialog;
-function initFilterUi(){
+export let filterDialog;
+export function initFilterUi(){
   filterDialog = new FilterDialog({
     id: 'filterDialog',
     queryModel: queryModel,

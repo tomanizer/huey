@@ -13,53 +13,7 @@
 
     <style id="tabler-font"></style>
 
-    <script>
-    var hueyVersionNumber = '1.0.13';
-    var hueyVersionName = 'Herve';
-    
-    // see: https://cdn.jsdelivr.net/npm/@tabler/icons@3.24.0/
-    // see: https://github.com/tabler/tabler-icons/issues/1310
-    var tablerIconsFontVersion = '3.36.1';
-    
-    var tablerIconsFontUrl = `https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@${tablerIconsFontVersion}/dist/fonts/tabler-icons.woff2?v${tablerIconsFontVersion}`;
-    var preloadLink = document.createElement('link');
-    preloadLink.setAttribute('rel', 'preload');
-    preloadLink.setAttribute('as', 'font');
-    preloadLink.setAttribute('href', tablerIconsFontUrl);
-    preloadLink.setAttribute('crossorigin', 'true');
-    document.head.insertBefore(preloadLink, document.getElementById('tabler-font'));
-    var tablerFontStyleSheet = document.getElementById('tabler-font');
-    document.styleSheets[0].insertRule(`
-      @font-face {
-        font-family: "tabler-icons";
-        font-style: normal;
-        font-weight: 400;
-        font-display: block;
-        src: url("${tablerIconsFontUrl}") format("woff2");
-      }
-    `);
-    
-    var duckdbLibraryVersion = '1.33.1-dev19.0';
-    var duckDbLibraryUrl = `https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@${duckdbLibraryVersion}/+esm`;
-
-    function resourceLoaded(element){
-      var url = element.href || element.src;
-      console.log(`Loaded ${url}`);
-      var list = document.getElementById('resources');
-      if (!list) {
-        return;
-      }
-      var item = document.createElement('li');
-      item.className = 'i18nIgnore';
-      item.setAttribute('data-element', element.tagName);
-      item.setAttribute('data-resource-type', url.split('?')[0].split('.').pop());
-      item.textContent = url;
-      list.appendChild(item);
-    }
-    
-    </script>
-
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="Theme/icons.css"/>
+    <link rel="stylesheet" type="text/css" href="Theme/icons.css"/>
     <!-- 
       Markup for resource loading
     -->
@@ -80,34 +34,34 @@
       }
     </style>
 
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="Theme/General.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="spinner/spinner.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="spinner/timer.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="Tabs/Tabs.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="DragAndDrop/DragableDialogs.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="App/App.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="QuickQueryMenu/QuickQueryMenu.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="AboutDialog/AboutDialog.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="ErrorDialog/ErrorDialog.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="SettingsDialog/SettingsDialog.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="SettingsDialog/SettingsDialogLogic.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="ExportUi/ExportUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="UploadUi/UploadUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="Tree/Tree.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="DataSource/DataSourcesUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="DatasourceSettingsDialog/DatasourceSettingsDialog.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="DatasourceSettingsDialog/DatasourceSettingsDialogLogic.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="DataSourceMenu/DataSourceMenu.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="util/resize/resize.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="Search/Search.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="AttributeUi/AttributeUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="QueryUi/QueryUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="FilterUi/FilterUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="PivotTableUi/PivotTableUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="PivotTableUi/PivotTableUiHighlighting.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="PivotTableUi/PivotTableUiContextMenu.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="PromptUi/PromptUi.css"/>
-    <link onload="resourceLoaded(this)" rel="stylesheet" type="text/css" href="App/SidebarLogic.css"/>
+    <link rel="stylesheet" type="text/css" href="Theme/General.css"/>
+    <link rel="stylesheet" type="text/css" href="spinner/spinner.css"/>
+    <link rel="stylesheet" type="text/css" href="spinner/timer.css"/>
+    <link rel="stylesheet" type="text/css" href="Tabs/Tabs.css"/>
+    <link rel="stylesheet" type="text/css" href="DragAndDrop/DragableDialogs.css"/>
+    <link rel="stylesheet" type="text/css" href="App/App.css"/>
+    <link rel="stylesheet" type="text/css" href="QuickQueryMenu/QuickQueryMenu.css"/>
+    <link rel="stylesheet" type="text/css" href="AboutDialog/AboutDialog.css"/>
+    <link rel="stylesheet" type="text/css" href="ErrorDialog/ErrorDialog.css"/>
+    <link rel="stylesheet" type="text/css" href="SettingsDialog/SettingsDialog.css"/>
+    <link rel="stylesheet" type="text/css" href="SettingsDialog/SettingsDialogLogic.css"/>
+    <link rel="stylesheet" type="text/css" href="ExportUi/ExportUi.css"/>
+    <link rel="stylesheet" type="text/css" href="UploadUi/UploadUi.css"/>
+    <link rel="stylesheet" type="text/css" href="Tree/Tree.css"/>
+    <link rel="stylesheet" type="text/css" href="DataSource/DataSourcesUi.css"/>
+    <link rel="stylesheet" type="text/css" href="DatasourceSettingsDialog/DatasourceSettingsDialog.css"/>
+    <link rel="stylesheet" type="text/css" href="DatasourceSettingsDialog/DatasourceSettingsDialogLogic.css"/>
+    <link rel="stylesheet" type="text/css" href="DataSourceMenu/DataSourceMenu.css"/>
+    <link rel="stylesheet" type="text/css" href="util/resize/resize.css"/>
+    <link rel="stylesheet" type="text/css" href="Search/Search.css"/>
+    <link rel="stylesheet" type="text/css" href="AttributeUi/AttributeUi.css"/>
+    <link rel="stylesheet" type="text/css" href="QueryUi/QueryUi.css"/>
+    <link rel="stylesheet" type="text/css" href="FilterUi/FilterUi.css"/>
+    <link rel="stylesheet" type="text/css" href="PivotTableUi/PivotTableUi.css"/>
+    <link rel="stylesheet" type="text/css" href="PivotTableUi/PivotTableUiHighlighting.css"/>
+    <link rel="stylesheet" type="text/css" href="PivotTableUi/PivotTableUiContextMenu.css"/>
+    <link rel="stylesheet" type="text/css" href="PromptUi/PromptUi.css"/>
+    <link rel="stylesheet" type="text/css" href="App/SidebarLogic.css"/>
 
     <datalist id="commonCsvFieldDelimiters">
       <option data-auto="true" value="(default)">(default)</option>
@@ -2191,6 +2145,10 @@
           <output id="queryResultColumnsInfo"/>
         </label>
 
+        <label for="queryPerformanceInfo" title="Query and render performance timing.">
+          <output id="queryPerformanceInfo"/>
+        </label>
+
         <label for="aboutButton" title="About Huey...">
           <button
             id="aboutButton"
@@ -2372,98 +2330,6 @@
       
     </main>
 
-    <script onload="resourceLoaded(this)" src="util/dom/dom.js"></script>
-    <script onload="resourceLoaded(this)" src="util/clipboard/clipboard.js"></script>
-    <script onload="resourceLoaded(this)" src="util/misc/misc.js"></script>
-    <script onload="resourceLoaded(this)" src="util/event/EventEmitter.js"></script>
-    <script onload="resourceLoaded(this)" src="util/event/EventBuffer.js"></script>
-    <script onload="resourceLoaded(this)" src="DragAndDrop/DragAndDropHelper.js"></script>
-    <script onload="resourceLoaded(this)" src="Internationalization/Internationalization.js"></script>
-
-    <script onload="resourceLoaded(this)" src="DragAndDrop/DragableDialogs.js"></script>
-    <script onload="resourceLoaded(this)" src="Tabs/Tabs.js"></script>
-    <script onload="resourceLoaded(this)" src="ContextMenu/ContextMenu.js"></script>
-
-    <script onload="resourceLoaded(this)" src="SettingsDialog/SettingsBase.js"></script>
-    <script onload="resourceLoaded(this)" src="SettingsDialog/SettingsDialogBase.js"></script>
-    <script onload="resourceLoaded(this)" src="SettingsDialog/SettingsDialog.js"></script>
-    <script onload="resourceLoaded(this)" src="Theme/Theme.js"></script>
-
-    <script onload="resourceLoaded(this)" src="AboutDialog/AboutDialog.js"></script>
-
-    <script onload="resourceLoaded(this)" src="util/sql/SQLHelper.js"></script>
-
-    <script onload="resourceLoaded(this)" src="DataSource/duckdb/DuckDbConnection.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSource/duckdb/DuckDbDataSource.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSource/remote/RemoteDatasourceConfig.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSource/remote/RemoteDatasource.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSource/remote/RemoteQueryAdapter.js"></script>
-
-    <script onload="resourceLoaded(this)" src="DataSet/SqlQueryGenerator.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSet/DataSetComponent.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSet/TupleSet.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSet/CellSet.js"></script>
-
-    <script onload="resourceLoaded(this)" src="ErrorDialog/ErrorDialog.js"></script>
-    <script onload="resourceLoaded(this)" src="UploadUi/UploadUi.js"></script>
-    <script onload="resourceLoaded(this)" src="ExportUi/ExportDialog.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSource/DataSourcesUi.js"></script>
-    <script onload="resourceLoaded(this)" src="DatasourceSettingsDialog/DatasourceSettings.js"></script>
-    <script onload="resourceLoaded(this)" src="DatasourceSettingsDialog/DatasourceSettingsDialog.js"></script>
-    <script onload="resourceLoaded(this)" src="AttributeUi/AttributeUi.js"></script>
-    <script onload="resourceLoaded(this)" src="Search/Search.js"></script>
-    <script onload="resourceLoaded(this)" src="QueryModel/QueryModel.js"></script>
-    <script onload="resourceLoaded(this)" src="DataSourceMenu/DataSourceMenu.js"></script>
-    <script onload="resourceLoaded(this)" src="QueryUi/QueryUi.js"></script>
-    <script onload="resourceLoaded(this)" src="FilterUi/FilterUi.js"></script>
-    <script onload="resourceLoaded(this)" src="PivotTableUi/PivotTableUiHighlighting.js"></script>
-    <script onload="resourceLoaded(this)" src="PivotTableUi/PivotTableUi.js"></script>
-    <script onload="resourceLoaded(this)" src="Routing/Routing.js"></script>
-    <script onload="resourceLoaded(this)" src="PromptUi/PromptUi.js"></script>
-    <script onload="resourceLoaded(this)" src="PageStateManager/PageStateManager.js"></script>
-    <script onload="resourceLoaded(this)" src="QuickQueryMenu/QuickQueryMenu.js"></script>
-
-    <script onload="resourceLoaded(this)" src="PostMessageInterface/PostMessageProtocol.js"></script>
-    <script onload="resourceLoaded(this)" src="PostMessageInterface/PostMessageInterface.js"></script>
-    <script onload="resourceLoaded(this)" src="SessionCloner/SessionCloner.js"></script>
-
-    <script onload="resourceLoaded(this)" src="App/App.js"></script>
-    <script type="module">      
-      import(duckDbLibraryUrl)
-      .then(async function(duckdb){
-        const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
-        const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
-
-        const worker_url = URL.createObjectURL(
-          new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
-        );
-        const worker = new Worker(worker_url);
-        const loglevel = getDuckDbLogLevel(duckdb);
-        console.log(`Creating DuckDb Console Logger with level ${loglevel} (${duckdb.getLogLevelLabel(loglevel)}).`);
-        const logger = new duckdb.ConsoleLogger(loglevel);
-        
-        const db = new duckdb.AsyncDuckDB(logger, worker);
-        URL.revokeObjectURL(worker_url);
-
-        await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-        const connection = await db.connect();
-
-        window.hueyDb = {
-          duckdb: duckdb,
-          instance: db,
-          connection: connection
-        };
-
-        initApplication();
-      })
-      .catch(function(e){
-        document.body.setAttribute('aria-busy', false);
-        document.body.getElementsByTagName('main')[0].style.display = 'none';
-        showErrorDialog(e);
-      })
-      .finally(function(){
-        document.body.setAttribute('aria-busy', false);
-      });
-    </script>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

@@ -1,4 +1,6 @@
-class PivotTableUiHighlighting {
+import { byId, createEl } from '../util/dom/dom.js';
+
+export class PivotTableUiHighlighting {
   
   #pivotTableUi = undefined;
   #settings = undefined;

@@ -100,6 +100,17 @@ def _read_options_sql(dataset_id: str, source: datasets.DatasetSourceConfig) -> 
     return f", {', '.join(parts)}" if parts else ""
 
 
+def _expand_date_partition_uris(
+    base_uri: str,
+    date_range: DateRange,
+    partition_column: str,
+) -> list[str]:
+    """Expand a base S3/path URI into one pattern per date for partition pruning."""
+    base = base_uri.rstrip("/")
+    dates = _dates_for_range(date_range)
+    return [f"{base}/{partition_column}={d}/*.parquet" for d in dates]
+
+
 def _build_parquet_source_relation(
     dataset_id: str,
     date_range: DateRange,
@@ -107,6 +118,18 @@ def _build_parquet_source_relation(
     source: datasets.DatasetSourceConfig,
 ) -> BaseRelation:
     uris = source.normalized_uris()
+    # When we have a time_filter and a single base path (no glob), expand to date-partition paths
+    # so DuckDB gets concrete file patterns (S3 prefix listing may not work like a directory).
+    if (
+        source.time_filter is not None
+        and len(uris) == 1
+        and "*" not in uris[0]
+    ):
+        uris = _expand_date_partition_uris(
+            uris[0],
+            date_range,
+            source.time_filter.column,
+        )
     if source.max_files is not None and len(uris) > source.max_files:
         raise DatasetConfigError(
             dataset_id,

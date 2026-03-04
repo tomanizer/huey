@@ -1,4 +1,14 @@
-class UploadUi {
+import { byId, createEl, instantiateTemplate } from '../util/dom/dom.js';
+import { Internationalization } from '../Internationalization/Internationalization.js';
+import { Routing } from '../Routing/Routing.js';
+import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { queryModel } from '../QueryModel/QueryModel.js';
+import { pageStateManager } from '../PageStateManager/PageStateManager.js';
+import { analyzeDatasource } from '../App/analyzeDatasource.js';
+
+export class UploadUi {
 
   static #fileSizeFormatter = new Intl.NumberFormat(
     navigator.language, {
@@ -548,9 +558,9 @@ class UploadUi {
   }
 }
 
-let uploadUi;
+export let uploadUi;
 
-function afterUploaded(uploadResults){
+export function afterUploaded(uploadResults){
   const currentRoute = Routing.getCurrentRoute();
   if (!Routing.isSynced(queryModel)) {
     pageStateManager.setPageState(currentRoute, uploadResults);
@@ -592,7 +602,7 @@ function afterUploaded(uploadResults){
   }
 }
 
-function initUploadUi(){
+export function initUploadUi(){
   uploadUi = new UploadUi('uploadUi');
 
   const uploader = byId('uploader');

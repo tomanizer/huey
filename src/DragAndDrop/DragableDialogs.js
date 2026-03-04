@@ -1,15 +1,17 @@
+import { createEl } from '../util/dom/dom.js';
+
 /**
 * A utility to handle drag behavior of dialogs
 * This class will install dragstart/drag/dragend eventhandlers on the body element
 * In dragstart, it checks whether the dragevent source element is a dialog.
 * If it is, it will initiate the dragging of the dialog element
-* 
-* Once this class is instantiated, the only thing that you need to do to make dialogs draggable 
+*
+* Once this class is instantiated, the only thing that you need to do to make dialogs draggable
 * is to give them a draggable="true" attribute.
-* 
+*
 */
 
-class DragableDialogs {
+export class DragableDialogs {
   
   #dialog = undefined;
   #dragImgEl = undefined;
@@ -106,6 +108,6 @@ class DragableDialogs {
   }
 }
 
-function initDragableDialogs(){
+export function initDragableDialogs(){
   new DragableDialogs();
 }

@@ -1,4 +1,6 @@
-class PromptUi {
+import { byId } from '../util/dom/dom.js';
+
+export class PromptUi {
 
   static {
 

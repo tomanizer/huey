@@ -1,75 +1,56 @@
-const fs = require('fs');
-const path = require('path');
-const { TextEncoder, TextDecoder } = require('util');
+vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
+  settings: {
+    getSettings() { return {}; },
+    assignSettings() {},
+    addEventListener() {},
+    removeEventListener() {},
+  },
+}));
 
-if (typeof global.TextEncoder === 'undefined') {
-  global.TextEncoder = TextEncoder;
-}
-if (typeof global.TextDecoder === 'undefined') {
-  global.TextDecoder = TextDecoder;
-}
+vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
+  showErrorDialog: vi.fn(),
+  getDataFromError: vi.fn((e) => ({ title: String(e), description: String(e) })),
+  initErrorDialog: vi.fn(),
+}));
 
-const { JSDOM } = require('jsdom');
+vi.mock('../../src/PageStateManager/PageStateManager.js', () => ({
+  pageStateManager: { setPageState: vi.fn() },
+  initPageStateManager: vi.fn(),
+}));
+
+vi.mock('../../src/PromptUi/PromptUi.js', () => ({
+  PromptUi: { show: vi.fn() },
+}));
+
+import { PostMessageInterface, initPostMessageInterface } from '../../src/PostMessageInterface/PostMessageInterface.js';
 
 describe('PostMessageInterface security hardening', () => {
-  function createWindow(allowedOrigins) {
-    var queryString = '';
-    if (allowedOrigins) {
-      queryString = '?postMessageOrigins=' + encodeURIComponent(allowedOrigins);
-    }
-    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-      url: `http://localhost/${queryString}`,
-      runScripts: 'dangerously',
-      pretendToBeVisual: true,
-    });
+  beforeAll(() => {
+    initPostMessageInterface(true);
+  });
 
-    const scriptPaths = [
-      'src/PostMessageInterface/PostMessageProtocol.js',
-      'src/PostMessageInterface/PostMessageInterface.js',
-    ];
+  beforeEach(() => {
+    vi.spyOn(PostMessageInterface, 'getTrustedOrigins').mockReturnValue([
+      'http://localhost',
+      'http://trusted.test',
+    ]);
+  });
 
-    scriptPaths.forEach((scriptPath) => {
-      const code = fs.readFileSync(path.resolve(__dirname, '../../', scriptPath), 'utf-8');
-      const scriptElement = dom.window.document.createElement('script');
-      scriptElement.textContent = code;
-      dom.window.document.body.appendChild(scriptElement);
-    });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
-    dom.window.pageStateManager = {
-      setPageState: jest.fn(),
-    };
-    dom.window.datasourcesUi = {
-      addDatasources: jest.fn(async () => {}),
-    };
-    dom.window.analyzeDatasource = jest.fn();
-    dom.window.DuckDbDataSource = function () {
-      this.getId = () => 'dummy';
-      this.getType = () => 'duckdb';
-    };
-    dom.window.hueyDb = {
-      duckdb: {},
-      instance: {},
-    };
-
-    dom.window.initPostMessageInterface(true);
-
-    return dom.window;
-  }
-
-  test('responds to ping for trusted origin and uses origin as targetOrigin', () => {
-    const window = createWindow('http://trusted.test');
-    const source = { postMessage: jest.fn() };
-
-    const event = new window.MessageEvent('message', {
+  test('responds to ping for trusted origin and uses origin as targetOrigin', async () => {
+    const source = { postMessage: vi.fn() };
+    const event = new MessageEvent('message', {
       origin: 'http://trusted.test',
       source,
-      data: {
-        messageType: 'ping',
-        requestId: 'req-1',
-      },
+      data: { messageType: 'ping', requestId: 'req-1' },
     });
 
     window.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(source.postMessage).toHaveBeenCalledTimes(1);
     const [response, options] = source.postMessage.mock.calls[0];
@@ -78,37 +59,30 @@ describe('PostMessageInterface security hardening', () => {
     expect(options).toEqual({ targetOrigin: 'http://trusted.test' });
   });
 
-  test('ignores messages from untrusted origin', () => {
-    const window = createWindow('http://trusted.test');
-    const source = { postMessage: jest.fn() };
-
-    const event = new window.MessageEvent('message', {
+  test('ignores messages from untrusted origin', async () => {
+    const source = { postMessage: vi.fn() };
+    const event = new MessageEvent('message', {
       origin: 'http://evil.test',
       source,
-      data: {
-        messageType: 'ping',
-        requestId: 'req-2',
-      },
+      data: { messageType: 'ping', requestId: 'req-2' },
     });
 
     window.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(source.postMessage).not.toHaveBeenCalled();
   });
 
-  test('returns bad request for malformed envelope without messageType', () => {
-    const window = createWindow('http://trusted.test');
-    const source = { postMessage: jest.fn() };
-
-    const event = new window.MessageEvent('message', {
+  test('returns bad request for malformed envelope without messageType', async () => {
+    const source = { postMessage: vi.fn() };
+    const event = new MessageEvent('message', {
       origin: 'http://trusted.test',
       source,
-      data: {
-        requestId: 'req-3',
-      },
+      data: { requestId: 'req-3' },
     });
 
     window.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(source.postMessage).toHaveBeenCalledTimes(1);
     const [response, options] = source.postMessage.mock.calls[0];
@@ -118,17 +92,11 @@ describe('PostMessageInterface security hardening', () => {
   });
 
   test('bad request response omits stack details', async () => {
-    const window = createWindow('http://trusted.test');
-    const source = { postMessage: jest.fn() };
-
-    const event = new window.MessageEvent('message', {
+    const source = { postMessage: vi.fn() };
+    const event = new MessageEvent('message', {
       origin: 'http://trusted.test',
       source,
-      data: {
-        messageType: 'createDatasource',
-        requestId: 'req-4',
-        body: null,
-      },
+      data: { messageType: 'createDatasource', requestId: 'req-4', body: null },
     });
 
     window.dispatchEvent(event);
@@ -141,9 +109,9 @@ describe('PostMessageInterface security hardening', () => {
   });
 
   test('sendReadyMessage uses trusted target origin and never wildcard', () => {
-    const window = createWindow('http://trusted.test');
-    const opener = { postMessage: jest.fn() };
-    window.opener = opener;
+    const opener = { postMessage: vi.fn() };
+    vi.stubGlobal('opener', opener);
+    vi.spyOn(PostMessageInterface, 'getTargetOriginForHostingWindow').mockReturnValue('http://trusted.test');
 
     window.postMessageInterface.sendReadyMessage();
 

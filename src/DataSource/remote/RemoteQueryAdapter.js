@@ -1,4 +1,4 @@
-(function () {
+export const RemoteQueryAdapter = (function () {
   var FILTER_OPERATOR_BY_TYPE = {
     in: 'INCLUDE',
     notin: 'EXCLUDE',
@@ -228,11 +228,13 @@
     };
   }
 
-  window.RemoteQueryAdapter = {
+  const adapter = {
     getDateRange: getDateRange,
     toRemoteFilters: toRemoteFilters,
     createRemoteTuplesQuery: createRemoteTuplesQuery,
     createRemoteCellsQuery: createRemoteCellsQuery,
     createRemotePicklistQuery: createRemotePicklistQuery
   };
+  window.RemoteQueryAdapter = adapter;
+  return adapter;
 })();

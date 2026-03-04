@@ -1,3 +1,6 @@
+import { EventEmitter } from '../../util/event/EventEmitter.js';
+import { RemoteDatasourceConfig } from './RemoteDatasourceConfig.js';
+
 /**
  * RemoteDatasource: fetches schema and query results from QueryService.
  * Use with RemoteDatasourceConfig. Implements getId(), getType(), getManagedConnection()
@@ -152,7 +155,7 @@ class RemoteConnection {
   }
 }
 
-class RemoteDatasource extends EventEmitter {
+export class RemoteDatasource extends EventEmitter {
   #baseUrl;
   #datasetId;
   #apiKey;

@@ -1,4 +1,6 @@
-function getDataFromError(error){
+import { byId, escapeHtmlText } from '../util/dom/dom.js';
+
+export function getDataFromError(error){
   const newlineRegex = /\r\n|[\r\n]/g;
   
   const message = error.message;
@@ -26,7 +28,7 @@ function getDataFromError(error){
 }
 
 
-function showErrorDialog(config){
+export function showErrorDialog(config){
   if (config instanceof Error){
     console.error(config);
     config = getDataFromError(config);
@@ -65,7 +67,6 @@ function showErrorDialog(config){
   errorDialogStack.textContent = details;
 
   const errorDialog = byId('errorDialog');
-  errorDialog.getElements
   errorDialog.showModal();
 }
 

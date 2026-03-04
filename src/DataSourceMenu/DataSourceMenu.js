@@ -1,4 +1,9 @@
-class DataSourceMenu {
+import { byId } from '../util/dom/dom.js';
+import { bufferEvents } from '../util/event/EventBuffer.js';
+import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
+
+export class DataSourceMenu {
  
   #id = undefined;
   #queryModel = undefined;
@@ -210,6 +215,6 @@ class DataSourceMenu {
 }
 
 
-function initDataSourceMenu(){
+export function initDataSourceMenu(){
   const datasourceMenu = new DataSourceMenu('dataSourceMenu', queryModel, datasourcesUi);
 }

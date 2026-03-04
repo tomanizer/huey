@@ -1,4 +1,9 @@
-class TupleSet extends DataSetComponent {
+import { DataSetComponent } from './DataSetComponent.js';
+import { SqlQueryGenerator } from './SqlQueryGenerator.js';
+import { QueryAxisItem } from '../QueryModel/QueryModel.js';
+import { RemoteQueryAdapter } from '../DataSource/remote/RemoteQueryAdapter.js';
+
+export class TupleSet extends DataSetComponent {
 
   static groupingIdAlias = '__huey_grouping_id';
 

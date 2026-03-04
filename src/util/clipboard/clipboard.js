@@ -1,10 +1,10 @@
-function createClipboardItem(blob, mimeType){
+export function createClipboardItem(blob, mimeType){
   const conf = {};
   conf[mimeType || blob.type] = blob;
   return new ClipboardItem(conf);
 }
 
-async function copyToClipboard(data, mimeType) {
+export async function copyToClipboard(data, mimeType) {
   let clipboard = navigator.clipboard, method, arg;
   if (typeof data === 'string') {
     if (mimeType) {
@@ -44,7 +44,7 @@ async function copyToClipboard(data, mimeType) {
   return result;
 }
 
-function getPastedText(domClipboardEvent){
+export function getPastedText(domClipboardEvent){
   const target = domClipboardEvent.target;
   const value = target.value;
   

@@ -1,4 +1,16 @@
-class RejectsDatasource extends DuckDbDataSource {
+import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { SettingsDialogBase } from '../SettingsDialog/SettingsDialogBase.js';
+import { TabUi } from '../Tabs/Tabs.js';
+import { Internationalization } from '../Internationalization/Internationalization.js';
+import { byId } from '../util/dom/dom.js';
+import { QueryModel } from '../QueryModel/QueryModel.js';
+import { PivotTableUi } from '../PivotTableUi/PivotTableUi.js';
+import { SettingsBase } from '../SettingsDialog/SettingsBase.js';
+import { DatasourceSettings } from './DatasourceSettings.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { DataSourcesUi } from '../DataSource/DataSourcesUi.js';
+
+export class RejectsDatasource extends DuckDbDataSource {
 
   #delegateDatasource = undefined;
 
@@ -33,7 +45,7 @@ class RejectsDatasource extends DuckDbDataSource {
 
 }
 
-class DatasourceSettingsDialog extends SettingsDialogBase {
+export class DatasourceSettingsDialog extends SettingsDialogBase {
 
   static #id = 'datasourceSettingsDialog';
   static #tabListSelector = `#${DatasourceSettingsDialog.#id} > *[role=tablist]`;
@@ -332,7 +344,7 @@ class DatasourceSettingsDialog extends SettingsDialogBase {
   }
 }
 
-let datasourceSettingsDialog;
-function initDatasourceSettingsDialog(){
+export let datasourceSettingsDialog;
+export function initDatasourceSettingsDialog(){
   datasourceSettingsDialog = new DatasourceSettingsDialog();
 }

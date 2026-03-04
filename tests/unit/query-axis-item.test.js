@@ -1,12 +1,28 @@
-const { loadScripts } = require('./setup');
+vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
+  settings: {
+    getSettings(keyPath) {
+      const key = Array.isArray(keyPath) ? keyPath[keyPath.length - 1] : keyPath;
+      const defaults = {
+        sqlSettings: { alwaysQuoteIdentifiers: false, keywordLetterCase: 'upperCase', commaStyle: 'newlineBefore' },
+        localeSettings: { nullString: 'NULL', locale: ['en-US'], minimumIntegerDigits: 1, minimumFractionDigits: 0, maximumFractionDigits: 3, linkMinimumAndMaximumDecimals: false, nullsSortOrder: { value: 'FIRST' } },
+      };
+      return defaults[key] || {};
+    },
+    assignSettings() {},
+    addEventListener() {},
+    removeEventListener() {},
+  },
+}));
+
+vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
+  showErrorDialog: vi.fn(),
+  getDataFromError: vi.fn((e) => ({ title: String(e), description: String(e) })),
+  initErrorDialog: vi.fn(),
+}));
+
+import { QueryAxisItem } from '../../src/QueryModel/QueryModel.js';
 
 describe('QueryAxisItem.getSqlForQueryAxisItem', () => {
-  let QueryAxisItem;
-
-  beforeAll(() => {
-    ({ QueryAxisItem } = loadScripts());
-  });
-
   test('simple column returns qualified identifier', () => {
     const sql = QueryAxisItem.getSqlForQueryAxisItem({
       columnName: 'city',

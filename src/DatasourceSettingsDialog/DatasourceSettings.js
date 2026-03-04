@@ -1,4 +1,7 @@
-class DatasourceSettings extends SettingsBase {
+import { SettingsBase } from '../SettingsDialog/SettingsBase.js';
+import { quoteStringLiteral } from '../util/sql/SQLHelper.js';
+
+export class DatasourceSettings extends SettingsBase {
 
   static #reader_settings = {
     'read_csv': 'csvReader',

@@ -1,4 +1,12 @@
-class ExportUi {
+import { byId } from '../util/dom/dom.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { DataSourcesUi } from '../DataSource/DataSourcesUi.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { copyToClipboard } from '../util/clipboard/clipboard.js';
+import { getCopyToStatement, unQuote } from '../util/sql/SQLHelper.js';
+
+export class ExportUi {
 
   static downloadURL(url, fileName) {
     let a;
@@ -462,7 +470,7 @@ class ExportUi {
 
 }
 
-class ExportDialog {
+export class ExportDialog {
 
   static #id = 'exportDialog';
 
@@ -645,8 +653,8 @@ class ExportDialog {
 
 }
 
-let exportDialog;
-function initExportDialog(){
+export let exportDialog;
+export function initExportDialog(){
   exportDialog = new ExportDialog();
 
   const exportButton = byId('exportButton');

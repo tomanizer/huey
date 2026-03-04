@@ -1,4 +1,20 @@
-class DuckDbDataSource extends EventEmitter {
+import { EventEmitter } from '../../util/event/EventEmitter.js';
+import { DuckDbConnection } from './DuckDbConnection.js';
+import { showErrorDialog } from '../../ErrorDialog/ErrorDialog.js';
+import { DatasourceSettings } from '../../DatasourceSettingsDialog/DatasourceSettings.js';
+import {
+  quoteStringLiteral,
+  isQuotedIdentifier,
+  unQuoteIdentifier,
+  getQuotedIdentifier,
+  getQualifiedIdentifier,
+  formatKeyword,
+  normalizeSqlOptions,
+  getComma,
+  getIdentifier
+} from '../../util/sql/SQLHelper.js';
+
+export class DuckDbDataSource extends EventEmitter {
   
   static #defaultNumberOfAccessAttempts = 1;
 

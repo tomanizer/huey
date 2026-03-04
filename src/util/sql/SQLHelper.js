@@ -1,20 +1,22 @@
-function getDataTypeNameFromColumnType(columnType){
+import { settings } from '../../SettingsDialog/SettingsDialog.js';
+
+export function getDataTypeNameFromColumnType(columnType){
   return /^[^\(]+/.exec(columnType)[0];
 }
 
-function getNullString(){
+export function getNullString(){
   const generalSettings = settings.getSettings('localeSettings');
   const nullString = generalSettings.nullString;
   return nullString;
 }
 
-function getLocales(){
+export function getLocales(){
   const localeSettings = settings.getSettings('localeSettings');
   const locales = localeSettings.locale;
   return locales;
 }
 
-function getArrowDecimalAsString(value, type){
+export function getArrowDecimalAsString(value, type){
   if (value === null) {
     return 'NULL';
   }
@@ -34,7 +36,7 @@ function getArrowDecimalAsString(value, type){
   return str;
 }
 
-function createNumberFormatter(fractionDigits){
+export function createNumberFormatter(fractionDigits){
   const localeSettings = settings.getSettings('localeSettings');
   let options = {
     minimumIntegerDigits: localeSettings.minimumIntegerDigits,
@@ -108,7 +110,7 @@ function createNumberFormatter(fractionDigits){
   };
 }
 
-function createTimestampFormatter(withTimeZone){
+export function createTimestampFormatter(withTimeZone){
   // we will receive the value as a javascript Number, representing the milliseconds since Epoch,
   // allowing us to use the value directly as argumnet to the Date constructor.
   // the number may (will) have decimal digits, representing any bit of time beyond the milliseconds resolution
@@ -144,7 +146,7 @@ function createTimestampFormatter(withTimeZone){
   };
 }
 
-function createTimestampLiteralWriter(timezoneDatatypeName){
+export function createTimestampLiteralWriter(timezoneDatatypeName){
   if (timezoneDatatypeName === undefined){
     timezoneDatatypeName = 'TIMESTAMP';
   }
@@ -153,14 +155,14 @@ function createTimestampLiteralWriter(timezoneDatatypeName){
   };
 }
 
-function fallbackFormatter(value){
+export function fallbackFormatter(value){
   if (value === null || value === undefined){
     return getNullString();
   }
   return String(value);
 }
 
-function createDecimalLiteralWriter(precision, scale){
+export function createDecimalLiteralWriter(precision, scale){
   let typeDef = 'DECIMAL';
   if (precision !== undefined) {
     const typeOfPrecision = typeof precision;
@@ -216,19 +218,19 @@ function createDecimalLiteralWriter(precision, scale){
   }
 }
 
-function createDefaultLiteralWriter(type){
+export function createDefaultLiteralWriter(type){
   return function(value, field){
     return `${value === null ? 'NULL' : String(value)}::${type}`;
   }
 }
 
-function createDateFormatter(options){
+export function createDateFormatter(options){
   const locales = getLocales();
   const dateFormatter = new Intl.DateTimeFormat(locales, options);
   return dateFormatter;
 }
 
-function createLocalDateFormatter(){
+export function createLocalDateFormatter(){
   const dateFormatter = createDateFormatter({
     year: 'numeric',
     month: 'numeric',
@@ -242,7 +244,7 @@ function createLocalDateFormatter(){
   }
 }
 
-function createMonthNameList(modifier){
+export function createMonthNameList(modifier){
   const dateFormatter = createDateFormatter({
     month: modifier || 'long'
   });
@@ -262,7 +264,7 @@ function createMonthNameList(modifier){
   return monthNames;
 }
 
-function createMonthNameFormatter(modifier){
+export function createMonthNameFormatter(modifier){
   const monthNames = createMonthNameList(modifier);
   return function(value){
     if (value === null) {
@@ -272,7 +274,7 @@ function createMonthNameFormatter(modifier){
   }
 }
 
-function createMonthNameParser(modifier){
+export function createMonthNameParser(modifier){
   const monthNames = createMonthNameList(modifier);
   return function(monthNameValue){
     if (!monthNameValue) {
@@ -288,23 +290,23 @@ function createMonthNameParser(modifier){
   };
 }
 
-function createMonthShortNameFormatter(){
+export function createMonthShortNameFormatter(){
   return createMonthNameFormatter('short');
 }
 
-function createMonthShortNameParser(){
+export function createMonthShortNameParser(){
   return createMonthNameParser('short');
 }
 
-function createMonthFullNameFormatter(){
+export function createMonthFullNameFormatter(){
   return createMonthNameFormatter('long');
 }
 
-function createMonthFullNameParser(){
+export function createMonthFullNameParser(){
   return createMonthNameParser('long');
 }
 
-function createDayNameList(modifier){
+export function createDayNameList(modifier){
   const dateFormatter = createDateFormatter({
     weekday: modifier || 'long'
   });
@@ -325,7 +327,7 @@ function createDayNameList(modifier){
   return dayNames;
 }
 
-function createDayNameFormatter(modifier){
+export function createDayNameFormatter(modifier){
   const dayNames = createDayNameList(modifier);
   return function(value){
     if (value === null) {
@@ -335,7 +337,7 @@ function createDayNameFormatter(modifier){
   }
 }
 
-function createDayNameParser(modifier){
+export function createDayNameParser(modifier){
   const dayNames = createDayNameList(modifier);
   return function(dayNameValue){
     if (!dayNameValue) {
@@ -351,23 +353,23 @@ function createDayNameParser(modifier){
   };
 }
 
-function createDayShortNameFormatter(){
+export function createDayShortNameFormatter(){
   return createDayNameFormatter('short');
 }
 
-function createDayShortNameParser(){
+export function createDayShortNameParser(){
   return createDayNameParser('short');
 }
 
-function createDayFullNameFormatter(){
+export function createDayFullNameFormatter(){
   return createDayNameFormatter('long');
 }
 
-function createDayFullNameParser(){
+export function createDayFullNameParser(){
   return createDayNameParser('long');
 }
 
-function monthNumFormatter(monthNum){
+export function monthNumFormatter(monthNum){
   if (monthNum === null){
     return getNullString();
   }
@@ -378,7 +380,7 @@ function monthNumFormatter(monthNum){
   return monthNum;
 }
 
-function dayNumFormatter(dayNum){
+export function dayNumFormatter(dayNum){
   if (dayNum === null){
     return getNullString();
   }
@@ -389,7 +391,7 @@ function dayNumFormatter(dayNum){
   return dayNum;
 }
 
-function weekNumFormatter(weekNum){
+export function weekNumFormatter(weekNum){
   if (weekNum === null){
     return getNullString();
   }
@@ -402,11 +404,11 @@ function weekNumFormatter(weekNum){
 
 // value: arrow value.
 // type: arrow type
-function getDuckDbLiteralForValue(value, type){
+export function getDuckDbLiteralForValue(value, type){
   if (value === null){
     return 'NULL';
   }
-  const literal = '';
+  let literal = '';
   const typeId = type.typeId;
   // see: https://github.com/apache/arrow/blob/main/js/src/enum.ts
   switch (typeId){
@@ -460,7 +462,7 @@ function getDuckDbLiteralForValue(value, type){
       break;
     case 12:  // LIST
     case 16:  // fixed size list
-      let literal;
+      literal = '';
       const elementType = type.children[0].type;
       for (let i = 0; i < value.length; i++){
         if (i) {
@@ -527,7 +529,7 @@ function getDuckDbLiteralForValue(value, type){
   return literal;
 }
 
-const dataTypes = {
+export const dataTypes = {
   'DECIMAL': {
     defaultAnalyticalRole: 'measure',
     isNumeric: true,
@@ -891,7 +893,7 @@ const dataTypes = {
   }
 };
 
-function getDataTypeInfo(columnType){
+export function getDataTypeInfo(columnType){
   if (isArrayType(columnType)) {
     return dataTypes['ARRAY'];
   }
@@ -925,11 +927,11 @@ function getDataTypeInfo(columnType){
   return dataTypes[typeName];
 }
 
-function quoteStringLiteral(str){
+export function quoteStringLiteral(str){
   return typeof str === 'string'  ? `'${str.replace(/'/g, "''")}'` : str; 
 }
 
-function isQuoted(str, startQuote, endQuote){
+export function isQuoted(str, startQuote, endQuote){
   if (!str.startsWith(startQuote)){
     return false;
   }
@@ -939,11 +941,11 @@ function isQuoted(str, startQuote, endQuote){
   return str.endsWith(endQuote);
 }
 
-function isQuotedIdentifier(str){
+export function isQuotedIdentifier(str){
   return isQuoted(str, '"');
 }
 
-function unQuote(str, startQuote, endQuote){
+export function unQuote(str, startQuote, endQuote){
   if (!endQuote) {
     endQuote = startQuote;
   }
@@ -956,21 +958,21 @@ function unQuote(str, startQuote, endQuote){
   return str.slice(startQuote.length, -endQuote.length);
 }
 
-function unQuoteStringLiteral(str){
+export function unQuoteStringLiteral(str){
   return unQuote(str, '\'');
 }
 
-function unQuoteIdentifier(str){
+export function unQuoteIdentifier(str){
   return unQuote(str, '"');
 }
 
-function identifierRequiresQuoting(identifier){
+export function identifierRequiresQuoting(identifier){
   return window.hueyDb.reservedWords.includes(identifier.toLowerCase()) || 
     /^\d|[\s\[\]\{\}\(\)\.\/\+\-\&\*\^\?\\<>'"%=~!:;@#]/.test(identifier)
   ;
 }
 
-function quoteIdentifierWhenRequired(identifier){
+export function quoteIdentifierWhenRequired(identifier){
   if (identifier.startsWith('"') && identifier.endsWith('"')) {
     return identifier;
   }
@@ -981,21 +983,21 @@ function quoteIdentifierWhenRequired(identifier){
   return identifier;
 }
 
-function getQuotedIdentifier(identifier){
+export function getQuotedIdentifier(identifier){
   if (typeof identifier !== 'string'){
     identifier = String(identifier);
   }
   return `"${identifier.replace(/"/g, '""')}"`;
 }
 
-function getIdentifier(identifier, quoteAlways){
+export function getIdentifier(identifier, quoteAlways){
   if (quoteAlways || identifierRequiresQuoting(identifier)){
     return getQuotedIdentifier(identifier);
   } 
   return identifier;
 }
 
-function formatKeyword(keyword, letterCase){
+export function formatKeyword(keyword, letterCase){
   switch(letterCase){
     case 'initialCapital':
       return keyword.charAt(0).toUpperCase() + keyword.slice(1).toLowerCase();
@@ -1006,7 +1008,7 @@ function formatKeyword(keyword, letterCase){
   }
 }
 
-function getQualifiedIdentifier(){
+export function getQualifiedIdentifier(){
   let sqlOptions;
   switch (arguments.length) {
     case 0:
@@ -1068,7 +1070,7 @@ function getQualifiedIdentifier(){
   throw new Error(`Invalid arguments`);
 }
 
-async function ensureDuckDbExtensionLoadedAndInstalled(extensionName, repositoryName){
+export async function ensureDuckDbExtensionLoadedAndInstalled(extensionName, repositoryName){
   const connection = hueyDb.connection;
   let sql = `SELECT * FROM duckdb_extensions() WHERE extension_name = ?`;
   const statement = await connection.prepare(sql);
@@ -1098,7 +1100,7 @@ async function ensureDuckDbExtensionLoadedAndInstalled(extensionName, repository
   return true;
 }
 
-function getCopyToStatement(selectStatement, fileName, options){
+export function getCopyToStatement(selectStatement, fileName, options){
   const optionsString = Object
   .keys(options)
   .map((option) =>{
@@ -1115,7 +1117,7 @@ function getCopyToStatement(selectStatement, fileName, options){
   return copyStatement.join('\n');
 }
 
-function getSqlHeader(){
+export function getSqlHeader(){
   return [
     `/*********************************`,
     `* DuckDB query generated by Huey`,
@@ -1125,7 +1127,7 @@ function getSqlHeader(){
   ].join('\n');
 }
 
-function getComma(commaStyle) {
+export function getComma(commaStyle) {
   let prefix = '', postfix = ''
   switch(commaStyle){
     case 'spaceAfter':
@@ -1141,12 +1143,12 @@ function getComma(commaStyle) {
   return `${prefix},${postfix}`;
 }
 
-function normalizeSqlOptions(sqlOptions){
+export function normalizeSqlOptions(sqlOptions){
   const defaultSqlSettings = settings.getSettings('sqlSettings');
   return Object.assign({}, defaultSqlSettings, sqlOptions);
 }
 
-function getSqlValuesClause(valueLiterals, tableAlias, columnAlias){
+export function getSqlValuesClause(valueLiterals, tableAlias, columnAlias){
   let valuesClause = `(VALUES (${valueLiterals.join('),(')}) )`;
   if (tableAlias){
     valuesClause += ` AS ${tableAlias}`;
@@ -1157,7 +1159,7 @@ function getSqlValuesClause(valueLiterals, tableAlias, columnAlias){
   return valuesClause;
 }
 
-function getStructTypeDescriptor(structColumnType){
+export function getStructTypeDescriptor(structColumnType){
   let index = 0;
   const keyword = 'STRUCT';
   if (!structColumnType.startsWith(keyword)){
@@ -1239,7 +1241,7 @@ function getStructTypeDescriptor(structColumnType){
   return structure;
 }
 
-function getMapKeyValueType(mapType){
+export function getMapKeyValueType(mapType){
   if (!isMapType(mapType)){
     throw new Error(`Expected a MAP type`)
   }
@@ -1270,12 +1272,12 @@ function getMapKeyValueType(mapType){
   };
 }
 
-function getMapKeyType(mapType){
+export function getMapKeyType(mapType){
   const keyValueType = getMapKeyValueType(mapType);
   return keyValueType.keyType;
 }
 
-function getMapValueType(mapType){
+export function getMapValueType(mapType){
   const keyValueType = getMapKeyValueType(mapType);
   return keyValueType.valueType;
 }
@@ -1283,45 +1285,45 @@ function getMapValueType(mapType){
 // argument should be a MAP(<keyType>, <valueType>) typedescriptor.
 // this function will return the type that results from calling map_entries(<map>),
 // which would be: STRUCT(key <keyType>, value <valueType>)[]
-function getMapEntriesType(mapType){
+export function getMapEntriesType(mapType){
   const entryType = getMapEntryType(mapType)
   return getArrayType(entryType);
 }
 
-function getMapEntryType(mapType){
+export function getMapEntryType(mapType){
   const keyType = getMemberExpressionType(mapType, 'key');
   const valueType = getMemberExpressionType(mapType, 'value');
   return `STRUCT(key ${keyType}, value ${valueType})`;
 }
 
-function getArrayElementType(arrayType){
+export function getArrayElementType(arrayType){
   if (!isArrayType(arrayType)){
     throw new Error(`Expected an array type`);
   }
   return arrayType.slice(0, -'[]'.length);
 }
 
-function getArrayType(elementType){
+export function getArrayType(elementType){
   return elementType + '[]';
 }
 
-function isArrayType(dataType){
+export function isArrayType(dataType){
   return dataType.endsWith('[]');
 }
 
-function isMapType(dataType) {
+export function isMapType(dataType) {
   return dataType.startsWith('MAP(') && dataType.endsWith(')');
 }
 
-function isStructType(dataType) {
+export function isStructType(dataType) {
   return dataType.startsWith('STRUCT(') && dataType.endsWith(')');
 }
 
-function isStringType(dataType){
+export function isStringType(dataType){
   return dataType === 'VARCHAR' || dataType === 'BLOB';
 }
 
-function getMemberExpressionType(type, memberExpressionPath){
+export function getMemberExpressionType(type, memberExpressionPath){
   if (memberExpressionPath.length) {
     const typeOfMemberExpressionPath = typeof memberExpressionPath;
     switch (typeOfMemberExpressionPath) {
@@ -1382,11 +1384,11 @@ function getMemberExpressionType(type, memberExpressionPath){
   }
 }
 
-function extrapolateColumnExpression(expressionTemplate, columnExpression){
+export function extrapolateColumnExpression(expressionTemplate, columnExpression){
   return expressionTemplate.replace(/\$\{columnExpression\}/g, `${columnExpression}`);
 }
 
-function getUsingSampleClause(samplingConfig, useTableSample){
+export function getUsingSampleClause(samplingConfig, useTableSample){
   const size = samplingConfig.size || 100;
   const unit = samplingConfig.unit || 'ROWS';
   const method = samplingConfig.method || 'SYSTEM';
@@ -1401,7 +1403,7 @@ function getUsingSampleClause(samplingConfig, useTableSample){
   return sampleClause;
 }
 
-function getMedianReturnDataTypeForArgumentDataType(argumentDataType){
+export function getMedianReturnDataTypeForArgumentDataType(argumentDataType){
   const argumentTypeInfo = getDataTypeInfo(argumentDataType);
   let returnDataType;
   if (argumentTypeInfo.isInteger) {

@@ -1,4 +1,6 @@
-class ContextMenu {
+import { byId } from '../util/dom/dom.js';
+
+export class ContextMenu {
   
   #menuId = undefined;
   #targetElement = undefined;

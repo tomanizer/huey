@@ -1,4 +1,8 @@
-class QuickQueryMenu {
+import { byId } from '../util/dom/dom.js';
+import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { AttributeUi } from '../AttributeUi/AttributeUi.js';
+
+export class QuickQueryMenu {
   
   #queryModel = undefined;
   
@@ -173,7 +177,7 @@ class QuickQueryMenu {
 
 }
 
-let quickQueryMenu;
-function initQuickQueryMenu(){
+export let quickQueryMenu;
+export function initQuickQueryMenu(){
   quickQueryMenu = new QuickQueryMenu(queryModel);
 }

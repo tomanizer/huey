@@ -1,4 +1,19 @@
-class QueryAxisItem {
+import { AttributeUi } from '../AttributeUi/AttributeUi.js';
+import { FilterDialog } from '../FilterUi/FilterUi.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { Internationalization } from '../Internationalization/Internationalization.js';
+import { EventEmitter } from '../util/event/EventEmitter.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import {
+  getDataTypeInfo,
+  fallbackFormatter,
+  normalizeSqlOptions,
+  quoteIdentifierWhenRequired,
+  getQualifiedIdentifier,
+  extrapolateColumnExpression,
+} from '../util/sql/SQLHelper.js';
+
+export class QueryAxisItem {
 
   static createFormatter(axisItem){
     let dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
@@ -554,7 +569,7 @@ class QueryAxisItem {
   }
 }
 
-class QueryAxis {
+export class QueryAxis {
 
   #items = [];
 
@@ -699,7 +714,7 @@ class QueryAxis {
 
 }
 
-class QueryModel extends EventEmitter {
+export class QueryModel extends EventEmitter {
 
   static AXIS_FILTERS = 'filters';
   static AXIS_ROWS = 'rows';
@@ -1617,8 +1632,8 @@ class QueryModel extends EventEmitter {
 
 }
 
-let queryModel;
-function initQueryModel(){
+export let queryModel;
+export function initQueryModel(){
   queryModel = new QueryModel({
     settings: settings
   });

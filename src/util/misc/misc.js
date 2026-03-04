@@ -1,4 +1,4 @@
-function getCsv(data, options) {
+export function getCsv(data, options) {
   options = options || {};
   const lineSeparator = options.lineSeparator || '\n';
   const fieldSeparator = options.fieldSeparator || '\t';

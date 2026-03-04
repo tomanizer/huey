@@ -1,4 +1,4 @@
-class TabUi {
+export class TabUi {
 
   static #getTablist(element){
     let tablist;

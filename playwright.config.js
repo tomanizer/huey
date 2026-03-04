@@ -26,7 +26,7 @@ module.exports = defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'npx serve src -p 8765',
+    command: 'npx vite --port 8765',
     url: 'http://127.0.0.1:8765',
     reuseExistingServer: !process.env.CI,
   },

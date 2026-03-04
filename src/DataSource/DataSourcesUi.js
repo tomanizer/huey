@@ -1,4 +1,17 @@
-class DataSourcesUi extends EventEmitter {
+import { EventEmitter } from '../util/event/EventEmitter.js';
+import { byId, instantiateTemplate } from '../util/dom/dom.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { DuckDbDataSource } from './duckdb/DuckDbDataSource.js';
+import { Internationalization } from '../Internationalization/Internationalization.js';
+import { getQuotedIdentifier } from '../util/sql/SQLHelper.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { PromptUi } from '../PromptUi/PromptUi.js';
+import { ExportUi } from '../ExportUi/ExportDialog.js';
+import { uploadUi, afterUploaded } from '../UploadUi/UploadUi.js';
+import { analyzeDatasource } from '../App/analyzeDatasource.js';
+import { datasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
+
+export class DataSourcesUi extends EventEmitter {
 
   static #datasourceExportMenuId = 'datasourceExportMenu';
 
@@ -554,7 +567,7 @@ class DataSourcesUi extends EventEmitter {
     let datasource;
     switch (nodeType) {
       case 'datasource':
-        let datasource = this.#getDatasourceForTreeNode(node);
+        datasource = this.#getDatasourceForTreeNode(node);
         break;
       case 'datasourcegroup':
         const groupType = node.getAttribute('data-grouptype');
@@ -963,7 +976,7 @@ class DataSourcesUi extends EventEmitter {
   }
 }
 
-let datasourcesUi;
-function initDataSourcesUi(){
+export let datasourcesUi;
+export function initDataSourcesUi(){
   datasourcesUi = new DataSourcesUi('datasourcesUi');
 }

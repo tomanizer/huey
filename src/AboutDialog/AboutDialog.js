@@ -1,4 +1,7 @@
-function initAboutDialog(){
+import { byId } from '../util/dom/dom.js';
+import { hueyVersionNumber, hueyVersionName, tablerIconsFontVersion, duckDbLibraryUrl, duckdbLibraryVersion } from '../version.js';
+
+export function initAboutDialog(){
   let el;
 
   el = byId('logoVersion');

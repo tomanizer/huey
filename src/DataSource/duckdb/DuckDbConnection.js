@@ -1,4 +1,6 @@
-class DuckDbConnection extends EventEmitter {
+import { EventEmitter } from '../../util/event/EventEmitter.js';
+
+export class DuckDbConnection extends EventEmitter {
   
   #duckDbInstance = undefined;
   #physicalConnection = undefined;

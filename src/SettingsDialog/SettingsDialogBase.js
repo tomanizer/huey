@@ -1,4 +1,7 @@
-class SettingsDialogBase {
+import { byId, createEl } from '../util/dom/dom.js';
+import { SettingsBase } from './SettingsBase.js';
+
+export class SettingsDialogBase {
 
   #id = undefined;
   #settings = undefined;

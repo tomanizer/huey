@@ -1,4 +1,8 @@
-class DragAndDropHelper {
+import { getCsv } from '../util/misc/misc.js';
+import { QueryAxisItem } from '../QueryModel/QueryModel.js';
+import { FilterDialog } from '../FilterUi/FilterUi.js';
+
+export class DragAndDropHelper {
   
   /**
   * Utility for stuffing data into DataTransfer keys.

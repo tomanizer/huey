@@ -1,4 +1,11 @@
-class CellSet extends DataSetComponent {
+import { DataSetComponent } from './DataSetComponent.js';
+import { TupleSet } from './TupleSet.js';
+import { SqlQueryGenerator } from './SqlQueryGenerator.js';
+import { QueryAxisItem, QueryModel } from '../QueryModel/QueryModel.js';
+import { RemoteQueryAdapter } from '../DataSource/remote/RemoteQueryAdapter.js';
+import { quoteIdentifierWhenRequired, getQualifiedIdentifier } from '../util/sql/SQLHelper.js';
+
+export class CellSet extends DataSetComponent {
 
   // Cells is an array indexed by columntupleIndex * rowTupleIndex
   // Cells array elements are objects having a values property.

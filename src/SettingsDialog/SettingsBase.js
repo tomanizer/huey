@@ -1,4 +1,6 @@
-class SettingsBase extends EventEmitter {
+import { EventEmitter } from '../util/event/EventEmitter.js';
+
+export class SettingsBase extends EventEmitter {
 
   #settings = undefined;
   

@@ -1,6 +1,30 @@
+import { byId } from '../util/dom/dom.js';
+import { bufferEvents } from '../util/event/EventBuffer.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { getQuotedIdentifier, createNumberFormatter } from '../util/sql/SQLHelper.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { initDragableDialogs } from '../DragAndDrop/DragableDialogs.js';
+import { QueryModel, queryModel, initQueryModel } from '../QueryModel/QueryModel.js';
+import { initAttributeUi } from '../AttributeUi/AttributeUi.js';
+import { initSearch } from '../Search/Search.js';
+import { uploadUi, initUploadUi } from '../UploadUi/UploadUi.js';
+import { ExportUi, initExportDialog } from '../ExportUi/ExportDialog.js';
+import { DataSourcesUi, initDataSourcesUi } from '../DataSource/DataSourcesUi.js';
+import { initDatasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
+import { initFilterUi } from '../FilterUi/FilterUi.js';
+import { initQueryUi } from '../QueryUi/QueryUi.js';
+import { pivotTableUi, initPivotTableUi } from '../PivotTableUi/PivotTableUi.js';
+import { Routing } from '../Routing/Routing.js';
+import { pageStateManager, initPageStateManager } from '../PageStateManager/PageStateManager.js';
+import { initSessionCloner } from '../SessionCloner/SessionCloner.js';
+import { initQuickQueryMenu } from '../QuickQueryMenu/QuickQueryMenu.js';
+import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
+import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
+import { analyzeDatasource } from './analyzeDatasource.js';
+
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
 
-function getDuckDbLogLevel(duckdb){
+export function getDuckDbLogLevel(duckdb){
   let loglevel;
   const paramLoglevel = queryParams.loglevel;
   if (paramLoglevel){
@@ -12,7 +36,7 @@ function getDuckDbLogLevel(duckdb){
   return typeof loglevel === 'number' ? loglevel : duckdb.LogLevel.INFO;
 }
 
-function duckDbRowToJSON(object){
+export function duckDbRowToJSON(object){
   let pojo;
   if (typeof object.toJSON === 'function'){
     pojo = object.toJSON();
@@ -30,7 +54,7 @@ function duckDbRowToJSON(object){
   }, 2);
 }
 
-function initDuckdbVersion(){
+export function initDuckdbVersion(){
   if (!window.hueyDb) {
     return;
   }
@@ -69,27 +93,9 @@ function initDuckdbVersion(){
   })
 }
 
-async function analyzeDatasource(datasource){
-  try {
-    TabUi.setSelectedTab('#sidebar', '#attributesTab');
-    clearSearch();
-    uploadUi.getDialog().close();
-    queryModel.setDatasource(datasource);
-  }
-  catch (error) {
-    attributeUi.clear(false);
-    const title = `Error reading datasource ${datasource.getId()}`;
-    console.error(title);
-    const description = error.message;
-    console.error(error);
-    showErrorDialog({
-      title: title,
-      description: description
-    });
-  }
-}
+export { analyzeDatasource } from './analyzeDatasource.js';
 
-function initExecuteQuery(){
+export function initExecuteQuery(){
 
   byId('runQueryButton').addEventListener('click', (event) =>{
     pivotTableUi.updatePivotTableUi();
@@ -110,7 +116,7 @@ function initExecuteQuery(){
   });
 }
 
-function initApplication(){
+export function initApplication(){
   initDragableDialogs();
   initDuckdbVersion();
   initDataSourcesUi();
@@ -194,6 +200,21 @@ function initApplication(){
     }
     byId('queryResultRowsInfo').textContent = numRowsTuples;
     byId('queryResultColumnsInfo').textContent = numColumnsTuples;
+
+    const metrics = eventData.metrics;
+    if (metrics) {
+      byId('queryPerformanceInfo').textContent = `Query: ${metrics.queryTimeMs}ms | Render: ${metrics.renderTimeMs}ms`;
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        console.log('[Performance]', {
+          query: metrics.queryTimeMs + 'ms',
+          render: metrics.renderTimeMs + 'ms',
+          total: metrics.totalTimeMs + 'ms',
+        });
+      }
+    }
+    else {
+      byId('queryPerformanceInfo').textContent = '';
+    }
   });
 
   bufferEvents(pivotTableUi, 'busy', (event, count) =>{

@@ -53,6 +53,9 @@ class DuckDBManager:
         db_path = data_dir if data_dir else database
         self._conn = duckdb.connect(db_path)
         self._apply_runtime_tuning(self._conn, settings)
+        if getattr(settings, "execution_mode", None) == "parquet_partitioned":
+            self._conn.execute("INSTALL httpfs; LOAD httpfs;")
+            logger.info("DuckDB httpfs extension loaded for S3/HTTP parquet")
         logger.info("DuckDB connection opened", extra={"database": db_path})
 
     @staticmethod

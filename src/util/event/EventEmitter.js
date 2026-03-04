@@ -1,4 +1,4 @@
-class EventEmitter {
+export class EventEmitter {
   
   #emitEvents = true;
   #queuedEvents = undefined;

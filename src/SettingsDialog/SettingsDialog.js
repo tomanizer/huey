@@ -1,4 +1,7 @@
-class Settings extends EventEmitter {
+import { byId, createEl } from '../util/dom/dom.js';
+import { EventEmitter } from '../util/event/EventEmitter.js';
+
+export class Settings extends EventEmitter {
 
   static localStorageKey = 'settings';
 
@@ -736,4 +739,4 @@ class Settings extends EventEmitter {
   }
 }
 
-const settings = new Settings('settingsDialog');
+export const settings = new Settings('settingsDialog');

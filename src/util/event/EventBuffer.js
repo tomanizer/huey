@@ -1,4 +1,6 @@
-function bufferEvents(eventEmitter, eventId, handler, scope, timeout){
+import { byId } from '../dom/dom.js';
+
+export function bufferEvents(eventEmitter, eventId, handler, scope, timeout){
   const defaultTimeout = 100;
 
   if (typeof eventEmitter === 'string'){

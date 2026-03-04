@@ -27,6 +27,7 @@ export default [
     },
     languageOptions: {
       ecmaVersion: 2022,
+      sourceType: 'module',
       globals: {
         window: 'readonly',
         document: 'readonly',

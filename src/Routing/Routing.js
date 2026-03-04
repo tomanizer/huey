@@ -1,5 +1,7 @@
 
-class Routing {
+import { QueryModel } from '../QueryModel/QueryModel.js';
+
+export class Routing {
  
   static getQueryModelStateFromRoute(route){
     try {

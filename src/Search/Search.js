@@ -1,4 +1,7 @@
-function clearSearch(){
+import { byId } from '../util/dom/dom.js';
+import { bufferEvents } from '../util/event/EventBuffer.js';
+
+export function clearSearch(){
   byId('searchAttribute').value = '';
   const attributeUi = byId('attributeUi');
   const attributeNodes = attributeUi.getElementsByTagName('details');
@@ -8,7 +11,7 @@ function clearSearch(){
   }
 }
 
-function handleAttributeSearch(event, count){
+export function handleAttributeSearch(event, count){
   if (count !== undefined) {
     return;
   }
@@ -86,6 +89,6 @@ function handleAttributeSearch(event, count){
   }
 }
 
-function initSearch(){
+export function initSearch(){
   bufferEvents(byId('searchAttribute'), 'input', handleAttributeSearch, 1000);
 }

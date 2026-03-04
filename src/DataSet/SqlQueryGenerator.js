@@ -1,4 +1,18 @@
-class SqlQueryGenerator {
+import { AttributeUi } from '../AttributeUi/AttributeUi.js';
+import { QueryAxisItem, QueryModel } from '../QueryModel/QueryModel.js';
+import { TupleSet } from './TupleSet.js';
+import {
+  quoteIdentifierWhenRequired,
+  quoteStringLiteral,
+  getMemberExpressionType,
+  getArrayElementType,
+  extrapolateColumnExpression,
+  getQualifiedIdentifier,
+  getUsingSampleClause,
+  normalizeSqlOptions
+} from '../util/sql/SQLHelper.js';
+
+export class SqlQueryGenerator {
 
   static #getUnnestingFunctions(){
     const unnestingFunctions = {};
@@ -280,11 +294,12 @@ class SqlQueryGenerator {
     
     // go over ctes to detect unnesting operations
     // add new cte for each new level of unnesting operation
+    let unnestingItem;
     do {
       cte = ctes[ctes.length - 1];
       // at the start of a new stage, initialize
       let unnestingDerivation = undefined;
-      let unnestingItem = undefined;
+      unnestingItem = undefined;
       let unnestingOperationItem = undefined;
       let memberPathExpressionElement;
       let unnestingItemMemberExpressionPathIndex = undefined;

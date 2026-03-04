@@ -1,4 +1,4 @@
-class Internationalization {
+export class Internationalization {
   
   static #texts;
   static #languageIndex = undefined;

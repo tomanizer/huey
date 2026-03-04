@@ -1,4 +1,17 @@
-class PageStateManager {
+import { byId } from '../util/dom/dom.js';
+import { Routing } from '../Routing/Routing.js';
+import { Internationalization } from '../Internationalization/Internationalization.js';
+import { PromptUi } from '../PromptUi/PromptUi.js';
+import { settings } from '../SettingsDialog/SettingsDialog.js';
+import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { DataSourcesUi, datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { DataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
+import { uploadUi } from '../UploadUi/UploadUi.js';
+import { attributeUi } from '../AttributeUi/AttributeUi.js';
+import { analyzeDatasource } from '../App/analyzeDatasource.js';
+
+export class PageStateManager {
 
   constructor(){
     this.#initPopStateHandler();
@@ -249,7 +262,7 @@ class PageStateManager {
 
 }
 
-let pageStateManager;
-function initPageStateManager(){
+export let pageStateManager;
+export function initPageStateManager(){
   pageStateManager = new PageStateManager();
 }

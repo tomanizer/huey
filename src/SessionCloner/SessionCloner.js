@@ -1,4 +1,10 @@
-class SessionCloner {
+import { byId } from '../util/dom/dom.js';
+import { PostMessageProtocol } from '../PostMessageInterface/PostMessageProtocol.js';
+import { PostMessageInterface, postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
+import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import { Routing } from '../Routing/Routing.js';
+
+export class SessionCloner {
 
   constructor(){
     this.#init();
@@ -77,7 +83,7 @@ class SessionCloner {
 
 }
 
-let sessionCloner = undefined;
-function initSessionCloner() {
+export let sessionCloner = undefined;
+export function initSessionCloner() {
   sessionCloner = new SessionCloner();
 }

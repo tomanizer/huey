@@ -1,4 +1,32 @@
-class AttributeUi {
+import { QueryAxisItem, QueryAxis, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { Internationalization } from '../Internationalization/Internationalization.js';
+import { DragAndDropHelper } from '../DragAndDrop/DragAndDropHelper.js';
+import { byId, instantiateTemplate, setAttributes, getAncestorWithTagName, getClassNames } from '../util/dom/dom.js';
+import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import {
+  getDataTypeInfo,
+  fallbackFormatter,
+  createNumberFormatter,
+  createLocalDateFormatter,
+  createMonthFullNameFormatter,
+  createMonthFullNameParser,
+  createMonthShortNameFormatter,
+  createMonthShortNameParser,
+  createDayFullNameFormatter,
+  createDayFullNameParser,
+  createDayShortNameFormatter,
+  createDayShortNameParser,
+  getMedianReturnDataTypeForArgumentDataType,
+  getDataTypeNameFromColumnType,
+  extrapolateColumnExpression,
+  quoteIdentifierWhenRequired,
+  isStructType,
+  isMapType,
+  isArrayType,
+  isStringType,
+} from '../util/sql/SQLHelper.js';
+
+export class AttributeUi {
 
   #id = undefined;
   #queryModel = undefined;
@@ -1581,7 +1609,7 @@ class AttributeUi {
 
 }
 
-let attributeUi;
-function initAttributeUi(){
+export let attributeUi;
+export function initAttributeUi(){
   attributeUi = new AttributeUi('attributeUi', queryModel);
 }

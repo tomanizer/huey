@@ -1,4 +1,9 @@
-class PostMessageInterface {
+import { PostMessageProtocol } from './PostMessageProtocol.js';
+import { pageStateManager } from '../PageStateManager/PageStateManager.js';
+import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+
+export class PostMessageInterface {
 
   static #trustedOrigins = undefined;
     
@@ -328,8 +333,8 @@ class PostMessageInterface {
   
 }
 
-let postMessageInterface = undefined;
-function initPostMessageInterface(skipHostingWindowCheck){
+export let postMessageInterface = undefined;
+export function initPostMessageInterface(skipHostingWindowCheck){
   if (!skipHostingWindowCheck && !PostMessageInterface.getHostingWindow()) {
     return;
   }
