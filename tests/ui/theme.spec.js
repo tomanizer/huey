@@ -1,11 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-
-async function waitForAppReady(page) {
-  await page.goto('/index.html');
-  await expect(page.locator('body')).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
-  await expect(page.locator('label[for="settingsButton"]')).toBeVisible({ timeout: 20000 });
-}
+const { waitForAppReady } = require('./helpers/app-bootstrap');
 
 test.describe('Theme', () => {
   test('toggle theme updates CSS variables', async ({ page }) => {
@@ -16,20 +11,12 @@ test.describe('Theme', () => {
     );
 
     const settingsTrigger = page.locator('label[for="settingsButton"]');
-    if (!(await settingsTrigger.isVisible({ timeout: 30000 }).catch(() => false))) {
-      test.skip('Settings trigger not visible');
-    }
-    try {
-      await settingsTrigger.click({ timeout: 30000 });
-    } catch (error) {
-      test.skip('Settings trigger not clickable');
-    }
+    await expect(settingsTrigger).toBeVisible({ timeout: 30000 });
+    await settingsTrigger.click({ timeout: 30000 });
     await page.locator('label[for="themeSettingsTab"]').click();
 
     const themeSelect = page.locator('#themes');
-    if (!(await themeSelect.isVisible({ timeout: 20000 }).catch(() => false))) {
-      test.skip('Theme selector not visible');
-    }
+    await expect(themeSelect).toBeVisible({ timeout: 20000 });
     await expect(themeSelect).toBeEnabled({ timeout: 20000 });
 
     const options = themeSelect.locator('option');

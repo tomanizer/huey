@@ -1,14 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-
-async function waitForAppReady(page) {
-  await page.goto('/index.html');
-  await expect(page.locator('body')).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
-  const layout = page.locator('#layout');
-  if (!(await layout.isVisible({ timeout: 60000 }).catch(() => false))) {
-    test.skip('Layout not visible after load');
-  }
-}
+const { waitForAppReady } = require('./helpers/app-bootstrap');
 
 test.describe('Remote mode UI', () => {
   test('Huey app loads and shows main UI', async ({ page }) => {

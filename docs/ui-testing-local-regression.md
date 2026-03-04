@@ -35,3 +35,24 @@ This document describes regression testing for Huey’s **local** datasource pat
 ## Automated smoke (shared with remote)
 
 When Playwright UI tests are present (see `docs/ui-testing-remote.md`), `npm run test:ui` runs a smoke test that loads the app and checks the main UI. That run exercises the same code path as opening Huey for local use and acts as a basic regression check: the app loads and the workarea/sidebar are visible. Full local flows (upload, pivot, filter, export) are covered by the manual checklist above.
+
+## Playwright reliability policy
+
+- UI specs must use explicit assertions and waits; avoid `test.skip(...)` fallback branches for readiness checks.
+- Shared bootstrap helpers under `tests/ui/helpers/` standardize app-ready, datasource-ready, and query-ready flows.
+- A normal local run should complete with **0 skipped tests**. Failures should be assertion-based and actionable.
+
+### Retry/timeout policy
+
+- `workers: 1` for deterministic stateful browser tests.
+- `timeout: 120000` per test to reduce false negatives on slower machines.
+- `retries: 1` in CI (`0` locally) to balance flake mitigation and signal quality.
+- `expect.timeout: 10000` for explicit, bounded element/state waits.
+
+### CI reporting
+
+In CI, Playwright emits:
+
+- console list reporter,
+- JUnit XML at `test-results/playwright-junit.xml`,
+- HTML report at `test-results/playwright-report/`.
