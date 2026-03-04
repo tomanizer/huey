@@ -1,4 +1,6 @@
 class PostMessageInterface {
+
+  static #trustedOrigins = undefined;
     
   constructor(){
     this.#init();
@@ -7,9 +9,139 @@ class PostMessageInterface {
   #init(){
     window.addEventListener('message', this.#messageHandler.bind(this));
   }
+
+  static #normalizeOrigin(origin){
+    if (typeof origin !== 'string' || !origin) {
+      return undefined;
+    }
+    if (origin === 'null') {
+      return undefined;
+    }
+    try {
+      return new URL(origin).origin;
+    }
+    catch (error) {
+      return undefined;
+    }
+  }
+
+  static #parseOriginsParam(value){
+    if (!value || typeof value !== 'string') {
+      return [];
+    }
+    return value
+      .split(',')
+      .map(function(origin){
+        return origin.trim();
+      })
+      .filter(Boolean)
+      .map(PostMessageInterface.#normalizeOrigin)
+      .filter(Boolean);
+  }
+
+  static #getHostingWindowOriginFromReferrer(){
+    var referrer = document.referrer;
+    if (!referrer) {
+      return undefined;
+    }
+    try {
+      return new URL(referrer).origin;
+    }
+    catch (error) {
+      return undefined;
+    }
+  }
+
+  static getTrustedOrigins(){
+    if (PostMessageInterface.#trustedOrigins) {
+      return PostMessageInterface.#trustedOrigins;
+    }
+
+    var trustedOrigins = [window.location.origin];
+    var params = new URLSearchParams(window.location.search);
+
+    var configured = PostMessageInterface.#parseOriginsParam(params.get('postMessageOrigins'));
+    trustedOrigins = trustedOrigins.concat(configured);
+
+    var singleOrigin = PostMessageInterface.#normalizeOrigin(params.get('postMessageOrigin'));
+    if (singleOrigin) {
+      trustedOrigins.push(singleOrigin);
+    }
+
+    var hostingWindowOrigin = PostMessageInterface.#getHostingWindowOriginFromReferrer();
+    if (hostingWindowOrigin) {
+      trustedOrigins.push(hostingWindowOrigin);
+    }
+
+    trustedOrigins = Array.from(new Set(trustedOrigins.filter(Boolean)));
+    PostMessageInterface.#trustedOrigins = trustedOrigins;
+    return trustedOrigins;
+  }
+
+  static isTrustedOrigin(origin){
+    var normalizedOrigin = PostMessageInterface.#normalizeOrigin(origin);
+    if (!normalizedOrigin) {
+      return false;
+    }
+    return PostMessageInterface.getTrustedOrigins().indexOf(normalizedOrigin) !== -1;
+  }
+
+  static getTargetOriginForHostingWindow(){
+    var trustedOrigins = PostMessageInterface.getTrustedOrigins();
+    var referrerOrigin = PostMessageInterface.#getHostingWindowOriginFromReferrer();
+    if (referrerOrigin && trustedOrigins.indexOf(referrerOrigin) !== -1) {
+      return referrerOrigin;
+    }
+
+    for (var i = 0; i < trustedOrigins.length; i++){
+      var origin = trustedOrigins[i];
+      if (origin !== window.location.origin) {
+        return origin;
+      }
+    }
+
+    return undefined;
+  }
+
+  static resetTrustedOriginsForTesting(){
+    PostMessageInterface.#trustedOrigins = undefined;
+  }
+
+  #isValidRequestEnvelope(request){
+    if (!request || typeof request !== 'object') {
+      return false;
+    }
+    if (typeof request.messageType !== 'string' || !request.messageType.length) {
+      return false;
+    }
+    return true;
+  }
   
   async #messageHandler(event){
-    var request = event.data;    
+    var request = event.data;
+
+    if (!PostMessageInterface.isTrustedOrigin(event.origin)) {
+      console.warn('Ignoring postMessage request from untrusted origin:', event.origin);
+      return;
+    }
+
+    if (!event.source || typeof event.source.postMessage !== 'function') {
+      console.warn('Ignoring postMessage request without a valid source window.');
+      return;
+    }
+
+    if (!this.#isValidRequestEnvelope(request)) {
+      event.source.postMessage({
+        messageType: PostMessageProtocol.RESPONSE,
+        status: {
+          code: PostMessageProtocol.STATUS_BAD_REQUEST,
+          message: 'Malformed request envelope.',
+          sent: Date.now()
+        }
+      }, {targetOrigin: event.origin});
+      return;
+    }
+
     var requestType = request.messageType;
     
     var requestId = request.requestId;
@@ -45,7 +177,7 @@ class PostMessageInterface {
     }
 
     response.status.sent = Date.now();
-    event.source.postMessage(response, {targetOrigin: '*'});
+    event.source.postMessage(response, {targetOrigin: event.origin});
     return response;
   }
     
@@ -53,8 +185,7 @@ class PostMessageInterface {
     return {
       error: {
         name: error.name,
-        message: error.message,
-        stack: error.stack
+        message: error.message
       }
     };
   }    
@@ -143,7 +274,7 @@ class PostMessageInterface {
     }
   }
 
-  #handlePingRequest(){
+  #handlePingRequest(request, response){
     response.status.code = PostMessageProtocol.STATUS_OK;
     response.status.message = 'pong';
   }
@@ -177,6 +308,11 @@ class PostMessageInterface {
     }
     
     var hostingWindow = PostMessageInterface.getHostingWindow();
+    var targetOrigin = PostMessageInterface.getTargetOriginForHostingWindow();
+    if (!targetOrigin) {
+      console.warn('Could not determine trusted hosting window origin for ready message. Configure postMessageOrigins or use a trusted referrer origin.');
+      return;
+    }
     
     hostingWindow.postMessage({
       status: {
@@ -187,7 +323,7 @@ class PostMessageInterface {
       body: {
         params: params
       }
-    }, {targetOrigin: '*'});
+    }, {targetOrigin: targetOrigin});
   }
   
 }
