@@ -7,6 +7,7 @@ export function createEl(tagName, attributes, content){
   if (content) {
     switch (typeof content){
       case 'string':
+        // Intended for trusted markup templates controlled by application code.
         el.innerHTML = content;
         break;
     }

@@ -911,7 +911,7 @@ export class FilterDialog {
   }
 
   clearValuePicklist(){
-    this.#getValuePicklist().innerHTML = '';
+    this.#getValuePicklist().replaceChildren();
   }
 
   #getFilterValuesList(){
@@ -923,11 +923,11 @@ export class FilterDialog {
   }
 
   clearFilterValueList(){
-    this.#getFilterValuesList().innerHTML = '';
+    this.#getFilterValuesList().replaceChildren();
   }
 
   clearToFilterValueList(){
-    this.#getToFilterValuesList().innerHTML = '';
+    this.#getToFilterValuesList().replaceChildren();
   }
 
   clearFilterValueLists() {
@@ -945,7 +945,7 @@ export class FilterDialog {
   #clearDialog(){
     // https://github.com/rpbouman/huey/issues/421: reset the filter type to default position
     this.#getFilterType().selectedIndex = 0;
-    this.#getValuePicklist().innerHTML = '';
+    this.#getValuePicklist().replaceChildren();
     this.clearFilterValueLists();
     this.#getSearch().value = '';
   }
@@ -1237,7 +1237,7 @@ export class FilterDialog {
     if (count){
       message += ' ' + Internationalization.getText('Click to add to Filter values list');
     }
-    searchStatus.innerHTML = message;
+    searchStatus.textContent = message;
   }
 
   #populatePickList(resultset, offset, limit){
@@ -1269,7 +1269,7 @@ export class FilterDialog {
         throw new Error(`Unexpected error, invalid page`);
       }
       optionGroup.setAttribute('label', optionGroupLabelText);
-      optionGroup.innerHTML = '';
+      optionGroup.replaceChildren();
       optionsContainer = optionGroup;
     }
 

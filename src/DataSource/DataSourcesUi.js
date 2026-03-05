@@ -112,10 +112,16 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   clear(content){
-    if (!content){
-      content = '';
+    const dom = this.getDom();
+    dom.replaceChildren();
+    if (!content) {
+      return;
     }
-    this.getDom().innerHTML = content;
+    if (typeof content === 'string') {
+      dom.textContent = content;
+      return;
+    }
+    dom.appendChild(content);
   }
 
   #getLooseColumnType(columnType){
@@ -685,7 +691,8 @@ export class DataSourcesUi extends EventEmitter {
     const menu = DataSourcesUi.#getDownloadMenuHTML(fromFileType, includeFromFileType);
     const result = await PromptUi.show({
       title: 'Export Datasource',
-      contents: menu
+      contents: menu,
+      allowUnsafeHtml: true
     });
 
     if (result !== 'accept'){

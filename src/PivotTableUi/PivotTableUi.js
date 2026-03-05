@@ -1932,9 +1932,9 @@ export class PivotTableUi extends EventEmitter {
   clear(){
     this.#toggleObserveColumnsResizing(false);
     const tableHeaderDom = this.#getTableHeaderDom();
-    tableHeaderDom.innerHTML = '';
+    tableHeaderDom.replaceChildren();
     const tableBodyDom = this.#getTableBodyDom();
-    tableBodyDom.innerHTML = '';
+    tableBodyDom.replaceChildren();
     this.#setHorizontalSize(0);
     this.#setVerticalSize(0);
     this.#fireUpdatedSuccess();

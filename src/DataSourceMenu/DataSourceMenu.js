@@ -163,7 +163,7 @@ export class DataSourceMenu {
   
   async #update(){
     const dom = this.getDom();
-    dom.innerHTML = '';
+    dom.replaceChildren();
     
     const datasource = this.#queryModel.getDatasource();
     if (!datasource) {

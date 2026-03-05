@@ -278,57 +278,63 @@ export class UploadUi {
     const body = this.#getBody();
     const installExtensionItem = this.#createInstallExtensionItem(extensionName);
     body.appendChild(installExtensionItem);
+    const message = installExtensionItem.getElementsByTagName('p').item(0);
+    const appendMessageLine = function(text){
+      const messageLine = document.createElement('span');
+      messageLine.textContent = text;
+      message.appendChild(messageLine);
+      message.appendChild(document.createElement('br'));
+    };
 
     try {
 
       const progressbar = installExtensionItem.getElementsByTagName('progress').item(0);
-      const message = installExtensionItem.getElementsByTagName('p').item(0);
 
       const connection = hueyDb.connection;
 
-      message.innerHTML += Internationalization.getText('Preparing extension check') + '<br/>';
+      appendMessageLine(Internationalization.getText('Preparing extension check'));
       const sql = `SELECT * FROM duckdb_extensions() WHERE extension_name = ?`;
       const statement = await connection.prepare(sql);
       progressbar.value = parseInt(progressbar.value, 10) + 20;
 
-      message.innerHTML += Internationalization.getText('Checking extension {1}', extensionName) + '<br/>';
+      appendMessageLine(Internationalization.getText('Checking extension {1}', extensionName));
       const result = await statement.query(extensionName);
       statement.close();
       progressbar.value = parseInt(progressbar.value, 10) + 20;
 
       if (result.numRows === 0) {
-        message.innerHTML += Internationalization.getText('Extension {1} not found', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not found', extensionName));
         throw new Error(`Extension not found`);
       }
       else {
-        message.innerHTML += Internationalization.getText('Extension {1} exists', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} exists', extensionName));
       }
 
       const row = result.get(0);
       if (row['installed']){
-        message.innerHTML += Internationalization.getText('Extension {1} already installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} already installed', extensionName));
       }
       else {
-        message.innerHTML += Internationalization.getText('Extension {1} not installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not installed', extensionName));
 
         let installSql = `INSTALL ${extensionName}`;
         if (extensionRepository){
-          message.innerHTML += Internationalization.getText('Extension {1} comes from non-standard location {2}', extensionName, extensionRepository) + '<br/>';          
+          appendMessageLine(Internationalization.getText('Extension {1} comes from non-standard location {2}', extensionName, extensionRepository));
           installSql += ` FROM ${extensionRepository}`;
         }
-        message.innerHTML += Internationalization.getText('Installing extension {1}', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Installing extension {1}', extensionName));
         const result = await connection.query(installSql);
-        message.innerHTML += Internationalization.getText('Extension {1} is now installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} is now installed', extensionName));
         progressbar.value = parseInt(progressbar.value, 10) + 20;
       }
 
       if (!row['loaded']){
-        message.innerHTML += Internationalization.getText('Extension {1} not loaded', extensionName) + '<br/>';
-        message.innerHTML += Internationalization.getText('Loading extension {1}', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not loaded', extensionName));
+        appendMessageLine(Internationalization.getText('Loading extension {1}', extensionName));
         await connection.query(`LOAD ${extensionName}`);
       }
       
-      message.innerHTML += Internationalization.getText('Extension {1} is loaded', extensionName) + '<br/>';
+      appendMessageLine(Internationalization.getText('Extension {1} is loaded', extensionName));
       progressbar.value = parseInt(progressbar.value, 10) + 20;
       invalid = false;
       if (invalid === false) {
@@ -337,10 +343,14 @@ export class UploadUi {
       return !invalid;
     }
     catch (e){
-      message.innerHTML += e.message + '<br/>';
-      message.innerHTML += e.stack.split('\n').map((stackItem) =>{
-        return `<pre>${stackItem}</pre>`
-      }).join('\n');
+      appendMessageLine(e.message);
+      if (e.stack) {
+        e.stack.split('\n').forEach((stackItem) =>{
+          const stackElement = document.createElement('pre');
+          stackElement.textContent = stackItem;
+          message.appendChild(stackElement);
+        });
+      }
       installExtensionItem.setAttribute('open', true);
       return e;
     }
@@ -435,7 +445,7 @@ export class UploadUi {
     Internationalization.setTextContent(descriptionElement, 'Upload in progress. This will take a few moments...');
 
     const body = this.#getBody();
-    body.innerHTML = '';
+    body.replaceChildren();
 
     dom.showModal();
 
@@ -525,6 +535,7 @@ export class UploadUi {
     }
 
     this.#getHeader().textContent = message;
+    // description markup is constructed from fixed UI templates and i18n strings only.
     this.#getDescription().innerHTML = description;
     
     return {
@@ -784,12 +795,13 @@ export function initUploadUi(){
 
     const showPromise = PromptUi.show({
       title: 'Load from URL or cloud storage',
-      contents: formHtml
+      contents: formHtml,
+      allowUnsafeHtml: true
     });
 
     // Attach a live input listener so the S3/GCS credential sections appear as
     // soon as the user types a matching URI scheme.  PromptUi.show() sets the
-    // section.innerHTML synchronously in its Promise executor, so the elements
+    // section content synchronously in its Promise executor, so the elements
     // are already in the DOM when we reach this point.
     const urlInput = byId('loadFromUrlInput');
     if (urlInput) {
@@ -894,7 +906,8 @@ export function initUploadUi(){
     ].join('');
     const result = await PromptUi.show({
       title: 'Add remote dataset',
-      contents: formHtml
+      contents: formHtml,
+      allowUnsafeHtml: true
     });
     if (result !== 'accept') {
       return;
