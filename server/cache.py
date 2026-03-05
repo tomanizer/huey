@@ -57,13 +57,15 @@ def build_cache_key(
     dataset_id: str,
     date_range: dict[str, Any],
     query_payload: dict[str, Any],
+    data_version_token: Any | None = None,
     data_token: Any | None = None,
     config_token: dict[str, Any] | None = None,
 ) -> str:
     """
     Build a deterministic cache key for a query.
 
-    Includes endpoint, dataset, normalized date range/query, config token, and optional data token.
+    Includes endpoint, dataset, normalized date range/query, config token, and optional data tokens.
+    data_version_token: used for tuples/cells; data_token: used for picklist (dim_version_token).
     """
     payload = {
         "endpoint": endpoint,
@@ -71,6 +73,7 @@ def build_cache_key(
         "date_range": _canonicalize(date_range),
         "query": _canonicalize(query_payload),
         "config_token": config_token or _config_identity(),
+        "data_version_token": data_version_token,
         "data_token": data_token,
     }
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()

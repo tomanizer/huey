@@ -10,6 +10,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -137,6 +138,90 @@ def load_datasets_config() -> dict[str, Any]:
         extra={"config_path": str(path_resolved), "dataset_count": len(dataset_ids), "dataset_ids": dataset_ids},
     )
     return data
+
+
+def _canonicalize(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _canonicalize(obj[k]) for k in sorted(obj)}
+    if isinstance(obj, (list, tuple)):
+        return [_canonicalize(v) for v in obj]
+    if isinstance(obj, set):
+        return sorted(_canonicalize(v) for v in obj)
+    return obj
+
+
+def _canonical_json(obj: Any) -> str:
+    return json.dumps(_canonicalize(obj), separators=(",", ":"), sort_keys=True, ensure_ascii=True)
+
+
+def _dates_for_scope(date_range: Any) -> set[str] | None:
+    if date_range is None:
+        return None
+    dtype = getattr(date_range, "type", None)
+    if dtype is None and isinstance(date_range, dict):
+        dtype = date_range.get("type")
+    if dtype == "single":
+        value = getattr(date_range, "date", None) if not isinstance(date_range, dict) else date_range.get("date")
+        return {value} if isinstance(value, str) and value else None
+    if dtype == "range":
+        start = getattr(date_range, "start", None) if not isinstance(date_range, dict) else date_range.get("start")
+        end = getattr(date_range, "end", None) if not isinstance(date_range, dict) else date_range.get("end")
+        if not (isinstance(start, str) and isinstance(end, str) and start and end):
+            return None
+        start_date = date.fromisoformat(start)
+        end_date = date.fromisoformat(end)
+        days: set[str] = set()
+        cursor = start_date
+        while cursor <= end_date:
+            days.add(cursor.isoformat())
+            cursor += timedelta(days=1)
+        return days
+    return None
+
+
+def _normalize_partition_records(metadata: Any, date_scope: set[str] | None) -> list[dict[str, Any]]:
+    if metadata is None:
+        return []
+
+    records: list[dict[str, Any]] = []
+    if isinstance(metadata, dict) and isinstance(metadata.get("partitions"), list):
+        source = metadata.get("partitions", [])
+    elif isinstance(metadata, dict):
+        source = [{"date": key, "meta": value} for key, value in metadata.items()]
+    elif isinstance(metadata, list):
+        source = metadata
+    else:
+        source = [metadata]
+
+    for item in source:
+        if isinstance(item, dict):
+            partition_date = item.get("date") or item.get("partition_date")
+            if date_scope and isinstance(partition_date, str) and partition_date not in date_scope:
+                continue
+
+            files = item.get("files")
+            if isinstance(files, list):
+                normalized_files: list[dict[str, Any]] = []
+                for f in files:
+                    if isinstance(f, dict):
+                        normalized_files.append(
+                            {
+                                "path": f.get("path"),
+                                "size": f.get("size"),
+                                "modified": f.get("modified") or f.get("mtime") or f.get("last_modified"),
+                                "etag": f.get("etag"),
+                            }
+                        )
+                    else:
+                        normalized_files.append({"path": str(f)})
+                normalized_files.sort(key=lambda x: _canonical_json(x))
+                records.append({"date": partition_date, "files": normalized_files})
+            else:
+                records.append(item)
+        else:
+            records.append({"value": item})
+    records.sort(key=lambda x: _canonical_json(x))
+    return records
 
 
 class _DatasetSchemaCache:
@@ -343,6 +428,16 @@ class _DatasetSchemaCache:
             else:
                 self._partition_metadata.pop(dataset_id, None)
 
+    def get_data_version_token(self, dataset_id: str, date_range: Any) -> str | None:
+        date_scope = _dates_for_scope(date_range)
+        with self._lock:
+            metadata = self._partition_metadata.get(dataset_id)
+        records = _normalize_partition_records(metadata, date_scope)
+        if not records:
+            return None
+        digest = hashlib.sha256(_canonical_json(records).encode("utf-8")).hexdigest()
+        return digest
+
     def reset(self) -> None:
         with self._lock:
             self._schemas.clear()
@@ -397,6 +492,11 @@ def set_partition_metadata(dataset_id: str, metadata: Any) -> None:
 
 def clear_partition_metadata(dataset_id: str | None = None) -> None:
     _schema_cache.clear_partition_metadata(dataset_id)
+
+
+def get_data_version_token(dataset_id: str, date_range: Any) -> str | None:
+    """Return deterministic partition metadata token for dataset/date scope."""
+    return _schema_cache.get_data_version_token(dataset_id, date_range)
 
 
 def reset_cache() -> None:
