@@ -76,7 +76,7 @@ describe('Internationalization', () => {
     await loadI18nWithLanguages(['fr-FR', 'en']);
     document.dispatchEvent(new Event('DOMContentLoaded'));
 
-    const script = document.getElementById('InterationalizationTexts');
+    const script = document.getElementById('InternationalizationTexts');
     expect(script).not.toBeNull();
     expect(script.getAttribute('src')).toContain('Internationalization/i18n/fr-FR.js');
   });
