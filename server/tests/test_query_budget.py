@@ -69,10 +69,10 @@ def test_queue_depth_rejects_overflow(
     # the budget semaphore is already acquired and held.
     in_execute = threading.Event()
 
-    async def slow_execute(sql, params=None, **kwargs):
+    async def slow_execute(sql, params=None, *, dataset_id=None, cancel_handle=None):
         in_execute.set()  # budget is held at this point
         await asyncio.sleep(1)
-        return await original_execute(sql, params, **kwargs)
+        return await original_execute(sql, params, dataset_id=dataset_id)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", slow_execute)
 

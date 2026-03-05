@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     max_cells_per_response: int = 10000
     max_axis_cardinality: int = 5000
 
+    # Fetch batch size for query endpoints (fetchmany chunk size)
+    query_fetchmany_batch_size: int = Field(default=1000, ge=1)
+
     # Optional: S3 / engine config (for later issues)
     s3_bucket: str | None = None
     s3_region: str | None = None
@@ -87,6 +90,11 @@ class Settings(BaseSettings):
     cache_admission_min_duration_ms: float = 0.0
     cache_sqlite_path: str | None = None
     cache_sqlite_max_bytes: int = 256 * 1024 * 1024
+    # Dimension dictionary cache (picklist / filter values)
+    dim_cache_ttl_seconds: int = 3600  # Long TTL; dimension data changes infrequently
+    dim_stale_ttl_seconds: int = 0  # Extra seconds to serve stale while refreshing (0 = disabled)
+    dim_version_token: str | None = None  # External override; change to force invalidation
+    dim_prewarm_fields: str | None = None  # CSV of "dataset_id:field" pairs to prewarm on startup
     # Query execution
     execution_mode: Literal["sample_table", "parquet_partitioned"] = "sample_table"
     partition_base_path: str | None = None

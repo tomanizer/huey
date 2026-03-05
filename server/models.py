@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
 SortDirection = Literal["ASC", "DESC"]
-ExportFormat = Literal["parquet", "csv"]
+ExportFormat = Literal["parquet", "csv", "sqlite", "duckdb"]
 AggregationFunction = Literal["SUM", "COUNT", "AVG", "MIN", "MAX"]
 
 MAX_PAGE_LIMIT = 10000

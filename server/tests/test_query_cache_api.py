@@ -5,6 +5,7 @@ import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
+from server import datasets
 from server.cache import reset_query_cache
 from server.config import get_settings
 from server.engine import db_manager
@@ -13,9 +14,11 @@ from server.engine import db_manager
 @pytest.fixture(autouse=True)
 def _reset_cache_state(monkeypatch):
     asyncio.run(reset_query_cache())
+    datasets.clear_partition_metadata()
     get_settings.cache_clear()
     yield
     asyncio.run(reset_query_cache())
+    datasets.clear_partition_metadata()
     get_settings.cache_clear()
     for env_var in [
         "QUERYSERVICE_CACHE_ENABLED",
@@ -25,6 +28,10 @@ def _reset_cache_state(monkeypatch):
         "QUERYSERVICE_CACHE_ADMISSION_MIN_DURATION_MS",
         "QUERYSERVICE_CACHE_SQLITE_PATH",
         "QUERYSERVICE_CACHE_SQLITE_MAX_BYTES",
+        "QUERYSERVICE_DIM_CACHE_TTL_SECONDS",
+        "QUERYSERVICE_DIM_STALE_TTL_SECONDS",
+        "QUERYSERVICE_DIM_VERSION_TOKEN",
+        "QUERYSERVICE_DIM_PREWARM_FIELDS",
     ]:
         monkeypatch.delenv(env_var, raising=False)
 
@@ -104,3 +111,99 @@ def test_cells_not_cached_when_too_large(monkeypatch, client: TestClient) -> Non
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert call_count["n"] == 2
+
+
+def test_picklist_dim_version_token_cache_hit(monkeypatch, client: TestClient) -> None:
+    """Repeat picklist requests with the same dim_version_token are served from cache."""
+    _enable_cache(monkeypatch)
+    monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "v1-stable")
+    get_settings.cache_clear()
+    asyncio.run(reset_query_cache())
+
+    call_count = {"n": 0}
+    original = db_manager.execute_sql_async
+
+    async def counted(*args, **kwargs):
+        call_count["n"] += 1
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", counted)
+
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"field": "symbol", "paging": {"limit": 5, "offset": 0}},
+    }
+    r1 = client.post("/query/picklist", json=body)
+    r2 = client.post("/query/picklist", json=body)
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    # Second request must be a cache hit – DB should only be called once.
+    assert call_count["n"] == 1
+
+
+def test_cache_miss_when_data_version_token_changes(monkeypatch, client: TestClient) -> None:
+    _enable_cache(monkeypatch)
+    call_count = {"n": 0}
+    original = db_manager.execute_sql_async
+
+    async def counted(*args, **kwargs):
+        call_count["n"] += 1
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", counted)
+
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+    }
+    datasets.set_partition_metadata(
+        "trades_v1",
+        {"partitions": [{"date": "2026-03-01", "files": [{"path": "p1.parquet", "size": 100, "etag": "e1"}]}]},
+    )
+    r1 = client.post("/query/tuples", json=body)
+
+    datasets.set_partition_metadata(
+        "trades_v1",
+        {"partitions": [{"date": "2026-03-01", "files": [{"path": "p1.parquet", "size": 101, "etag": "e1"}]}]},
+    )
+    r2 = client.post("/query/tuples", json=body)
+
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert call_count["n"] == 2
+
+
+def test_picklist_dim_version_token_cache_miss_on_token_change(monkeypatch, client: TestClient) -> None:
+    """Changing dim_version_token causes a cache miss and triggers a fresh query."""
+    _enable_cache(monkeypatch)
+
+    call_count = {"n": 0}
+    original = db_manager.execute_sql_async
+
+    async def counted(*args, **kwargs):
+        call_count["n"] += 1
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", counted)
+
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"field": "symbol", "paging": {"limit": 5, "offset": 0}},
+    }
+
+    # First request with token v1.
+    monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "token-v1")
+    get_settings.cache_clear()
+    r1 = client.post("/query/picklist", json=body)
+    assert r1.status_code == 200
+    assert call_count["n"] == 1
+
+    # Change the token – the cache key changes, so this is a miss.
+    monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "token-v2")
+    get_settings.cache_clear()
+    r2 = client.post("/query/picklist", json=body)
+    assert r2.status_code == 200
+    assert call_count["n"] == 2  # DB called again due to key change

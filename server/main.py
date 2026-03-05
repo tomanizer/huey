@@ -31,6 +31,7 @@ from server.export_service import init_export_service
 from server.export_store import ExportJobStore
 from server.logging_config import setup_logging
 from server.middleware import AccessLogMiddleware, CorrelationIdMiddleware
+from server.prewarm import prewarm_dim_fields
 from server.query_budget import get_query_budget
 from server.rate_limit import limiter
 from server.request_context import get_request_id
@@ -46,6 +47,10 @@ async def lifespan(app: FastAPI):
     logger.info("QueryService starting", extra={"host": settings.host, "port": settings.port})
     db_manager.initialize()
     load_sample_data(db_manager)
+
+    # Prewarm dimension cache for configured hot fields (fire-and-forget).
+    if getattr(settings, "cache_enabled", False) and getattr(settings, "dim_prewarm_fields", None):
+        asyncio.create_task(prewarm_dim_fields())
 
     export_store = ExportJobStore(settings.export_db_path)
     export_store.initialize()

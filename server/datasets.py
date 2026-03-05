@@ -4,10 +4,13 @@ Dataset configuration loader.
 Loads dataset and schema metadata from a YAML config file (e.g. dataset_id, fields).
 """
 
+import hashlib
+import json
 import logging
 import threading
 import time
 from dataclasses import dataclass
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -96,20 +99,129 @@ def load_datasets_config() -> dict[str, Any]:
     path = settings.datasets_config_path
     if path is None or path == "":
         path = _default_config_path()
+        path_source = "default"
     else:
         path = Path(path)
+        path_source = "QUERYSERVICE_DATASETS_CONFIG_PATH"
+
+    path_resolved = path.resolve()
+    logger.info(
+        "Loading datasets config from %s (source: %s)",
+        path_resolved,
+        path_source,
+        extra={"config_path": str(path_resolved), "config_source": path_source},
+    )
 
     if not path.exists():
+        logger.warning("Datasets config path does not exist: %s", path_resolved)
         return {"datasets": []}
 
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     if not data or not isinstance(data, dict):
+        logger.warning("Datasets config empty or invalid at %s", path_resolved)
         return {"datasets": []}
     if "datasets" not in data or not isinstance(data["datasets"], list):
+        logger.warning("Datasets config has no 'datasets' list at %s", path_resolved)
         return {"datasets": []}
+
+    datasets_list = data["datasets"]
+    dataset_ids = [
+        d.get("dataset_id") for d in datasets_list if isinstance(d, dict) and d.get("dataset_id")
+    ]
+    logger.info(
+        "Loaded datasets config from %s: %d dataset(s) %s",
+        path_resolved,
+        len(dataset_ids),
+        dataset_ids,
+        extra={"config_path": str(path_resolved), "dataset_count": len(dataset_ids), "dataset_ids": dataset_ids},
+    )
     return data
+
+
+def _canonicalize(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _canonicalize(obj[k]) for k in sorted(obj)}
+    if isinstance(obj, (list, tuple)):
+        return [_canonicalize(v) for v in obj]
+    if isinstance(obj, set):
+        return sorted(_canonicalize(v) for v in obj)
+    return obj
+
+
+def _canonical_json(obj: Any) -> str:
+    return json.dumps(_canonicalize(obj), separators=(",", ":"), sort_keys=True, ensure_ascii=True)
+
+
+def _dates_for_scope(date_range: Any) -> set[str] | None:
+    if date_range is None:
+        return None
+    dtype = getattr(date_range, "type", None)
+    if dtype is None and isinstance(date_range, dict):
+        dtype = date_range.get("type")
+    if dtype == "single":
+        value = getattr(date_range, "date", None) if not isinstance(date_range, dict) else date_range.get("date")
+        return {value} if isinstance(value, str) and value else None
+    if dtype == "range":
+        start = getattr(date_range, "start", None) if not isinstance(date_range, dict) else date_range.get("start")
+        end = getattr(date_range, "end", None) if not isinstance(date_range, dict) else date_range.get("end")
+        if not (isinstance(start, str) and isinstance(end, str) and start and end):
+            return None
+        start_date = date.fromisoformat(start)
+        end_date = date.fromisoformat(end)
+        days: set[str] = set()
+        cursor = start_date
+        while cursor <= end_date:
+            days.add(cursor.isoformat())
+            cursor += timedelta(days=1)
+        return days
+    return None
+
+
+def _normalize_partition_records(metadata: Any, date_scope: set[str] | None) -> list[dict[str, Any]]:
+    if metadata is None:
+        return []
+
+    records: list[dict[str, Any]] = []
+    if isinstance(metadata, dict) and isinstance(metadata.get("partitions"), list):
+        source = metadata.get("partitions", [])
+    elif isinstance(metadata, dict):
+        source = [{"date": key, "meta": value} for key, value in metadata.items()]
+    elif isinstance(metadata, list):
+        source = metadata
+    else:
+        source = [metadata]
+
+    for item in source:
+        if isinstance(item, dict):
+            partition_date = item.get("date") or item.get("partition_date")
+            if date_scope and isinstance(partition_date, str) and partition_date not in date_scope:
+                continue
+
+            files = item.get("files")
+            if isinstance(files, list):
+                normalized_files: list[dict[str, Any]] = []
+                for f in files:
+                    if isinstance(f, dict):
+                        normalized_files.append(
+                            {
+                                "path": f.get("path"),
+                                "size": f.get("size"),
+                                "modified": f.get("modified") or f.get("mtime") or f.get("last_modified"),
+                                "etag": f.get("etag"),
+                            }
+                        )
+                    else:
+                        normalized_files.append({"path": str(f)})
+                normalized_files.sort(key=lambda x: _canonical_json(x))
+                records.append({"date": partition_date, "files": normalized_files})
+            else:
+                records.append(item)
+        else:
+            records.append({"value": item})
+    records.sort(key=lambda x: _canonical_json(x))
+    return records
 
 
 class _DatasetSchemaCache:
@@ -316,6 +428,16 @@ class _DatasetSchemaCache:
             else:
                 self._partition_metadata.pop(dataset_id, None)
 
+    def get_data_version_token(self, dataset_id: str, date_range: Any) -> str | None:
+        date_scope = _dates_for_scope(date_range)
+        with self._lock:
+            metadata = self._partition_metadata.get(dataset_id)
+        records = _normalize_partition_records(metadata, date_scope)
+        if not records:
+            return None
+        digest = hashlib.sha256(_canonical_json(records).encode("utf-8")).hexdigest()
+        return digest
+
     def reset(self) -> None:
         with self._lock:
             self._schemas.clear()
@@ -372,6 +494,11 @@ def clear_partition_metadata(dataset_id: str | None = None) -> None:
     _schema_cache.clear_partition_metadata(dataset_id)
 
 
+def get_data_version_token(dataset_id: str, date_range: Any) -> str | None:
+    """Return deterministic partition metadata token for dataset/date scope."""
+    return _schema_cache.get_data_version_token(dataset_id, date_range)
+
+
 def reset_cache() -> None:
     """Reset caches (used in tests or after config reload)."""
     _schema_cache.reset()
@@ -380,6 +507,45 @@ def reset_cache() -> None:
 def get_cache_stats() -> dict[str, int]:
     """Expose instrumentation counters."""
     return _schema_cache.stats()
+
+
+def get_dim_version_token(dataset_id: str) -> str:
+    """Return a version token that identifies the current state of dimension data.
+
+    The token is included in picklist cache keys so that any change to the
+    dataset's configuration (field definitions, config file mtime) automatically
+    causes a cache miss and a fresh computation.
+
+    If ``QUERYSERVICE_DIM_VERSION_TOKEN`` is set in the environment, that value
+    is returned directly.  This allows operators to force a global invalidation
+    (e.g. after a reference-data reload) or coordinate token values across a
+    multi-node deployment.
+
+    Otherwise the token is derived from the datasets config file identity and
+    the field definitions for the given dataset.
+    """
+    settings = get_settings()
+    external = getattr(settings, "dim_version_token", None)
+    if external:
+        return str(external)
+
+    # Compute a stable token from config mtime + dataset field definitions.
+    entry = get_dataset_entry(dataset_id)
+    fields = entry.get("fields", []) if entry else []
+
+    cfg_path = settings.datasets_config_path
+    path = Path(cfg_path) if cfg_path else _default_config_path()
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:
+        mtime = None
+
+    token_input = json.dumps(
+        {"config_path": str(path), "config_mtime": mtime, "dataset_id": dataset_id, "fields": fields},
+        sort_keys=True,
+        default=str,
+    )
+    return hashlib.sha256(token_input.encode()).hexdigest()[:16]
 
 
 _DUCKDB_TYPE_MAP = {

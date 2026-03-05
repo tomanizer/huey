@@ -76,6 +76,12 @@ async def download_export(export_id: str, _api_key: str = Depends(require_api_ke
     if suffix == ".parquet":
         media_type = "application/octet-stream"
         filename = f"{export_id}.parquet"
+    elif suffix == ".sqlite":
+        media_type = "application/vnd.sqlite3"
+        filename = f"{export_id}.sqlite"
+    elif suffix == ".duckdb":
+        media_type = "application/vnd.duckdb"
+        filename = f"{export_id}.duckdb"
     else:
         media_type = "text/csv"
         filename = f"{export_id}.csv"

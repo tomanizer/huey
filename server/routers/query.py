@@ -60,21 +60,30 @@ def _time_filter_metadata(dataset_id: str) -> tuple[bool, str | None]:
     return True, source.time_filter.column
 
 
+async def _execute_with_budget(request: Request, coro_factory, cancel_fn=None):
+    """Run a SQL coroutine with query budget enforcement."""
+    budget = get_query_budget()
+    async with budget.acquire() as queue_wait_ms:
+        result, execution_ms = await budget.run_with_budget(request, coro_factory, cancel_fn=cancel_fn)
+    return result, queue_wait_ms, execution_ms
+
+
 @router.post("/tuples", response_model=TuplesResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_tuples(body: QueryTuplesRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> TuplesResponse:
+async def post_query_tuples(
+    request: Request,
+    body: QueryTuplesRequest,
+    response: Response,
+    _api_key: str = Depends(require_api_key),
+) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
-    queue_wait_ms = 0.0
-    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging or PagingSpec(limit=settings.tuples_default_limit, offset=0)
-    limit = paging.limit
-    offset = paging.offset
 
     cache_status = "disabled"
     cache_source = "compute"
@@ -84,12 +93,16 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        rows = await db_manager.execute_sql_async(
-            sql,
-            tuple(params) if params else None,
-            dataset_id=body.dataset_id,
-            cancel_handle=cancel_handle,
-        )
+
+        async def _run_query():
+            return await db_manager.execute_sql_async(
+                sql,
+                tuple(params) if params else None,
+                dataset_id=body.dataset_id,
+                cancel_handle=cancel_handle,
+            )
+
+        rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
         if rows:
             total_count = int(rows[0][-1])
             items = [{"values": list(row[:-1])} for row in rows]
@@ -107,47 +120,41 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
+
         duration_ms = (time.perf_counter() - start) * 1000
         return {
             "response": {
                 "total_count": total_count,
                 "items": items,
-                "paging": {"limit": limit, "offset": offset, "returned": len(items)},
+                "paging": {"limit": paging.limit, "offset": paging.offset, "returned": len(items)},
             },
             "duration_ms": duration_ms,
             "row_count": len(items),
+            "queue_wait_ms": queue_wait_ms,
+            "execution_ms": execution_ms,
         }
 
-    budget = get_query_budget()
-
-    async def _budgeted_execute() -> dict[str, object]:
-        nonlocal queue_wait_ms, execution_ms
-        async with budget.acquire() as _qwms:
-            queue_wait_ms = _qwms
-            result_inner, exec_ms = await budget.run_with_budget(request, _execute, cancel_fn=cancel_handle.cancel)
-            execution_ms = exec_ms
-        return result_inner
-
-    if settings.cache_enabled:
+    if getattr(settings, "cache_enabled", False):
         cache = await get_query_cache()
+        data_version_token = datasets.get_data_version_token(body.dataset_id, body.date_range)
         cache_key = build_cache_key(
             "tuples",
             body.dataset_id,
             body.date_range.model_dump(),
             body.query.model_dump(),
+            data_version_token=data_version_token,
         )
         result, meta = await cache.get_or_set(
             cache_key,
-            _budgeted_execute,
+            _execute,
             ttl_seconds=settings.cache_ttl_seconds,
             max_item_bytes=settings.cache_max_item_bytes,
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
     else:
-        result = await _budgeted_execute()
+        result = await _execute()
 
-    duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
     time_filter_applied, time_filter_column = _time_filter_metadata(body.dataset_id)
     logger.info(
@@ -155,13 +162,13 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
         extra={
             "dataset_id": body.dataset_id,
             "endpoint": "tuples",
-            "duration_ms": round(duration_ms, 2),
+            "duration_ms": round(result.get("duration_ms", 0.0), 2),
             "row_count": result.get("row_count", 0),
             "total_count": resp_body["total_count"],
             "cache_status": cache_status,
             "cache_source": cache_source,
-            "queue_wait_ms": round(queue_wait_ms, 2),
-            "execution_ms": round(execution_ms, 2),
+            "queue_wait_ms": round(result.get("queue_wait_ms", 0.0), 2),
+            "execution_ms": round(result.get("execution_ms", 0.0), 2),
             "time_filter_applied": time_filter_applied,
             "time_filter_column": time_filter_column,
         },
@@ -176,11 +183,14 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
 
 @router.post("/cells", response_model=CellsResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_cells(body: QueryCellsRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> CellsResponse:
+async def post_query_cells(
+    request: Request,
+    body: QueryCellsRequest,
+    response: Response,
+    _api_key: str = Depends(require_api_key),
+) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
-    queue_wait_ms = 0.0
-    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
@@ -202,7 +212,6 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
             "Column window exceeds maximum axis cardinality",
             {"max_axis_cardinality": settings.max_axis_cardinality, "requested_columns": col_count},
         )
-
     if row_count and row_count > settings.max_cells_per_response:
         raise CellsWindowTooLargeError(
             "Requested row window exceeds maximum cells per response",
@@ -231,61 +240,61 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        rows = await db_manager.execute_sql_async(
-            sql,
-            tuple(params) if params else None,
-            dataset_id=body.dataset_id,
-            cancel_handle=cancel_handle,
-        )
+
+        async def _run_query():
+            return await db_manager.execute_sql_async(
+                sql,
+                tuple(params) if params else None,
+                dataset_id=body.dataset_id,
+                cancel_handle=cancel_handle,
+            )
+
+        rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
         duration_ms = (time.perf_counter() - start) * 1000
         cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
-        return {"response": {"cells": cells}, "duration_ms": duration_ms, "row_count": len(rows)}
+        return {
+            "response": {"cells": cells},
+            "duration_ms": duration_ms,
+            "row_count": len(rows),
+            "queue_wait_ms": queue_wait_ms,
+            "execution_ms": execution_ms,
+        }
 
-    budget = get_query_budget()
-
-    async def _budgeted_execute() -> dict[str, object]:
-        nonlocal queue_wait_ms, execution_ms
-        async with budget.acquire() as _qwms:
-            queue_wait_ms = _qwms
-            result_inner, exec_ms = await budget.run_with_budget(request, _execute, cancel_fn=cancel_handle.cancel)
-            execution_ms = exec_ms
-        return result_inner
-
-    if settings.cache_enabled:
+    if getattr(settings, "cache_enabled", False):
         cache = await get_query_cache()
+        data_version_token = datasets.get_data_version_token(body.dataset_id, body.date_range)
         cache_key = build_cache_key(
             "cells",
             body.dataset_id,
             body.date_range.model_dump(),
             body.query.model_dump(),
+            data_version_token=data_version_token,
         )
         ttl = max(1.0, settings.cache_ttl_seconds / 2) if settings.cache_ttl_seconds else settings.cache_ttl_seconds
         max_item = settings.cache_max_item_bytes // 2 if settings.cache_max_item_bytes else settings.cache_max_item_bytes
         result, meta = await cache.get_or_set(
             cache_key,
-            _budgeted_execute,
+            _execute,
             ttl_seconds=ttl,
             max_item_bytes=max_item,
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
     else:
-        result = await _budgeted_execute()
+        result = await _execute()
 
-    duration_ms = result.get("duration_ms", 0.0)
     time_filter_applied, time_filter_column = _time_filter_metadata(body.dataset_id)
-
     logger.info(
         "cells query executed",
         extra={
             "dataset_id": body.dataset_id,
             "endpoint": "cells",
-            "duration_ms": round(duration_ms, 2),
+            "duration_ms": round(result.get("duration_ms", 0.0), 2),
             "row_count": result.get("row_count", 0),
             "cache_status": cache_status,
             "cache_source": cache_source,
-            "queue_wait_ms": round(queue_wait_ms, 2),
-            "execution_ms": round(execution_ms, 2),
+            "queue_wait_ms": round(result.get("queue_wait_ms", 0.0), 2),
+            "execution_ms": round(result.get("execution_ms", 0.0), 2),
             "time_filter_applied": time_filter_applied,
             "time_filter_column": time_filter_column,
         },
@@ -296,34 +305,40 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
 
 @router.post("/picklist", response_model=PicklistResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_picklist(body: QueryPicklistRequest, request: Request, response: Response, _api_key: str = Depends(require_api_key)) -> PicklistResponse:
+async def post_query_picklist(
+    request: Request,
+    body: QueryPicklistRequest,
+    response: Response,
+    _api_key: str = Depends(require_api_key),
+) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
-    queue_wait_ms = 0.0
-    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging or PagingSpec(limit=settings.picklist_default_limit, offset=0)
-    limit = paging.limit
-    offset = paging.offset
 
     cache_status = "disabled"
     cache_source = "compute"
+    dim_version_token: str | None = None  # Set when cache_enabled for logging
 
     cancel_handle = QueryCancelHandle()
 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        rows = await db_manager.execute_sql_async(
-            sql,
-            tuple(params) if params else None,
-            dataset_id=body.dataset_id,
-            cancel_handle=cancel_handle,
-        )
+
+        async def _run_query():
+            return await db_manager.execute_sql_async(
+                sql,
+                tuple(params) if params else None,
+                dataset_id=body.dataset_id,
+                cancel_handle=cancel_handle,
+            )
+
+        rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
         if rows:
             total_count = int(rows[0][-1])
             values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
@@ -341,47 +356,42 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
+
         duration_ms = (time.perf_counter() - start) * 1000
         return {
             "response": {
                 "total_count": total_count,
                 "values": values,
-                "paging": {"limit": limit, "offset": offset, "returned": len(values)},
+                "paging": {"limit": paging.limit, "offset": paging.offset, "returned": len(values)},
             },
             "duration_ms": duration_ms,
-            "row_count": len(rows),
+            "row_count": len(values),
+            "queue_wait_ms": queue_wait_ms,
+            "execution_ms": execution_ms,
         }
 
-    budget = get_query_budget()
-
-    async def _budgeted_execute() -> dict[str, object]:
-        nonlocal queue_wait_ms, execution_ms
-        async with budget.acquire() as _qwms:
-            queue_wait_ms = _qwms
-            result_inner, exec_ms = await budget.run_with_budget(request, _execute, cancel_fn=cancel_handle.cancel)
-            execution_ms = exec_ms
-        return result_inner
-
-    if settings.cache_enabled:
+    if getattr(settings, "cache_enabled", False):
         cache = await get_query_cache()
+        dim_version_token = datasets.get_dim_version_token(body.dataset_id)
         cache_key = build_cache_key(
             "picklist",
             body.dataset_id,
             body.date_range.model_dump(),
             body.query.model_dump(),
+            data_token=dim_version_token,
         )
         result, meta = await cache.get_or_set(
             cache_key,
-            _budgeted_execute,
-            ttl_seconds=settings.cache_ttl_seconds,
+            _execute,
+            ttl_seconds=float(settings.dim_cache_ttl_seconds),
             max_item_bytes=settings.cache_max_item_bytes,
+            stale_ttl_seconds=float(settings.dim_stale_ttl_seconds),
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
     else:
-        result = await _budgeted_execute()
+        result = await _execute()
 
-    duration_ms = result.get("duration_ms", 0.0)
     resp_body = result["response"]
     time_filter_applied, time_filter_column = _time_filter_metadata(body.dataset_id)
     logger.info(
@@ -389,13 +399,14 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
         extra={
             "dataset_id": body.dataset_id,
             "endpoint": "picklist",
-            "duration_ms": round(duration_ms, 2),
+            "duration_ms": round(result.get("duration_ms", 0.0), 2),
             "row_count": result.get("row_count", 0),
             "total_count": resp_body["total_count"],
             "cache_status": cache_status,
             "cache_source": cache_source,
-            "queue_wait_ms": round(queue_wait_ms, 2),
-            "execution_ms": round(execution_ms, 2),
+            "dim_version_token": dim_version_token,
+            "queue_wait_ms": round(result.get("queue_wait_ms", 0.0), 2),
+            "execution_ms": round(result.get("execution_ms", 0.0), 2),
             "time_filter_applied": time_filter_applied,
             "time_filter_column": time_filter_column,
         },
