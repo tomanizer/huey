@@ -8,6 +8,9 @@ export class PromptUi {
     if (acceptButton) {
       acceptButton.addEventListener('click', (event) =>{
         const dialog = byId('promptUi');
+        if (!dialog) {
+          return;
+        }
         dialog.returnValue = 'accept';
         // firefox seems to forget the returnValue
         dialog.setAttribute('data-returnValue', dialog.returnValue);
@@ -18,6 +21,9 @@ export class PromptUi {
     if (rejectButton) {
       rejectButton.addEventListener('click', (event) =>{
         const dialog = byId('promptUi');
+        if (!dialog) {
+          return;
+        }
         dialog.returnValue = 'reject';
         // firefox seems to forget the returnValue
         dialog.setAttribute('data-returnValue', dialog.returnValue);
