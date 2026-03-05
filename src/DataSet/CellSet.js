@@ -377,15 +377,28 @@ export class CellSet extends DataSetComponent {
     return RemoteQueryAdapter.createRemoteCellsQuery(queryModel, rowCount, colCount, cellsAxisItemsToFetch);
   }
 
+  /** Map measure columnType to Arrow typeId so number formatter receives field.type (remote path). */
+  static #measureColumnTypeToArrowTypeId(columnType) {
+    var t = (columnType || '').toUpperCase();
+    if (/INT|BIGINT|INT64|INTEGER/.test(t)) return -5;
+    if (/FLOAT|DOUBLE|FLOAT64/.test(t)) return -12;
+    if (/DECIMAL/.test(t)) return 7;
+    return -12;
+  }
+
   #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount, measureAliases, measureValueOffset){
     var cells = apiResponse.cells || [];
     var colCount = columnCount || 1;
     var items = cellsAxisItemsToFetch || [];
     var aliases = measureAliases || [];
     var offset = measureValueOffset != null ? measureValueOffset : 0;
-    // Use same key as pivot: getSqlForQueryAxisItem (e.g. "sum(volume)") so cell.values[sqlExpression] finds the value
+    // Backend returns cell.values keyed by column index: row dims, then column dims, then measures.
     var fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map(function(item) {
-      return { name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName) };
+      var typeId = CellSet.#measureColumnTypeToArrowTypeId(item.columnType);
+      return {
+        name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName),
+        type: { typeId: typeId }
+      };
     }));
     var numRows = cells.length;
     var get = function(i) {
@@ -396,7 +409,7 @@ export class CellSet extends DataSetComponent {
       var vals = c.values || {};
       items.forEach(function(item, index) {
         var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
-        var alias = aliases[index] || item.columnName;
+        var alias = aliases[index];
         var keyedByPosition = vals[String(offset + index)];
         var keyedByMeasureIndex = vals[String(index)];
         row[sqlExpression] = keyedByPosition !== undefined ? keyedByPosition : (
