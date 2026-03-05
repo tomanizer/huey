@@ -567,12 +567,8 @@ export function getUrlsFromInput(urlInput){
   }
   return urlInput
   .split(/[\n,]/)
-  .map((url) =>{
-    return url.trim();
-  })
-  .filter((url) =>{
-    return Boolean(url);
-  });
+  .map((url) => url.trim())
+  .filter((url) => url);
 }
 
 export function isParquetUrl(url){
@@ -598,9 +594,7 @@ async function uploadParquetFilesAsFolderDatasource(files){
   const instance = hueyDb.instance;
 
   const fileNames = parquetFiles
-  .map((file) =>{
-    return file.webkitRelativePath || file.name;
-  })
+  .map((file) => file.webkitRelativePath || file.name)
   .sort();
 
   const protocol = duckdb.DuckDBDataProtocol.BROWSER_FILEREADER;
