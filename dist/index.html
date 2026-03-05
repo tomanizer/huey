@@ -1,0 +1,2319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title translate="no">Huey</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Huey is an open-source browser-based application that lets you make crosstabs/pivot tables on large datasets."/>
+    <link
+      rel="icon"
+      href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGNsYXNzPSJpY29uIGljb24tdGFibGVyIGljb24tdGFibGVyLXRhYmxlIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBzdHJva2U9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiLz48cGF0aCBkPSJNMyA1YTIgMiAwIDAgMSAyIC0yaDE0YTIgMiAwIDAgMSAyIDJ2MTRhMiAyIDAgMCAxIC0yIDJoLTE0YTIgMiAwIDAgMSAtMiAtMnYtMTR6IiAvPjxwYXRoIGQ9Ik0zIDEwaDE4IiAvPjxwYXRoIGQ9Ik0xMCAzdjE4IiAvPjwvc3ZnPg=="
+    />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
+
+    <style id="tabler-font"></style>
+
+    <!-- 
+      Markup for resource loading
+    -->
+    <style type="text/css">
+      ul#resources > li::marker {
+        font-family: "tabler-icons";
+        content: var( --icon-file );
+      }
+
+      ul#resources > li[data-resource-type=css]::marker {
+        content: var( --icon-file-type-css );
+      }
+      ul#resources > li[data-resource-type=js]::marker {
+        content: var( --icon-file-type-js );
+      }
+      ul#resources > li[data-resource-type=woff2]::marker {
+        content: var( --icon-file-typography );
+      }
+    </style>
+
+
+    <datalist id="commonCsvFieldDelimiters">
+      <option data-auto="true" value="(default)">(default)</option>
+      <option value=",">Comma</option>
+      <option value=";">semi-colon</option>
+      <option value="|">pipe</option>
+      <option value="\t">horizontal tab</option>
+      <!-- Vertical tab, record separator, unit separator (&#11;, &#30;, &#31;) omitted: HTML disallows control-character refs in attributes; add via JS if needed -->
+      <option value="!">exclamation mark</option>
+      <option value=" ">space</option>
+    </datalist>
+
+    <datalist id="commonCsvQuoteCharacters">
+      <option data-auto="true" value="(default)">(default)</option>
+      <option value="&apos;">single quote</option>
+      <option value="&quot;">double quote</option>
+      <option value="`">backtick</option>
+    </datalist>
+
+    <datalist id="commonCsvEscapeCharacters">
+      <option data-auto="true" value="(default)">(default)</option>
+      <option data-same-as-quotechar="true" value="same as quote char">same as quote char</option>
+      <option value="&quot;">double quote</option>
+      <option value="\">backslash</option>
+    </datalist>
+
+    <datalist id="commonDateFormats">
+      <option data-auto="true" value="(default)">(default)</option>
+      <option value="%x" translate="no">2024-06-03 (iso)</option>
+      <option value="%d/%m/%Y" translate="no">03/06/2024</option>
+      <option value="%A, %-d %B %Y" translate="no">Monday, 3 June 2024</option>
+    </datalist>
+
+    <datalist id="commonTimestampFormats">
+      <option data-auto="true" value="(default)">(default)</option>
+      <option value="%c" translate="no">2024-06-03 13:23:05 (iso)</option>
+      <option value="%d/%m/%Y %I:%M:%S %p" translate="no">03/06/2024 01:23:05 am</option>
+      <option value="%A, %-d %B %Y %H:%M" translate="no">Monday, 3 June 2024 13:23</option>
+    </datalist>
+
+    <datalist id="commonDecimalSeparators">
+      <option data-auto="true" value="(default)">(default)</option>
+      <option value=".">Dot</option>
+      <option value=",">Comma</option>
+      <option value="_">Underscore</option>
+      <option value=" ">Space</option>
+    </datalist>
+
+    <datalist id="commonCsvNullValueStrings">
+      <option data-auto="true" value="empty">(empty)</option>
+      <option data-auto="true" translate="no" value="NULL">NULL</option>
+    </datalist>
+    
+    <!-- see: https://en.wikipedia.org/wiki/Ditto_mark -->
+    <datalist id="commonDittoMarks">
+      <!-- non breaking space -->
+      <option value="&nbsp;" translate="no">&nbsp;</option>
+      <!-- one single quote (apostrophe) -->
+      <option value="&apos;" translate="no">'</option>
+      <!-- two single quotes (apostrophes) -->
+      <option value="&apos;&apos;" translate="no">''</option>
+      <!-- double quote -->
+      <option value="&quot;" translate="no">"</option>
+      <!-- Right-Pointing Double Angle Quotation Mark » -->
+      <option value="&#xBB;" translate="no">&#xBB;</option>
+      <!-- Horizontal bar ― -->
+      <option value="&#x2015;" translate="no">&#x2015;</option>
+      <!-- left double quotation mark: “ -->
+      <option value="&#x201C;" translate="no">&#x201C;</option>
+      <!-- right double quotation mark: ” -->
+      <option value="&#x201D;" translate="no">&#x201D;</option>
+      <!-- double low-9 quotation mark: ” -->
+      <option value="&#x201E;" translate="no">&#x201E;</option>
+      <!-- double high-9 quotation mark: ” -->
+      <option value="&#x201F;" translate="no">&#x201E;</option>
+      <!--  DOUBLE PRIME -->
+      <option value="&#x2033;" translate="no">&#x2033;</option>
+      — „ — 
+      <!-- ditto mark: 〃-->
+      <option value="&#x3003;" translate="no">&#x3003;</option>
+    </datalist>
+    <script type="module" crossorigin src="/assets/index-BidfGPmI.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CL5pM0dZ.css">
+  </head>
+
+  <body aria-busy="true">
+    <div id="spinner">
+      <div class="loader">Loading...</div>
+      <header id="logo" translate="no">Huey</header>
+      <div id="logoVersion" translate="no"></div>
+      <div id="powered-by"></div>
+      <ul id="resources" style="position:absolute; top: 0px" ></ul>
+    </div>
+
+    <dialog
+      id="uploadUi"
+      popover="manual"
+      aria-labelledby="uploadUiTitle"
+      aria-describedby="uploadUiDescription"
+      draggable="true"
+    >
+      <header>
+        <h3 id="uploadUiTitle"></h3>
+        <p id="uploadUiDescription"></p>
+        <div class="timer">
+          <span class="digit"></span>
+          <span class="digit"></span>
+          <span class="digit"></span>
+          <span class="digit"></span>
+        </div>
+      </header>
+      
+      <template id="uploadItemTemplate">
+        <details id="filename">
+          <summary>
+            <span></span>
+            <menu></menu>
+            <progress 
+              max="100"
+              value="0"
+            />
+          </summary>
+          <p></p>
+        </details>
+      </template>
+      
+      <section id="uploadProgressList">
+      </section>
+      
+      <footer role="toolbar">
+        <button
+          id="uploadDialogOkButton"
+          autofocus="true"
+        >Ok</button>
+        <button
+          id="uploadDialogCancelButton"
+        >Cancel</button>
+      </footer>
+    </dialog>
+
+    <dialog
+      id="exportDialog"
+      draggable="true"
+      popover="auto"
+      aria-labelledby="uploadUiTitle"
+      aria-busy="false"
+    >
+      <header>
+        <h3 id="exportDialogTitle">Export...</h3>
+        <form id="exportGeneralSettings">
+          <label
+            for="exportTitleTemplate"
+            title="The title template is used to generate a file name for downloads"
+          >Title template</label>
+          <input
+            id="exportTitleTemplate"
+            type="text"
+            title="
+              Export filename template. Special fields ${datasource}, ${cells-itms}, ${rows-items}, ${columns-items}, and ${filters-items} are replaced with the respective element from the current query.
+              Use fields ${timestamp} or ${iso-timestamp} to include date/time.
+            "
+            value="${cells-items} from ${datasource} with ${rows-items} on rows and ${columns-items} on columns"
+          />
+          <label
+            for="exportTitle"
+            title="The title generated from the template"
+          >Title</label>
+          <output
+            id="exportTitle"
+            for="exportTitleTemplate"
+            title="The title generated from the template"
+          ></output>
+          <fieldset>
+            <legend title="Control the shape of the exported dataset">Data Structure</legend>
+            <label
+              for="exportResultShapePivot"
+              title="Export results as a pivot table"
+            >Pivot</label>
+            <input
+              id="exportResultShapePivot"
+              type="radio"
+              name="exportResultShape"
+              checked="true"
+              title="Check this to export results as a pivot table"
+            />
+            <label
+              for="exportResultShapeTable"
+              title="Export results as a plain table. In this format, all items from the query are used to produce a list of rows "
+            >Table</label>
+            <input
+              id="exportResultShapeTable"
+              type="radio"
+              name="exportResultShape"
+              title="Check this to export results as a plain table"
+            />
+          </fieldset>
+          <fieldset>
+            <legend title="Control where the results are exported to">Export destination</legend>
+            <label
+              for="exportDestinationFile"
+              title="Download the export data and save it to a local file."
+            >File</label>
+            <input
+              id="exportDestinationFile"
+              type="radio"
+              name="exportDestination"
+              checked="true"
+              title="Check this to download the result as a file"
+            />
+            <label
+              for="exportDestinationClipboard"
+              title="Copy the export data to the clipboard"
+            >Clipboard</label>
+            <input
+              id="exportDestinationClipboard"
+              type="radio"
+              name="exportDestination"
+              title="Check to copy the data to the clipboard in order to paste it in other applications"
+            />
+          </fieldset>
+        </form>
+      </header>
+      <section role="tablist">
+        <!--
+          See: https://duckdb.org/docs/sql/statements/copy.html#csv-options
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportDelimited"
+            title="Use this tab to export data as delimited text, like .CSV, TSV, etc."
+          >Delimited text</label>
+          <input
+            id="exportDelimited"
+            name="exportFormat"
+            type="radio"
+            checked="true"
+          />
+          <div role="tabpanel">
+            <form id="exportDelimitedSettings">
+              <label
+                for="exportDelimitedCompression"
+                title="The algorithm used for compressing the query result. Compression typically results in smaller result files."
+              >Compression</label>
+              <select
+                id="exportDelimitedCompression"
+                title="Use this to choose the algorithm used for compressing the query result."
+              >
+                <option value="UNCOMPRESSED" label="uncompressed" title="Uncompressed - no compression will be applied"/>
+                <option value="GZIP" label="gzip" title="GZIP - applies gzip compression"/>
+                <option value="ZSTD" label="zstd" title="ZSTD - applies zstd compression"/>
+              </select>
+              <label
+                title="Whether to include a line of column headers."
+                for="exportDelimitedIncludeHeaders"
+              >Include Headers</label>
+              <input
+                id="exportDelimitedIncludeHeaders"
+                title="Check this to include a header line of column names."
+                type="checkbox"
+                checked="true"
+              />
+              <fieldset>
+                <legend>Formatting</legend>
+                <label
+                  for="exportDelimitedDateFormat"
+                  title="The date format controls how date values are represented in the result."
+                >Date Format</label>
+                <input
+                  id="exportDelimitedDateFormat"
+                  title="Enter a valid DuckDB date format string."
+                  type="text"
+                  value="%x"
+                  list="commonDateFormats"
+                />
+                <label
+                  for="exportDelimitedTimestampFormat"
+                  title="The timestamp format controls how timestamp values are represented in the result."
+                >Timestamp Format</label>
+                <input
+                  id="exportDelimitedTimestampFormat"
+                  title="Enter a valid DuckDB timestamp format string."
+                  type="text"
+                  value="%c"
+                  list="commonTimestampFormats"
+                />
+                <label
+                  for="exportDelimitedNullString"
+                  title="The NULL-string controls how SQL NULL-values are rendered to the result"
+                ><code>NULL</code>-value string</label>
+                <input
+                  id="exportDelimitedNullString"
+                  title="Enter the string that should be written to the result to represent SQL NULL-values"
+                  type="text"
+                  value=""
+                  list="commonCsvNullValueStrings"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Delimiters</legend>
+                <label
+                  for="exportDelimitedColumnDelimiter"
+                  title="The column delimiter is the character used to separate the values within a row in the result."
+                >Column delimiter</label>
+                <input
+                  id="exportDelimitedColumnDelimiter"
+                  type="text"
+                  value="\t"
+                  title="Enter the character that is to be used as column delimiter."
+                  list="commonCsvFieldDelimiters"
+                />
+                <label
+                  for="exportDelimitedQuote"
+                  title="The quote character is used to enclose column values in case the column value contains a delimiter character"
+                >Quote Character</label>
+                <input
+                  id="exportDelimitedQuote"
+                  type="text"
+                  value="&quot;"
+                  title="Enter the character that is to be used as quote character."
+                  list="commonCsvQuoteCharacters"
+                />
+                <label
+                  for="exportDelimitedEscape"
+                  title="The escape character is used to signal a literal occurrence of the quote character within a column value"
+                >Escape Character</label>
+                <input
+                  id="exportDelimitedEscape"
+                  type="text"
+                  value="&quot;"
+                  title="Enter the character used to escape the quote character."
+                  list="commonCsvEscapeCharacters"
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <!--
+          See: https://duckdb.org/docs/stable/extensions/excel#writing-xlsx-files
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportXlsx"
+            title="Use this tab to export the data to a Microsoft Excel (.xlsx) file."
+          >Excel</label>
+          <input
+            id="exportXlsx"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportXlsxSettings">
+              <label
+                title="Whether to include a row with column headers."
+                for="exportXlsxIncludeHeaders"
+              >Include Headers</label>
+              <input
+                id="exportXlsxIncludeHeaders"
+                title="Check this to include a header row with column names."
+                type="checkbox"
+                checked="true"
+              />
+              <label
+                title="Name of the target sheet."
+                for="exportXlsxSheet"
+              >Sheet name</label>
+              <!-- see https://www.keynotesupport.com/excel-basics/worksheet-names-characters-allowed-prohibited.shtml -->
+              <input
+                id="exportXlsxSheet"
+                title="Optionally enter a name for the target sheet"
+                type="text"
+                size="31"
+                pattern="^[A-Za-z0-9 `~!@#\$%\^&amp;\(\)\-_=+\{\}\|;:,&lt;\.&gt;]([A-Za-z0-9 `~!@#\$%\^&amp;\(\)\-_=+\{\}\|;:,&lt;\.&gt;']{0,29}[A-Za-z0-9 `~!@#\$%\^&amp;\(\)\-_=+\{\}\|;:,&lt;\.&gt;])?$"
+              />
+              <label
+                for="exportXlsxSheetRowLimit"
+              >Row Limit</label>
+              <input
+                id="exportXlsxSheetRowLimit"
+                value="1048576"
+                type="number"
+                min="0"
+                max="1048576"
+                step="1"
+              />
+            </form>
+          </div>
+        </div>
+        <!--
+          See: https://duckdb.org/docs/sql/statements/copy.html#json-options
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportJson"
+            title="Use this tab to export data in the JSON format"
+          >JSON</label>
+          <input
+            id="exportJson"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportJsonSettings">
+              <label
+                for="exportJsonCompression"
+                title="Use this to choose the algorithm used for compressing the query result."
+              >Compression</label>
+              <select
+                id="exportJsonCompression"
+                title="Use this to choose the algorithm used for compressing the query result."
+              >
+                <option value="UNCOMPRESSED" label="uncompressed" title="Uncompressed - no compression will be applied"/>
+                <option value="GZIP" label="gzip" title="GZIP - applies gzip compression"/>
+                <option value="ZSTD" label="zstd" title="ZSTD - applies zstd compression"/>
+              </select>
+              <fieldset>
+                <legend>Formatting</legend>
+                <label
+                  for="exportJsonDateFormat"
+                  title="The date format controls how date values are represented in the result."
+                >Date Format</label>
+                <input
+                  id="exportJsonDateFormat"
+                  type="text"
+                  value="%x"
+                  title="Enter a valid DuckDB date format string."
+                />
+                <label
+                  for="exportJsonTimestampFormat"
+                  title="The timestamp format controls how timestamp values are represented in the result."
+                >Timestamp Format</label>
+                <input
+                  id="exportJsonTimestampFormat"
+                  type="text"
+                  title="Enter a valid DuckDB timestamp format string."
+                  value="%c"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Delimiters</legend>
+                <label
+                  for="exportJsonRowDelimiter"
+                  title="This controls how rows are delimited in the JSON output"
+                >Row Delimiter</label>
+                <select
+                  id="exportJsonRowDelimiter"
+                  title="This controls how rows are delimited in the JSON output"
+                >
+                  <option value="false" label="newline" title="This option generates one row-object per line (JSONL format)"/>
+                  <option value="true" label="array" title="This option generates an array with row-object elements (JSON)"/>
+                </select>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <!--
+          See: https://duckdb.org/docs/sql/statements/copy.html#parquet-options
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportParquet"
+            title="Use this tab to export data in Parquet format"
+          >Parquet</label>
+          <input
+            id="exportParquet"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportParquetSettings">
+              <fieldset>
+                <legend>Version</legend>
+                <label 
+                  for="exportParquetVersion"
+                  title="The parquet version to use."
+                >Version</label>
+                <select
+                  id="exportParquetVersion"
+                  title="The parquet version to use."
+                >
+                  <option value="V1" label="V1" title="Parquet Version 1"/>
+                  <option value="V2" label="V2" title="Parquet Version 2"/>
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend>Compression</legend>
+                <label
+                  for="exportParquetCompression"
+                  title="Use this to choose the algorithm used for compressing the query result."
+                >Compression</label>
+                <select
+                  id="exportParquetCompression"
+                  title="Use this to choose the algorithm used for compressing the query result."
+                >
+                  <option value="UNCOMPRESSED" label="uncompressed" title="Uncompressed - no compression will be applied"/>
+                  <option value="BROTLI" label="brotli" title="BROTLI - applies Brotli compression"/>
+                  <option value="GZIP" label="gzip" title="GZIP - applies gzip compression"/>
+                  <option value="LZ4" label="lz4" title="LZ4 - applies LZ4 compression"/>
+                  <option value="LZ4_RAW" label="lz4 raw" title="LZ4 Raw - applies LZ4 Raw compression"/>
+                  <option value="SNAPPY" label="snappy" title="SNAPPY - applies snappy compression"/>
+                  <option value="ZSTD" label="zstd" title="ZSTD - applies zstd compression"/>
+                </select>
+                <label
+                  for="exportParquetCompressionLevel"
+                  title="Compression level, set between 1 (lowest compression, fastest) and 22 (highest compression, slowest)."
+                >Compression Level</label>
+                <input 
+                  id="exportParquetCompressionLevel" 
+                  type="number" 
+                  value="3" 
+                  min="1" 
+                  max="22" 
+                  step="1"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Rowgroups</legend>
+                <label
+                  for="exportParquetRowGroupSize"
+                  title="The target size, i.e., number of rows, of each row group."
+                >Row group size (no. of rows)</label>
+                <input 
+                  id="exportParquetRowGroupSize" 
+                  type="number" 
+                  step="1" 
+                  min="1" 
+                  value="122880"
+                />
+                <!-- 
+                This option requires preserve_insertion_order to be disabled.
+                <label
+                  for="exportParquetRowGroupSizeBytes"
+                  title="The target size of each row group as number of bytes."
+                >Row group size (bytes)</label>
+                <input 
+                  id="exportParquetRowGroupSizeBytes" 
+                  type="number" 
+                  step="1" 
+                  min="1" 
+                  value="125829120"
+                />
+                -->
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportSql"
+            title="Use this tab to export a SQL query that would produce this result."
+          >SQL</label>
+          <input
+            id="exportSql"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportSqlSettings">
+              <label
+                for="exportSqlKeywordLettercase"
+                title="The lettercase for SQL keywords"
+              >Keywords Case</label>
+              <select
+                title="The lettercase for SQL keywords"
+                id="exportSqlKeywordLettercase"
+              >
+                <option
+                  title="Initial capital followed by lowercase"
+                  value="initialCapital">initial capital</option>
+                <option
+                  title="lowercase"
+                  value="lowerCase">lowercase</option>
+                <option
+                  title="uppercase"
+                  value="upperCase"
+                  selected="true">uppercase</option>
+              </select>
+              <label
+                for="exportSqlAlwaysQuoteIdentifiers"
+                title="Whether to always quote identifiers."
+              >Always Quote identifiers</label>
+              <input
+                id="exportSqlAlwaysQuoteIdentifiers"
+                title="Check this to force all identifiers to be quoted."
+                checked="true"
+                type="checkbox"
+              />
+              <label
+                for="exportSqlCommaStyle"
+                title="How to render commas in the SQL output"
+              >Comma style</label>
+              <select
+                title="Select the style for rendering commas in the SQL output"
+                id="exportSqlCommaStyle"
+              >
+                <option
+                  value="spaceAfter">Space After</option>
+                <option
+                  value="newlineAfter">Newline After</option>
+                <option
+                  value="newlineBefore"
+                  selected="true">Newline Before</option>
+              </select>
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportQuery"
+            title="Use this tab to export your query."
+          >Query</label>
+          <input
+            id="exportQuery"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportQuerySettings">
+              <label for="exportQueryEncoding">Encoding</label>
+              <select id="exportQueryEncoding">
+                <option value="JSON" label="JSON" title="JSON representation of the query state"/>
+                <option value="HASH" label="URL Hash" title="A URL hash to create a shortcut link to the query"/>
+              </select>
+              <label for="exportQueryIndentation">Indentation</label>
+              <input id="exportQueryIndentation" type="number" step="1" min="0"/>
+            </form>
+          </div>
+        </div>
+      </section>
+      <footer role="toolbar">
+        <button
+          id="exportDialogExecuteButton"
+          autofocus="true"
+        >Export</button>
+        <button
+          id="exportDialogCloseButton"
+          popovertarget="exportDialog"
+          popovertargetaction="hide"
+        >Close</button>
+      </footer>
+      <dialog role="progressbar">
+        <header>
+          <h3 role="status"></h3>
+        </header>
+        <section>
+          <div class="loader loader-medium">Exporting...</div>
+          <div class="timer">
+            <span class="digit"></span>
+            <span class="digit"></span>
+            <span class="digit"></span>
+            <span class="digit"></span>
+          </div>
+        </section>
+        <footer>
+          <!-- TODO: implement cancel of pending export -->
+          <button id="cancelExportButton">Cancel</button>
+        </footer>
+      </dialog>
+    </dialog>
+
+    <dialog
+      id="filterDialog"
+      draggable="true"
+      aria-busy="false"
+      popover="manual"
+    >
+      <header role="toolbar">
+        <label
+          for="filterType"
+          title="The filter type determines how the selected values will be used to filter the results."
+        >Filter type:</label>
+        <select id="filterType">
+          <option value="in" title="Include data that matches any of the selected values">Include</option>
+          <option value="notin" title="Exclude data that matches any of the selected values">Exclude</option>
+          <option value="like" title="Include data that matches the selected patterns">Like</option>
+          <option value="notlike" title="Exclude data that matches the selected patterns">Not Like</option>
+          <option value="between" title="Include data within any of the specified value ranges">Between</option>
+          <option value="notbetween" title="Exclude data within any of the specified value ranges">Not Between</option>
+          <option value="hasany" title="Include data where the array has any of the selected keys">Include Has Any</option>
+          <option value="hasall" title="Include data where the array has all selected keys">Include Has All</option>
+          <option value="nothasany" title="Exclude data where the array has any of the selected keys">Exclude Has Any</option>
+          <option value="nothasall" title="Exclude data where the array has all selected keys">Exclude Has All</option>
+        </select>
+      </header>
+      <section>
+        <header>
+          <menu role="menubar">
+            <li role="menuitemcheckbox">
+              <label
+                for="filterSearchApplyAll"
+                title="Check to include the other filter items (in addition to the search string) to populate the picklist"
+              >
+                <span>Apply all filters</span>
+                <input
+                  id="filterSearchApplyAll"
+                  type="checkbox"
+                />
+              </label>
+            </li>
+            <li role="menuitemcheckbox">
+              <label
+                for="filterSearchAutoWildcards"
+                title="Check to automatically apply LIKE wildcards"
+              >
+                <span>Auto-wildcards</span>
+                <input
+                  id="filterSearchAutoWildcards"
+                  type="checkbox"
+                />                
+              </label>
+            </li>
+            <li role="menuitemcheckbox">
+              <label
+                for="filterSearchCaseSensitive"
+                title="Is the search term case-sensitive?"
+              >
+                <span>Case sensitive</span>
+                <input
+                  id="filterSearchCaseSensitive"
+                  type="checkbox"
+                />
+              </label>
+            </li>
+          </menu>
+          <section>
+            <div id="filterDialogSpinner" class="loader loader-medium"></div>
+            <header role="toolbar">
+              <input
+                id="filterSearch"
+                placeholder="Type a LIKE pattern to find values..."
+                type="search"
+                title="Type a search string to filter the value picklist (LIKE wildcards supported). Hit enter-key to add the typed value to the Filter values list"
+                tabindex="0"
+                autofocus="true"
+              />
+              <button
+                id="addFilterValueButton"
+                tabindex="0"
+                title="Click to add the entered value to the list of applied filter values."
+              />
+            </header>
+            <section>
+              <select
+                id="filterPicklist"
+                multiple="true"
+                size="4"
+                title="Click values in the picklist to add them to the Filter values list. (Hold ctrl-key to select multiple items, hold shift-key to select a range.)"
+                tabindex="0"
+              >
+              </select>
+            </section>
+            <footer id="filterSearchStatus" role="status">No values found.</footer>
+          </section>
+        </header>
+        <section>
+          <div>
+            <label for="filterValueList">Applied filter values:</label>
+            <select
+              id="filterValueList"
+              multiple="true"
+              size="4"
+              title="Values in this list will be used to filter the results. Add items to the list by choosing from the picklist above; click items in the list to remove them."
+            >
+            </select>
+          </div>
+          <div>
+            <label for="toFilterValueList">To Values:</label>
+            <select
+              id="toFilterValueList"
+              multiple="true"
+              size="7"
+              title="Values in this list will be used to filter the results. Add items to the list by choosing from the picklist above; click items in the list to remove them."
+            >
+            </select>
+          </div>
+        </section>
+        <footer id="filterValueSelectionStatus" role="status"></footer>
+        <menu role="menubar">
+          <li role="menuitemcheckbox">
+            <label 
+              for="filterDialogShowRawCheckbox"
+              title="Check to display raw values. Uncheck to display formatter values."
+            >
+              <span>Reveal raw values</span>
+              <input 
+                id="filterDialogShowRawCheckbox"
+                type="checkbox"
+              />
+            </label>
+          </li>
+        </menu>
+        <footer role="toolbar">
+          <button id="filterDialogClearSelectedButton" title="Clear highlighted items from the selection.">Clear Highlighted</button>
+          <button id="filterDialogClearButton" title="Clear the values list">Clear All</button>
+        </footer>
+      </section>
+      <footer role="toolbar">
+        <button
+          id="filterDialogOkButton"
+          title="Confirm the filter setting changes"
+          popovertarget="filterDialog"
+          popovertargetaction="hide"
+        >Apply</button>
+        <button
+          id="filterDialogRemoveButton"
+          title="Remove the filter from the axis"
+          popovertarget="filterDialog"
+          popovertargetaction="hide"
+        >Remove</button>
+        <button
+          id="filterDialogCancelButton"
+          title="Cancel filter setting changes"
+          popovertarget="filterDialog"
+          popovertargetaction="hide"
+        >Cancel</button>
+      </footer>
+    </dialog>
+
+    <dialog
+      id="errorDialog"
+      draggable="true"
+      popover="auto"
+      aria-labelledby="errorDialogTitle"
+      aria-describedby="errorDialogDescription"
+    >
+      <header>
+        <h3 id="errorDialogTitle"></h3>
+      </header>
+      <section id="errorDialogDescription">
+      </section>
+      <details id="errorDialogDetails">
+        <summary>Details...</summary>
+        <pre id="errorDialogStack"></pre>
+      </details>
+      <footer role="toolbar">
+        <button
+          id="errorDialogOkButton"
+          autofocus="true"
+          popovertarget="errorDialog"
+          popovertargetaction="hide"
+        >Ok</button>
+      </footer>
+    </dialog>
+
+    <dialog
+      id="settingsDialog"
+      draggable="true"
+      aria-labelledby="settingsDialogTitle"
+      popover="auto"
+    >
+      <header>
+        <h3 id="settingsDialogTitle">Settings</h3>
+      </header>
+      <section
+        id="settingsTabs"
+        role="tablist"
+      >
+        <!--
+          Datasources settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="datasourcesSettingTab"
+          >
+            Datasources
+          </label>
+          <input
+            id="datasourcesSettingTab"
+            type="radio"
+            name="settingsTabs"
+            checked="true"
+          />
+          <div role="tabpanel">
+            <form id="datasourceSettings">
+              <label
+                for="useLooseColumnTypeComparison"
+                title="Whether to use exact or loose typing for automatic creation of UNION datasources."
+              >UNION loose typing</label>
+              <input
+                id="useLooseColumnTypeComparison"
+                type="checkbox"
+              />
+            </form>
+          </div>
+        </div>
+        <!--
+          Locale Settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="localeSettingsTab"
+          >
+            Value Formatting
+          </label>
+          <input
+            id="localeSettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="localeSettings">
+              <fieldset>
+                <legend><code>NULL</code>-behavior</legend>
+                <label
+                  for="nullString"
+                  title="The string to use for displaying NULL-values"
+                ><code>NULL</code>-value label</label>
+                <input
+                  id="nullString"
+                  type="text"
+                />
+                <label
+                  for="nullsSortOrder"
+                  title="Sorting order for NULL-values"
+                ><code>NULL</code>-Sort Order</label>
+                <select id="nullsSortOrder">
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend>Locale</legend>
+                <label
+                  for="useDefaultLocale"
+                  title="Check to use the browser's default locale, uncheck to enter a custom locale."
+                >Use default locale</label>
+                <input
+                  id="useDefaultLocale"
+                  type="checkbox"
+                />
+                <!--
+                  see: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl
+                  A locale identifier is a string that consists of:
+
+                  A language subtag with 2–3 or 5–8 letters
+                  A script subtag with 4 letters Optional
+                  A region subtag with either 2 letters or 3 digits Optional
+                  One or more variant subtags (all of which must be unique), each with either 5–8 alphanumerals or a digit followed by 3 alphanumerals Optional
+                  One or more BCP 47 extension sequences Optional
+                  A private-use extension sequence Optional
+                -->
+                <label
+                  for="locale"
+                  title="The locale to use for creating value formatters"
+                >Locale</label>
+                <!--
+                  on change we should try to call Intl.DisplayNames.supportedLocalesOf('DE-AU'). this will return an array
+                  and if that is empty it probably means the entered locale is either not valid or not supported.
+                -->
+                <input
+                  id="locale"
+                  type="text"
+                  pattern="^(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?)(\s*,\s*(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?))*$"
+                  data-value-getter="new Function('control','settings','return control.value.split(String.fromCharCode(44));')"
+                  data-value-setter="new Function('control','value','settings','control.value = value.join();')"
+                />
+              </fieldset>
+
+              <fieldset>
+                <legend>Integer</legend>
+                <!-- minimum integer digits -->
+                <label for="minimumIntegerDigits"
+                  title="The minimum number of integer digits to use. A value with a smaller number of integer digits than this number will be left-padded with zeros (to the specified length) when formatted. Possible values are from 1 to 21; the default is 1."
+                >Minimum digits</label>
+                <input
+                  id="minimumIntegerDigits"
+                  type="number"
+                  min="1"
+                  max="21"
+                  value="1"
+                />
+              </fieldset>
+
+              <!-- minimum fraction digits -->
+              <fieldset>
+                <legend>Decimals</legend>
+                <label for="linkMinimumAndMaximumDecimals">Link min. and max. decimals</label>
+                <input id="linkMinimumAndMaximumDecimals" type="checkbox"/>
+                <label for="minimumFractionDigits"
+                  title="The minimum number of fraction digits to use. .Possible values are from 0 to 20; the default for plain number and percent formatting is 0; the default for currency formatting is the number of minor unit digits provided by the ISO 4217 currency code list (2 if the list doesn't provide that information)."
+                ></label>
+                <input
+                  id="minimumFractionDigits"
+                  type="number"
+                  min="0"
+                  max="20"
+                  value="2"
+                />
+                <!-- maximum fraction digits -->
+                <label for="maximumFractionDigits"
+                  title="The maximum number of fraction digits to use. Possible values are from 0 to 20; the default for plain number formatting is the larger of minimumFractionDigits and 3; the default for currency formatting is the larger of minimumFractionDigits and the number of minor unit digits provided by the ISO 4217 currency code list (2 if the list doesn't provide that information); the default for percent formatting is the larger of minimumFractionDigits and 0."
+                >Maximum decimals</label>
+                <input
+                  id="maximumFractionDigits"
+                  type="number"
+                  min="0"
+                  max="20"
+                  value="2"
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          Query settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="querySettingsTab"
+          >
+            Query
+          </label>
+          <input
+            id="querySettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="querySettings">
+              <fieldset>
+                <legend>Autorun Query</legend>
+                <label
+                  for="autoRunQuery"
+                  title="When enabled, the pivot table will update automatically after modifying the query. When disabled, you have to explicitly hit the execute button."
+                >Enabled</label>
+                <input
+                  id="autoRunQuery"
+                  type="checkbox"
+                />
+                <label
+                  for="autoRunQueryTimeout"
+                  title="The number of milliseconds to wait after a change to the query to auto-run it."
+                >Timeout (ms)</label>
+                <input
+                  id="autoRunQueryTimeout"
+                  type="number"
+                  step="1"
+                  min="0"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Filter</legend>
+                <label
+                  title="How many milliseconds to wait to search for filter values."
+                  for="filterSearchAutoQueryTimeoutInMilliseconds"
+                >Search timeout (ms)</label>
+                <input
+                  id="filterSearchAutoQueryTimeoutInMilliseconds"
+                  min="1"
+                  type="number"
+                  step="1"
+                />
+                <label
+                  title="How many filter values to fetch."
+                  for="filterValuePicklistPageSize"
+                >Picklist Pagesize</label>
+                <input
+                  id="filterValuePicklistPageSize"
+                  type="number"
+                  min="1"
+                  step="1"
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          Pivot Table
+        -->
+        <div>
+          <label
+            role="tab"
+            for="pivotSettingsTab"
+          >
+            Pivot Table
+          </label>
+          <input
+            id="pivotSettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="pivotSettings">
+              <fieldset>
+                <legend>Columns</legend>
+                <label
+                  for="maxCellWidth"
+                  title="The maximum string length to consider when sizing pivot table cells and headers"
+                >Max cellwidth (ch)</label>
+                <input
+                  id="maxCellWidth"
+                  title="The maximum string length to consider when sizing pivot table cells and headers"
+                  type="number"
+                  min="1"
+                  max="256"
+                  value="30"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Repeating Values</legend>
+                <label
+                  for="hideRepeatingAxisValues"
+                  title="Uncheck to always show all axis values; check to hide repeated values."
+                >Hide repeating axis values</label>
+                <input 
+                  id="hideRepeatingAxisValues"
+                  title="Uncheck to always show all axis values; check to hide repeated values."
+                  type="checkbox"
+                />
+                <label
+                  for="dittoMark"
+                  title="A symbol to indicate a repeated value."
+                >Ditto mark</label>
+                <input 
+                  id="dittoMark"
+                  list="commonDittoMarks"
+                  size="6"
+                  type="text"
+                  title="A symbol to indicate a repeated value."
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Totals</legend>
+                <label
+                  for="totalsString"
+                  title="The string to use for displaying totals"
+                >Totals label</label>
+                <input
+                  id="totalsString"
+                  type="text"
+                  title="The string to use for displaying totals"
+                />
+                <label
+                  for="totalsPosition"
+                  title="Whether Totals are shown before or after the items"
+                >Totals Position</label>
+                <select
+                  id="totalsPosition"
+                  title="Whether Totals are shown before or after the items"
+                >
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend>Appearance</legend>
+                <label
+                  title="Enable to let alternating rows have a slightly different color. This makes easier to visually identify a cell's row headers."
+                  for="alternatingRowColors"
+                >Alternating Row Colors</label>
+                <input type="checkbox" id="alternatingRowColors"/>
+                <label
+                  title="Enable this to create a highlight effect when hovering the mouse pointer over a row. This makes it easier to identify a cell's row headers."
+                  for="hoverRowHighlight"
+                >Hover Row Highlighting</label>
+                <input type="checkbox" id="hoverRowHighlight"/>
+                <label
+                  title="Enable this to create a highlight effect when hovering the mouse pointer over a column. This makes it easier to identify a cell's column headers."
+                  for="hoverColumnHighlight"
+                >Hover Column Highlighting</label>
+                <input type="checkbox" id="hoverColumnHighlight"/>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          Theme
+        -->
+        <div>
+          <label
+            role="tab"
+            for="themeSettingsTab"
+          >
+            Theme
+          </label>
+          <input
+            id="themeSettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="themeSettings">
+              <label for="themes">Themes</label>
+              <select
+                id="themes"
+                onchange="Theme.applyTheme(this.selectedIndex)"
+                data-value-getter="new Function('control', 'settings', 'return JSON.parse(control.value);')"
+                data-value-setter="new Function('control', 'value', 'settings', 'control.value = JSON.stringify(value);')"
+              >
+              </select>
+            </form>
+          </div>
+        </div>
+      </section>
+      <footer role="toolbar">
+        <button
+          id="settingsDialogOkButton"
+          autofocus="true"
+          popovertarget="settingsDialog"
+          popovertargetaction="hide"
+        >Ok</button>
+        <button
+          id="settingsDialogResetButton"
+        >Reset All</button>
+        <button
+          id="settingsDialogCancelButton"
+          popovertarget="settingsDialog"
+          popovertargetaction="hide"
+        >Cancel</button>
+      </footer>
+    </dialog>
+
+    <dialog
+      id="promptUi"
+      draggable="true"
+      aria-labelledby="promptDialogTitle"
+      popover="manual"
+    >
+      <header>
+        <h3 id="promptDialogTitle"></h3>
+      </header>
+      <section>
+      </section>
+      <footer role="toolbar">
+        <form id="promptUiForm" method="dialog">
+        </form>
+        <button
+          id="promptDialogAcceptButton"
+          form="promptUiForm"
+          autofocus="true" 
+          popovertarget="promptUi"
+          popovertargetaction="hide"
+        >Yes</button>
+        <button
+          id="promptDialogRejectButton"
+          form="promptUiForm"
+          popovertarget="promptUi"
+          popovertargetaction="hide"
+        >No</button>
+      </footer>
+    </dialog>
+
+    <dialog
+      id="aboutDialog"
+      draggable="true"
+      aria-labelledby="aboutDialogTitle"
+      popover="auto"
+    >
+      <header>
+        <h3 id="aboutDialogTitle">About Huey...</h3>
+      </header>
+      <section>
+        <p >
+          Relational OLAP powered by DuckDB-WASM 
+        </p>
+        <ul>
+          <li id="hueyVersion" translate="no"></li>
+          <li>
+            <a href="https://duckdb.org/" target="_duckdb" id="duckdbVersionLabel" translate="no"></a>
+            <img id="duckdb-version-specific-avatar" width="16px" alt="" />
+          </li>
+          <li><a id="duckDbLibraryUrl" target="_duckdb-jsdelivr" translate="no"></a></li>
+          <li><a id="tablerIconsUrl" href="https://tabler.io/icons" target="_tabler-icons" translate="no"></a></li>
+          <li><a href="https://github.com/rpbouman/huey/" target="_github">Huey Github Repository</a></li>
+          <li><a href="https://github.com/rpbouman/huey/issues/new" target="_github">Bug report/feature request...</a></li>
+          <li><a href="https://raw.githubusercontent.com/rpbouman/huey/dev/LICENSE" target="_github">License (MIT)</a></li>
+          <li><a href="https://github.com/sponsors/rpbouman?o=nsm&sc=t" target="_github_sponsor">Become a sponsor...</a></li>
+        </ul>
+        <p style="font-size: smaller">Created and maintained by Roland.Bouman@gmail.com</p>
+        <p><a href="https://www.paypal.com/donate/?hosted_button_id=776A6UNZ35M84" target="_donate">Donations help to keep Huey in good shape!</a></p>
+      </section>
+      <footer role="toolbar">
+        <button
+          id="aboutDialogOkButton"
+          autofocus="true"
+          popovertarget="aboutDialog"
+          popovertargetaction="hide"
+        >Ok</button>
+        <button
+          title="Donate and help to keep Huey developed and maintained"
+          onclick="window.open('https://www.paypal.com/donate/?hosted_button_id=776A6UNZ35M84', '_donate')"
+          style="width: 7em"
+        >Donate...</button>
+      </footer>
+    </dialog>
+
+    <!-- this template is to present datasources in a prompt dialog and is used by the PageStateManager -->
+    <template id="datasource-menu-item">
+      <li 
+        role="menuitem" 
+        data-nodetype="datasource" 
+        data-datasourcetype=""
+        data-datasource-id=""
+        popovertarget="dataSourceMenu"
+      >
+        <input 
+          type="radio" 
+          name="compatibleDatasources"
+        />
+        <button
+          popovertarget="dataSourceMenu"
+        ></button>
+        <label for="datasourceMenu-${index}"></label>
+      </li>
+    </template>
+    
+    <dialog
+      id="datasourceSettingsDialog"
+      draggable="true"      
+      aria-labelledby="datasourceSettingsDialogTitle"
+      popover="auto"
+    >
+      <header>
+        <h3 id="datasourceSettingsDialogTitle">Datasource Settings</h3>
+        <form>
+          <fieldset>
+            <legend>General properties</legend>
+            <label for="datasourceType">Type</label>
+            <output id="datasourceType"></output>
+            <label for="datasourceName">Name</label>
+            <output id="datasourceName"></output>
+          </fieldset>
+          <fieldset>
+            <legend>Datasource Type properties</legend>
+            <label for="datasourceFileType">File Type</label>
+            <output id="datasourceFileType"></output>
+            <label for="datasourceFileSize">File Size</label>
+            <output id="datasourceFileSize"></output>
+          </fieldset>
+        </form>
+      </header>
+      <section role="tablist">
+        <!--
+          columns
+        -->
+        <div>
+          <label
+            role="tab"
+            for="datasourceSettingsDialogColumnsTab"
+          >
+            Columns
+          </label>
+          <input
+            id="datasourceSettingsDialogColumnsTab"
+            type="radio"
+            name="datasourceSettingsTabs"
+          />
+          <div role="tabpanel">
+          </div>
+        </div>
+
+        <!--
+          CSV reader settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="datasourceSettingsDialogCsvReaderParametersTab"
+          >
+            CSV Reader Parameters
+          </label>
+          <input
+            id="datasourceSettingsDialogCsvReaderParametersTab"
+            type="radio"
+            name="datasourceSettingsTabs"
+            checked="true"
+          />
+          <div role="tabpanel">
+            <menu role="toolbar">
+              <button id="csvReaderRestoreDefaults">Restore defaults</button>
+              <button id="csvReaderDetectSettings">Detect settings</button>
+            </menu>
+            <form>
+              <fieldset>
+                <legend>Auto-detect</legend>
+                <label for="csvReaderAutoDetect" title="Enables auto detection of CSV parameters.">Auto-detect Options?</label>
+                <input
+                  id="csvReaderAutoDetect"
+                  type="checkbox"
+                  title="Enables auto detection of CSV parameters."
+                />
+                <label for="csvReaderSampleSize" title="The number of sample rows for auto detection of parameters. Default: 20480">Sample size</label>
+                <input
+                  id="csvReaderSampleSize"
+                  type="number"
+                  min="0"
+                  title="The number of sample rows for auto detection of parameters. Default: 20480"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Limits &amp; Sizes</legend>
+                <label for="csvReaderSkip" title="The number of lines at the top of the file to skip. Default: 0">Skip lines</label>
+                <input
+                  id="csvReaderSkip"
+                  type="number"
+                  min="0"
+                  title="The number of lines at the top of the file to skip. Default: 0"
+                />
+                <label for="csvReaderMaxLineSize" title="The maximum line size in bytes. Default: 2097152">Maximum line size</label>
+                <input
+                  id="csvReaderMaxLineSize"
+                  type="number"
+                  min="0"
+                  title="The maximum line size in bytes. Default: 2097152"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Data Types</legend>
+                <label for="csvReaderAllVarchar" title="Skip type detection and assume all columns to be of type VARCHAR.">All <code translate="no">VARCHAR</code></label>
+                <input
+                  id="csvReaderAllVarchar"
+                  type="checkbox"
+                  title="Skip type detection and assume all columns to be of type VARCHAR."
+                />
+                <label for="csvReaderAutoTypeCandidates" title="The types that the sniffer considers when detecting column types. VARCHAR is always implied as fallback.">Type Candidates</label>
+                <select
+                  id="csvReaderAutoTypeCandidates"
+                  multiple="true"
+                  title="The types that the sniffer considers when detecting column types. VARCHAR is always implied as fallback."
+                >
+                  <option label="BIGINT" value="BIGINT" />
+                  <option label="BOOLEAN" value="BOOLEAN" />
+                  <option label="DATE" value="DATE" />
+                  <option label="FLOAT" value="FLOAT" />
+                  <option label="DOUBLE" value="DOUBLE" />
+                  <option label="INTEGER" value="INTEGER" />
+                  <option label="SMALLINT" value="SMALLINT" />
+                  <option label="TIME" value="TIME" />
+                  <option label="TIMESTAMP" value="TIMESTAMP" />
+                  <option label="TINYINT" value="TINYINT" />
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend>Columns</legend>
+                <label for="csvReaderHeader" title="Specifies that the file contains a header line with the names of each column in the file.">Has Column Headers?</label>
+                <input
+                  id="csvReaderHeader"
+                  type="checkbox"
+                  title="Specifies that the file contains a header line with the names of each column in the file."
+                />
+                <label for="csvReaderNormalizeNames" title="Specifies whether or not column names should be normalized, removing any non-alphanumeric characters from them.">Normalize Column Names?</label>
+                <input
+                  id="csvReaderNormalizeNames"
+                  type="checkbox"
+                  title="Specifies whether or not column names should be normalized, removing any non-alphanumeric characters from them."
+                />
+                <label for="csvReaderNullPadding" title="If this option is enabled, when a row lacks columns, it will pad the remaining columns on the right with null values."><code>NULL</code>-pad missing columns?</label>
+                <input
+                  id="csvReaderNullPadding"
+                  type="checkbox"
+                  title="If this option is enabled, when a row lacks columns, it will pad the remaining columns on the right with null values."
+                />
+                <label for="csvReaderFileName" title="Whether to include a filename column in the result.">Add filename column?</label>
+                <input
+                  id="csvReaderFileName"
+                  type="checkbox"
+                  title="Whether to include a filename column in the result."
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Delimiters</legend>
+                <label for="csvReaderDelim" title="The delimiter character separating the values within each line.">Field Delimiter</label>
+                <input
+                  id="csvReaderDelim"
+                  type="text"
+                  value=""
+                  length="1"
+                  list="commonCsvFieldDelimiters"
+                  title="The delimiter character separating the values within each line."
+                />
+                <label for="csvReaderNewLine" title="Set the new line character(s) in the file.">Row Delimiter</label>
+                <select
+                  id="csvReaderNewLine"
+                  title="Set the new line character(s) in the file."
+                >
+                  <option value="" title="Automatically detect the row delimiter">(auto)</option>
+                  <option value="\r" title="Carriage Return" translate="no">CR</option>
+                  <option value="\r\n" title="Carriage Return/Linefeed pair" translate="no">CRLF</option>
+                  <option value="\n" title="Linefeed" translate="no">LF</option>
+                </select>
+                <label for="csvReaderQuote" title="The string used to quote values">Quote Character</label>
+                <input
+                  id="csvReaderQuote"
+                  type="text" value=""
+                  length="1"
+                  list="commonCsvQuoteCharacters"
+                  title="The string used to quote values"
+                />
+                <label for="csvReaderEscape" title="The character used to precede the quote character to denote a literal occurrence of the character used as quote">Escape Character</label>
+                <input
+                  id="csvReaderEscape"
+                  type="text"
+                  value=""
+                  length="1"
+                  list="commonCsvEscapeCharacters"
+                  title="The character used to precede the quote character to denote a literal occurrence of the character used as quote"
+                />
+                <label for="csvReaderAllowQuotedNulls" title="Allow conversion of quoted values to NULL?">Quoted <code>NULL</code>s</label>
+                <input
+                  id="csvReaderAllowQuotedNulls"
+                  type="checkbox"
+                  title="Allow conversion of quoted values to NULL?"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Formats</legend>
+                <label for="csvReaderDecimalSeparator" title="The decimal separator for numeric values.">Decimal Separator</label>
+                <input
+                  id="csvReaderDecimalSeparator"
+                  type="text"
+                  value=""
+                  length="1"
+                  title="The decimal separator for numeric values."
+                  list="commonDecimalSeparators"
+                />
+                <label for="csvReaderDateformat" title="The format used to parse dates">Date Format</label>
+                <input
+                  id="csvReaderDateformat"
+                  type="text"
+                  value=""
+                  list="commonDateFormats"
+                  title="The format used to parse dates"
+                />
+                <label for="csvReaderTimestampformat" title="The format to use when parsing timestamps">Timestamp Format</label>
+                <input
+                  id="csvReaderTimestampformat"
+                  type="text"
+                  value=""
+                  list="commonTimestampFormats"
+                  title="The format to use when parsing timestamps"
+                />
+                <label for="csvReaderNullstr" title="A list of strings that represent a NULL value."><code>NULL</code>-strings</label>
+                <input
+                  id="csvReaderNullstr"
+                  type="text"
+                  list="commonCsvNullValueStrings"
+                  title="A list of strings that represent a NULL value."
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          Parquet reader settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="datasourceSettingsDialogParquetReaderParametersTab"
+          >
+            Parquet Reader Parameters
+          </label>
+          <input
+            id="datasourceSettingsDialogParquetReaderParametersTab"
+            type="radio"
+            name="datasourceSettingsTabs"
+            checked="true"
+          />
+          <div role="tabpanel">
+            <form>
+              <fieldset>
+                <legend>Options</legend>
+                <label for="parquetReaderFilename" title="Include a column that specifies which file each row came from.">Filename column</label>
+                <input
+                  id="parquetReaderFilename"
+                  type="checkbox"
+                  title="Include a column that specifies which file each row came from."
+                />
+                <label for="parquetReaderBinaryAsString" title="Handle legacy Parquet files that store binary data without standard type annotations.">Binary as string</label>
+                <input
+                  id="parquetReaderBinaryAsString"
+                  type="checkbox"
+                  title="Handle legacy Parquet files that store binary data without standard type annotations."
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          JSON reader settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="datasourceSettingsDialogJSONReaderParametersTab"
+          >
+            JSON Reader Parameters
+          </label>
+          <input
+            id="datasourceSettingsDialogJSONReaderParametersTab"
+            type="radio"
+            name="datasourceSettingsTabs"
+            checked="true"
+          />
+          <div role="tabpanel">
+            <!-- https://duckdb.org/docs/data/json/loading_json -->
+            <form>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          rejects
+        -->
+        <div>
+          <label
+            role="tab"
+            for="datasourceSettingsDialogCsvReaderRejectsTab"
+          >
+            Rejects
+          </label>
+          <input
+            id="datasourceSettingsDialogCsvReaderRejectsTab"
+            type="radio"
+            name="datasourceSettingsTabs"
+          />
+          <div role="tabpanel">
+            <menu role="toolbar">
+              <button id="csvReaderDownloadRejects">Download</button>
+              <button id="csvReaderClearRejects">Clear</button>
+            </menu>
+            <section style="height: calc( 100% - 40px ) ">
+            </section>
+          </div>
+        </div>
+
+      </section>
+      <footer role="toolbar">
+        <button
+          id="datasourceSettingsDialogOkButton"
+          autofocus="true"
+          popovertarget="datasourceSettingsDialog"
+          popovertargetaction="hide"
+          value="Ok"
+        >Ok</button>
+        <button
+          id="datasourceSettingsDialogCancelButton"
+          popovertarget="datasourceSettingsDialog"
+          popovertargetaction="hide"
+          value="Cancel"
+        >Cancel</button>
+      </footer>
+    </dialog>
+
+    <dialog id="visualizationProgressDialog" role="progressbar">
+      <header>
+        <div class="loader loader-medium">Loading...</div>
+        <div class="timer">
+          <span class="digit"></span>
+          <span class="digit"></span>
+          <span class="digit"></span>
+          <span class="digit"></span>
+        </div>
+      </header>
+      <section>
+        <!-- TODO: actual progress information -->
+      </section>
+      <footer>
+        <button id="cancelQueryButton">Cancel</button>
+      </footer>
+    </dialog>
+
+    <menu
+      role="menu"
+      id="pivotTableContextMenu"
+      popover="auto"
+    >
+      <li role="menuitem">
+        <menu
+          id="copySubmenu"
+          role="menu"
+          popover="auto"
+        >
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyCell"
+              title="Copy the value of this cell to the clipboard"
+            >
+              <span>Copy Cell Value</span>
+              <button id="pivotTableContextMenuItemCopyCell">Copy Cell Value</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyColumn"
+              title="Copy the column header values to the clipboard"
+            >
+              <span>Copy Column Headings</span>
+              <button id="pivotTableContextMenuItemCopyColumn">Copy Column Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyColumnTuples"
+              title="Copy the header values for each column to the clipboard"
+            >
+              <span>Copy All Column Headings</span>
+              <button id="pivotTableContextMenuItemCopyColumnTuples">Copy All Column Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyRow"
+              title="Copy the row header values to the clipboard"
+            >
+              <span>Copy Row Headings</span>
+              <button id="pivotTableContextMenuItemCopyRow">Copy Row Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyRowTuples"
+              title="Copy the header values for each row to the clipboard"
+            >
+              <span>Copy All Row Headings</span>
+              <button id="pivotTableContextMenuItemCopyRowTuples">Copy All Row Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyTable"
+              title="Copy the entire pivot table to the clipboard"
+            >
+              <span>Copy Table</span>
+              <button id="pivotTableContextMenuItemCopyTable">Copy Table</button>
+            </label>
+          </li>
+        </menu>
+        <label 
+          for="copySubmenuActivate"
+          title="Menu with copy actions"
+        >
+          <span>Copy</span>
+          <button
+            id="copySubmenuActivate"
+            popovertarget="copySubmenu"
+          >
+          </button>
+        </label>
+      </li>
+      <li role="menuitem">
+        <label 
+          for="filterSubmenuActivate"
+          title="Menu with filter actions"
+        >
+          <span>Filter</span>
+          <button
+            id="filterSubmenuActivate"
+            popovertarget="filterSubmenu"
+          >
+          </button>
+        </label>
+        <menu
+          id="filterSubmenu"
+          role="menu"
+          popover="auto"
+        >
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemFilterIncludeValue"
+              title="Add this value in an include filter"
+            >
+              <span>Include Value</span>
+              <button id="pivotTableContextMenuItemFilterIncludeValue">Include Value</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemFilterExcludeValue"
+              title="Add this value in an exclude filter"
+            >
+              <span>Exclude Value</span>
+              <button id="pivotTableContextMenuItemFilterExcludeValue">Exclude Value</button>
+            </label>
+          </li>
+        </menu>
+      </li>
+    </menu>
+
+    <template id="pivotTableUiTemplate">
+      <!-- pivotTableUi: outmost container of the pivot table-->
+      <div
+        id=""
+        class="pivotTableUiContainer"
+        style="
+          flex-grow: 1;
+          width: 100%;
+          height: 100%;
+          border-width: 1px;
+          border-color: var( --huey-dark-border-color );
+          border-top-style: solid;
+        "
+        aria-busy="false"
+        data-needs-update="false"
+      >
+        <div class="pivotTableUiInnerContainer">
+          <!-- pivotTableColumnsSizer: sizer to generate the horizontal scrollbar -->
+          <div class="pivotTableUiSizer pivotTableUiHorizontalSizer"></div>
+          <!-- pivotTableColumnsSizer: sizer to generate the vertical scrollbar -->
+          <div class="pivotTableUiSizer pivotTableUiVerticalSizer"></div>
+
+          <!-- the actual table structure -->
+          <div class="pivotTableUiTable">
+            <div class="pivotTableUiTableHeader"></div>
+            <div class="pivotTableUiTableBody"></div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template id="queryUiTemplate">
+      <div
+        id=""
+        class="queryUi"
+        data-cellheadersaxis="columns"
+      >
+      </div>
+    </template>
+
+    <template id="queryUiAxis">
+      <section>
+        <header>
+          <label><button id="-axis-primary-action"></button></label>
+          <h1></h1>
+        </header>
+        <ol>
+        </ol>
+        <footer>
+          <label title="Remove all items from this axis"><button id="-clear-axis">Clear axis</button></label>
+        </footer>
+      </section>
+    </template>
+
+    <template id="queryUiAxisItem">
+      <li draggable="true">
+        <label title="Move this item to the left">
+          <button id="-move-left">Move this item to the left</button>
+        </label>
+        <span></span>
+        <menu>
+          <label title="Calculate totals for this level">
+            <input id="-toggle-totals" type="checkbox"/>
+          </label>
+          <label title="Move this item to the other axis">
+            <button id="-move-to-other-axis">Move this item to the other axis</button>
+          </label>
+          <label title="Remove this item from the axis">
+            <button id="-remove-from-axis">Remove this item from the axis</button>
+          </label>
+        </menu>
+        <label title="Move this item to the right">
+          <button id="-move-right">Move this item to the right</button>
+        </label>
+      </li>
+    </template>
+
+    <template id="queryUiFilterAxisItemValue">
+      <li role="menuitem">
+        <label 
+          title="Use the checkbox to enable/disable this condition"
+          for=""
+        >
+          <span></span>
+          <input
+            id=""
+            type="checkbox"
+          />
+        </label>
+        <label 
+          title="Remove this filter condition"
+          for=""
+        >
+          <button></button>
+        </label>
+      </li>
+    </template>
+
+    <template id="queryUiFilterAxisItem">
+      <li draggable="true">
+        <label title="Move this item to the left">
+          <button id="-move-left">Move this item to the left</button>
+        </label>
+        <details>
+          <summary>
+            <span></span>
+          </summary>
+          <header title="Filter condition type"></header>
+          <ol role="menu"></ol>
+        </details>
+        <menu>
+          <label title="Click to open the filter dialog to edit the filter.">
+            <button id="-edit-filter-condition">Click to open the filter dialog to edit the filter.</button>
+          </label>
+          <label title="Remove this item from the axis">
+            <button id="-remove-from-axis">Remove this item from the axis</button>
+          </label>
+        </menu>
+        <label title="Move this item to the right">
+          <button id="-move-right">Move this item to the right</button>
+        </label>
+      </li>
+    </template>
+
+    <main
+      id="layout"
+      class="layout"
+    >
+      <menu role="toolbar">
+        <label for="uploader" title="Register local data files to explore their contents with Huey">
+          <input
+            id="uploader"
+            type="file"
+            multiple="true"
+            accept=".csv,.duckdb,.json,.jsonl,.parquet,.sql,.sqlite,.tsv,.xlsx"
+          />
+        </label>
+        <label for="loadFromUrl" title="Load data from URL">
+          <button
+            id="loadFromUrl"
+          >Data from URL</button>
+        </label>
+        <label for="addRemoteDatasource" title="Connect to a remote dataset (QueryService)">
+          <button
+            id="addRemoteDatasource"
+            type="button"
+          >Remote dataset</button>
+        </label>
+
+        <label for="cloneHueySession" title="Open a new Huey browser tab including the currently loaded datasources and query">
+          <button
+            id="cloneHueySession"
+          >Clone Huey Session</button>
+        </label>
+
+        <label for="runQueryButton" title="Execute Query">
+          <button
+            id="runQueryButton"
+          >Execute Query</button>
+        </label>
+
+        <label
+          for="autoRunQuery"
+          title="Check this if you want to execute the query automatically"
+        >Autorun:</label>
+
+        <label
+          role="menuitem"
+          id="quickQueryMenuLabel"
+          for="quickQueryMenuButton"
+          title="The Quick Query Menu provides easy access to predefined queries for exploring the datasource."
+        >
+          <span>Quick Query</span>
+          <button
+            id="quickQueryMenuButton"
+            popovertarget="quickQueryMenu"
+            popovertargetaction="show"
+          >Quick Query</button>
+          <menu
+            id="quickQueryMenu"
+            role="menu"
+            aria-labelledby="quickQueryMenuLabel"
+            popover="auto"
+          >
+            <li role="menuitem">
+              <label
+                for="quickQueryClearAllButton"
+                title="Clear the query and start a new one."
+              ><span>Clear All</span>
+                <button
+                  id="quickQueryClearAllButton"
+                  title="Clear the query and start a new one."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Clear All</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryFlipAxesButton"
+                title="Flip the rows and columns axes."
+              ><span>Flip Axes</span>
+                <button
+                  id="quickQueryFlipAxesButton"
+                  title="Flip the rows and columns axes."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Flip Axes</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryCellHeadersOnColumnsButton"
+                title="Place the cell headers on the columns axis."
+              ><span>Cell Headers on Columns</span>
+                <button
+                  id="quickQueryCellHeadersOnColumnsButton"
+                  title="Place the cell headers on the columns axis."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Cell Headers on Columns</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryCellHeadersOnRowsButton"
+                title="Place the cell headers on the rows axis."
+              ><span>Cell Headers on Rows</span>
+                <button
+                  id="quickQueryCellHeadersOnRowsButton"
+                  title="Place the cell headers on the rows axis."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Cell Headers on Rows</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryColumnStatisticsButton"
+                title="Get statistics for each column."
+              ><span>Column Statistics</span>
+                <button
+                  id="quickQueryColumnStatisticsButton"
+                  title="Get statistics for each column."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Column Statistics</button>
+              </labe>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryDataPreviewButton"
+                title="Add all columns to the query and preview the data at the detail level."
+              ><span>Data Preview</span>
+                <button
+                  id="quickQueryDataPreviewButton"
+                  title="Add all columns to the query and preview the data at the detail level."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Data Preview</button>
+              </labe>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryDestructuredDataPreviewButton"
+                title="Add scalar columns and STRUCT members to the query and preview the data at the detail level."
+              ><span>Destructured Data Preview</span>
+                <button
+                  id="quickQueryDestructuredDataPreviewButton"
+                  title="Add scalar columns and STRUCT members to the query and preview the data at the detail level."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Destructured Data Preview</button>
+              </labe>
+            </li>
+          </menu>
+        </label>
+
+        <!-- title in the toolbar identifies the currently selected datasource -->
+        <label 
+          role="menuitem"
+          id="currentDatasource"
+          for="currentDatasourceMenuButton"
+          data-current-datasource=""
+          title="Current datasource"
+        >
+          <button 
+            id="currentDatasourceMenuButton" 
+            popovertarget="dataSourceMenu"
+          ></button>
+          <menu
+            id="dataSourceMenu"
+            class="dataSources"
+            role="menu"
+            aria-labelledby="currentDatasourceLabel"
+            popover="auto"
+          >
+            
+          </menu>
+        </label>
+
+        <!-- info about the last executed query -->
+        <label for="queryResultRowsInfo" title="The total number of tuples on the rows axis.">
+          <output id="queryResultRowsInfo"/>
+        </label>
+        <label for="queryResultColumnsInfo" title="The total number of tuples on the columns axis.">
+          <output id="queryResultColumnsInfo"/>
+        </label>
+
+        <label for="queryPerformanceInfo" title="Query and render performance timing.">
+          <output id="queryPerformanceInfo"/>
+        </label>
+
+        <label for="aboutButton" title="About Huey...">
+          <button
+            id="aboutButton"
+            popovertarget="aboutDialog"
+            popovertargetaction="show"
+          >About Huey...</button>
+        </label>
+
+        <label for="settingsButton" title="Open the Huey Settings dialog.">
+          <button
+            id="settingsButton"
+            popovertarget="settingsDialog"
+            popovertargetaction="show"
+          >Settings...</button>
+        </label>
+
+        <label
+          for="exportButton"
+          title="Export &amp; Download queries and/or result data..."
+        >
+          <button
+            id="exportButton"
+            popovertarget="exportDialog"
+            popovertargetaction="show"
+          >Download...</button>
+        </label>
+      </menu>
+
+      <nav
+        role="tablist"
+        id="sidebar"
+        class="resizeHorizontal"
+      >
+        <!-- Datasources tab -->
+        <div>
+          <label
+            for="datasourcesTab"
+            role="tab"
+            title="Files, database tables and so on that provide data you'd like to explore."
+          >Datasources</label>
+          <input
+            id="datasourcesTab"
+            type="radio"
+            name="sidebarTabs"
+            checked="true"
+          />
+          <div
+            role="tabpanel"
+          >
+            <label for="uploader">Drop some files here, or click the Upload button:</label>
+            
+            <template id="dataSourceGroupNodeActionButton">
+              <label
+                class="${class}"
+                for="${id}"
+                title="${title}"
+              >
+                <button id="${id}"></button>
+              </label>
+            </template>
+            
+            <template id="dataSourceNode">
+              <details
+                role="treeitem"
+                data-nodetype="datasource"
+                data-datasourcetype="${datasourceType}"
+                title="${title}"
+              >
+                <summary>
+                  <span class="label i18nIgnore">${caption}</span>
+                </summary>
+              </details>
+            </template>
+            
+            <template id="dataSourceGroupNode">
+              <details
+                role="treeitem"
+                data-nodetype="datasourcegroup"
+                title="${title}"
+                data-grouptype="${group-type}"
+                data-datasourceids="${datasource-list}"
+                open="true"
+              >
+                <summary>
+                  <span class="label">${caption}</span>
+                </summary>
+              </details>
+            </template>
+            
+            <template id="dataSourceSchemaNode">
+              <details
+                role="treeitem"
+                data-nodetype="duckdb_schema"
+                title="${title}"
+                data-grouptype="${group-type}"
+                data-datasourceids="${datasource-list}"
+                data-catalog-name="${catalogName}"
+                data-schema-name="${schemaName}"
+                open="true"
+              >
+                <summary>
+                  <span class="label i18nIgnore">${caption}</span>
+                </summary>
+              </details>
+            </template>
+            
+            <div
+              id="datasourcesUi"
+              role="tree"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Attributes tab -->
+        <div>
+          <label
+            for="attributesTab"
+            role="tab"
+            title="Columns, formulas and aggregates to query and pivot"
+          >Attributes</label>
+          <input
+            id="attributesTab"
+            type="radio"
+            name="sidebarTabs"
+          />
+          <div role="tabpanel">
+            <search
+              id="searchAttributeUi"
+            >
+              <fieldset>
+                <legend id="searchAttributesLabel">Search for Attributes</legend>
+                <input
+                  id="searchAttribute"
+                  type="search"
+                  placeholder="Search by Attribute name"
+                  title="Enter a search term to find matching attributes. You can use % as wildcard to match arbitrary character sequences."
+                  aria-labelledby="searchAttributesLabel"
+                  autofocus="true"
+                />
+              </fieldset>
+            </search>
+
+            <template id="attribute-node">
+              <details role="treeitem" data-nodetype="">
+                <summary>
+                  <span class="label"></span>
+                </summary>
+              </details>
+            </template>
+            
+            <template id="attribute-node-axis-dummybutton">
+              <span class="attributeUiAxisButton" data-axis=""></span>
+            </template>
+            
+            <template id="attribute-node-axis-checkbox">
+              <label 
+                class="attributeUiAxisButton" 
+                data-axis=""
+                data-title-checked=""
+                data-title-unchecked=""
+                title=""
+                for=""
+              >
+                <input type="checkbox"/>
+              </label>
+            </template>
+            
+            <div
+              id="attributeUi"
+              class="attributeUi"
+              style="flex-grow: 1;"
+              role="tree"
+            ></div>
+          </div>
+        </div>
+      </nav>
+
+      <div id="workarea" class="workarea"></div>
+      
+    </main>
+
+  </body>
+</html>
