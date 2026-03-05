@@ -30,6 +30,37 @@ def is_missing_table_error(exc: Exception) -> bool:
     return "table with name" in msg and "does not exist" in msg
 
 
+class QueryCancelHandle:
+    """Thread-safe per-query cancellation handle.
+
+    Register the active DuckDB cursor before query execution and call
+    ``cancel()`` to interrupt only that cursor's query, without affecting
+    other concurrent queries on the shared connection.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._cursor: duckdb.DuckDBPyConnection | None = None
+
+    def _set_cursor(self, cursor: duckdb.DuckDBPyConnection) -> None:
+        with self._lock:
+            self._cursor = cursor
+
+    def _clear_cursor(self) -> None:
+        with self._lock:
+            self._cursor = None
+
+    def cancel(self) -> None:
+        """Interrupt the active DuckDB cursor for this query only."""
+        with self._lock:
+            cur = self._cursor
+        if cur is not None:
+            try:
+                cur.interrupt()
+            except Exception:
+                pass
+
+
 class DuckDBManager:
     """
     Manages a persistent DuckDB connection with thread-safe cursor access.
@@ -144,13 +175,14 @@ class DuckDBManager:
         parameters: tuple[Any, ...] | None = None,
         *,
         dataset_id: str | None = None,
+        cancel_handle: "QueryCancelHandle | None" = None,
     ) -> list[list[Any]]:
         """Execute a SQL query and return rows as list of lists.
 
         Internally delegates to execute_sql_fetchmany to avoid materialising
         the full DuckDB result buffer in a single fetchall() call.
         """
-        return self.execute_sql_fetchmany(sql, parameters, dataset_id=dataset_id)
+        return self.execute_sql_fetchmany(sql, parameters, dataset_id=dataset_id, cancel_handle=cancel_handle)
 
     async def execute_sql_async(
         self,
@@ -158,13 +190,19 @@ class DuckDBManager:
         parameters: tuple[Any, ...] | None = None,
         *,
         dataset_id: str | None = None,
+        cancel_handle: "QueryCancelHandle | None" = None,
     ) -> list[list[Any]]:
-        """Run SQL in a thread pool to avoid blocking the event loop."""
+        """Run SQL in a thread pool to avoid blocking the event loop.
+
+        Pass *cancel_handle* to enable per-query cancellation that does not
+        interfere with other concurrent queries on the shared connection.
+        """
         return await asyncio.to_thread(
             self.execute_sql,
             sql,
             parameters,
             dataset_id=dataset_id,
+            cancel_handle=cancel_handle,
         )
 
     def execute_sql_fetchmany(
@@ -174,14 +212,21 @@ class DuckDBManager:
         *,
         dataset_id: str | None = None,
         batch_size: int = 1000,
+        cancel_handle: "QueryCancelHandle | None" = None,
     ) -> list[list[Any]]:
         """Execute SQL and return rows fetched in bounded batches via fetchmany.
 
         Fetching in controlled chunks avoids materialising the full DuckDB
         result buffer in one call, reducing peak memory pressure for large
         result sets while preserving the same list-of-lists return contract.
+
+        When *cancel_handle* is provided the active cursor is registered on it
+        so that an external caller can interrupt only this query's cursor,
+        leaving other concurrent queries unaffected.
         """
         with self.cursor() as cur:
+            if cancel_handle is not None:
+                cancel_handle._set_cursor(cur)
             try:
                 if parameters:
                     cur.execute(sql, parameters)
@@ -198,6 +243,9 @@ class DuckDBManager:
                 if dataset_id and is_missing_table_error(exc):
                     raise DatasetUnavailableError(dataset_id) from exc
                 raise
+            finally:
+                if cancel_handle is not None:
+                    cancel_handle._clear_cursor()
 
     async def execute_sql_fetchmany_async(
         self,
@@ -206,6 +254,7 @@ class DuckDBManager:
         *,
         dataset_id: str | None = None,
         batch_size: int = 1000,
+        cancel_handle: "QueryCancelHandle | None" = None,
     ) -> list[list[Any]]:
         """Run fetchmany-based SQL execution in a thread pool."""
         return await asyncio.to_thread(
@@ -214,6 +263,7 @@ class DuckDBManager:
             parameters,
             dataset_id=dataset_id,
             batch_size=batch_size,
+            cancel_handle=cancel_handle,
         )
 
     def table_exists(self, table_name: str) -> bool:

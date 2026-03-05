@@ -2,6 +2,8 @@
 
 from fastapi.testclient import TestClient
 
+from server.engine import db_manager
+
 
 def test_query_tuples_returns_results(client: TestClient) -> None:
     body = {
@@ -162,3 +164,24 @@ def test_query_tuples_dataset_not_found(client: TestClient) -> None:
     }
     r = client.post("/query/tuples", json=body)
     assert r.status_code == 404
+
+
+
+def test_tuples_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
+    """Regression guard: /query/tuples must call execute_sql_async exactly once per request."""
+    call_count = {"n": 0}
+    original = db_manager.execute_sql_async
+
+    async def counted(*args, **kwargs):
+        call_count["n"] += 1
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", counted)
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 200
+    assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/tuples, got {call_count['n']}"

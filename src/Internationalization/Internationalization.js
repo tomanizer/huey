@@ -50,7 +50,7 @@ export class Internationalization {
   
   static #getScriptElement(){
     const elementName = 'script';
-    const elementId = 'InterationalizationTexts';
+    const elementId = 'InternationalizationTexts';
     let scripElement = document.querySelector(`${elementName}#${elementId}`);
     if (!scripElement){
       scripElement = document.createElement(elementName);

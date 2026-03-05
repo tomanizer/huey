@@ -70,8 +70,16 @@ class QueryBudget:
         self,
         request: Request,
         coro_factory: Callable[[], Awaitable[Any]],
+        cancel_fn: Callable[[], None] | None = None,
     ) -> tuple[Any, float]:
-        """Execute a coroutine with timeout and disconnect cancellation."""
+        """Execute a coroutine with timeout and disconnect cancellation.
+
+        When *cancel_fn* is supplied it is called instead of
+        ``db_manager.interrupt()`` on timeout or client disconnect.  This
+        allows per-query cursor-level cancellation so that unrelated
+        concurrent queries on the shared DuckDB connection are not
+        interrupted.
+        """
         exec_start = time.perf_counter()
         task = asyncio.create_task(coro_factory())
         disconnect_task = asyncio.create_task(request.is_disconnected())
@@ -84,7 +92,10 @@ class QueryBudget:
                     wait_timeout = deadline - time.perf_counter()
                     if wait_timeout <= 0:
                         task.cancel()
-                        db_manager.interrupt()
+                        if cancel_fn is not None:
+                            cancel_fn()
+                        else:
+                            db_manager.interrupt()
                         raise QueryTimeoutError(timeout)
 
                 done, _ = await asyncio.wait(
@@ -99,13 +110,19 @@ class QueryBudget:
                     return result, execution_ms
                 if disconnect_task in done and disconnect_task.result():
                     task.cancel()
-                    db_manager.interrupt()
+                    if cancel_fn is not None:
+                        cancel_fn()
+                    else:
+                        db_manager.interrupt()
                     raise QueryCancelledError()
                 if disconnect_task in done and not disconnect_task.result():
                     disconnect_task = asyncio.create_task(request.is_disconnected())
         except asyncio.TimeoutError:
             task.cancel()
-            db_manager.interrupt()
+            if cancel_fn is not None:
+                cancel_fn()
+            else:
+                db_manager.interrupt()
             raise QueryTimeoutError(self._timeout_seconds)
         finally:
             if not disconnect_task.done():

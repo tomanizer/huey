@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.config import get_settings
+from server.engine import db_manager
 
 
 def test_query_cells_returns_aggregated_data(client: TestClient) -> None:
@@ -132,3 +133,29 @@ def test_query_cells_window_too_large_returns_error(client: TestClient, monkeypa
     assert r.status_code == 400
     data = r.json()
     assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
+
+
+def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
+    """Regression guard: /query/cells must call execute_sql_async exactly once per request."""
+    call_count = {"n": 0}
+    original = db_manager.execute_sql_async
+
+    async def counted(*args, **kwargs):
+        call_count["n"] += 1
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", counted)
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            },
+        },
+    }
+    r = client.post("/query/cells", json=body)
+    assert r.status_code == 200
+    assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/cells, got {call_count['n']}"
