@@ -4,6 +4,7 @@ export class ContextMenu {
   
   #menuId = undefined;
   #targetElement = undefined;
+  #focusOrigin = undefined;
   
   constructor(menuHost, menuId){
     this.#menuId = menuId;
@@ -34,6 +35,13 @@ export class ContextMenu {
     // initialize the items in the context menu so the context menu is closed when an item is activated.
     const dom = this.getDom();
     this.#initMenuItems(dom, menuHost);
+    dom.addEventListener('keydown', this.#handleMenuKeyDown.bind(this));
+    dom.addEventListener('beforetoggle', (event) =>{
+      if (event.newState !== 'closed') {
+        return;
+      }
+      this.#restoreFocus();
+    });
   }
   
   #initMenuItems(dom, menuHost){
@@ -81,11 +89,88 @@ export class ContextMenu {
     });
   }
 
+  #getMenuItems(){
+    const dom = this.getDom();
+    const menuItems = dom.querySelectorAll(':scope > li[role=menuitem] > label > button');
+    return Array.from(menuItems).filter((menuItem) =>{
+      return menuItem.disabled !== true;
+    });
+  }
+
+  #focusMenuItem(index){
+    const menuItems = this.#getMenuItems();
+    if (!menuItems.length) {
+      return;
+    }
+    const correctedIndex = ((index % menuItems.length) + menuItems.length) % menuItems.length;
+    menuItems[correctedIndex].focus();
+  }
+
+  #focusFirstMenuItem(){
+    this.#focusMenuItem(0);
+  }
+
+  #restoreFocus(){
+    const focusOrigin = this.#focusOrigin;
+    this.#focusOrigin = undefined;
+    if (!focusOrigin) {
+      return;
+    }
+    if (typeof focusOrigin.focus === 'function') {
+      focusOrigin.focus();
+    }
+  }
+
+  #handleMenuKeyDown(event){
+    const dom = this.getDom();
+    if (!dom.matches(':popover-open')) {
+      return;
+    }
+
+    const menuItems = this.#getMenuItems();
+    if (!menuItems.length) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    const activeIndex = menuItems.indexOf(activeElement);
+    switch (event.key){
+      case 'ArrowDown':
+        event.preventDefault();
+        this.#focusMenuItem(activeIndex + 1);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.#focusMenuItem(activeIndex <= 0 ? menuItems.length - 1 : activeIndex - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        if (activeIndex === -1) {
+          return;
+        }
+        event.preventDefault();
+        menuItems[activeIndex].click();
+        break;
+      case 'Escape':
+        event.preventDefault();
+        dom.hidePopover();
+        this.#restoreFocus();
+        break;
+    }
+  }
+
   // show the popover at the coordinates of the initiating contextmenu event.
   #showPopover(event){
     const body = document.body;
     const dom = this.getDom();
         
+    const targetElement = event.target instanceof HTMLElement ? event.target : undefined;
+    this.#targetElement = targetElement;
+    this.#focusOrigin = this.#targetElement;
+    if (this.#focusOrigin && !this.#focusOrigin.hasAttribute('tabindex')) {
+      this.#focusOrigin.setAttribute('tabindex', '-1');
+    }
+
     dom.showPopover();
 
     const width = dom.clientWidth;
@@ -112,6 +197,7 @@ export class ContextMenu {
       }
     }
     dom.style.top = top  + 'px';
+    this.#focusFirstMenuItem();
   }
   
   //

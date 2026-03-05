@@ -1,5 +1,7 @@
 import { byId, escapeHtmlText } from '../util/dom/dom.js';
 
+let errorDialogFocusOrigin;
+
 export function getDataFromError(error){
   const newlineRegex = /\r\n|[\r\n]/g;
   
@@ -67,11 +69,19 @@ export function showErrorDialog(config){
   errorDialogStack.textContent = details;
 
   const errorDialog = byId('errorDialog');
+  errorDialogFocusOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
   errorDialog.showModal();
+  byId('errorDialogOkButton').focus();
 }
 
 function initErrorDialog(){
   const errorDialog = byId('errorDialog');
+  errorDialog.addEventListener('close', () =>{
+    if (errorDialogFocusOrigin && typeof errorDialogFocusOrigin.focus === 'function') {
+      errorDialogFocusOrigin.focus();
+    }
+    errorDialogFocusOrigin = undefined;
+  });
   byId('errorDialogOkButton').addEventListener('click', (event) =>{
     event.cancelBubble = true;
     errorDialog.close();
