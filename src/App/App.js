@@ -21,14 +21,6 @@ import { initQuickQueryMenu } from '../QuickQueryMenu/QuickQueryMenu.js';
 import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
 import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
 import { analyzeDatasource } from './analyzeDatasource.js';
-import { Theme } from '../Theme/Theme.js';
-import duckdbLogoUrl from '../spinner/DuckDB_Logo-horizontal.svg';
-
-window.Theme = Theme;
-const localHostnames = new Set(['localhost', '127.0.0.1', '::1']);
-if (localHostnames.has(location.hostname)) {
-  window.showErrorDialog = showErrorDialog;
-}
 
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
 
@@ -93,11 +85,16 @@ export function initDuckdbVersion(){
     duckdbVersionLabel.textContent = `DuckDB ${version}, API: ${api}`;
     
     const duckdbAvatar = byId('duckdb-version-specific-avatar');
-    duckdbAvatar.src = duckdbLogoUrl;
+    const duckdbVersionParts = /v(\d+)\.(\d+).(\d)/.exec(version);
+    duckdbAvatar.src = `https://duckdb.org/images/release-icons/${duckdbVersionParts[1]}.${duckdbVersionParts[2]}.0.svg`
   })
-  .catch(() =>{
-    console.error(`Error fetching duckdb version info.`);
-  })
+  .catch((err) => {
+    console.error('Error fetching duckdb version info.', err);
+    const duckdbVersionLabel = byId('duckdbVersionLabel');
+    if (duckdbVersionLabel) {
+      duckdbVersionLabel.textContent = 'DuckDB version unknown';
+    }
+  });
 }
 
 export { analyzeDatasource } from './analyzeDatasource.js';
@@ -147,29 +144,29 @@ export function initApplication(){
     pageStateManager.setPageState(currentRoute);
   }
 
-  bufferEvents(queryModel, 'change', (event, count) =>{
+  bufferEvents(queryModel, 'change', (event, count) => {
     if (count !== undefined) {
       return;
     }
+    try {
+      const eventData = event.eventData;
+      let currentDatasourceCaption, datasource = queryModel.getDatasource();
+      if (datasource) {
+        currentDatasourceCaption = DataSourcesUi.getCaptionForDatasource(datasource);
+      } else {
+        currentDatasourceCaption = '';
+      }
+      byId('currentDatasource').setAttribute('data-current-datasource', currentDatasourceCaption);
+      byId('currentDatasource').firstChild.data = currentDatasourceCaption;
 
-    console.log(`buffered Events, event:`);
-    const eventData = event.eventData;
-    console.log(eventData);
+      const title = ExportUi.generateExportTitle(queryModel);
+      document.title = 'Huey - ' + title;
 
-    let currentDatasourceCaption, datasource = queryModel.getDatasource();
-    if (datasource) {
-      currentDatasourceCaption = DataSourcesUi.getCaptionForDatasource(datasource);
+      Routing.updateRouteFromQueryModel(queryModel);
+    } catch (err) {
+      console.error('Error handling buffered query change event', err);
+      showErrorDialog({ title: 'Query update failed', description: err?.message || String(err) });
     }
-    else {
-      currentDatasourceCaption = '';
-    }
-    byId('currentDatasource').setAttribute('data-current-datasource', currentDatasourceCaption);
-    byId('currentDatasource').firstChild.data = currentDatasourceCaption;
-
-    const title = ExportUi.generateExportTitle(queryModel);
-    document.title = 'Huey - ' + title;
-
-    Routing.updateRouteFromQueryModel(queryModel);
   }, null, 50);
 
   const tupleNumberFormatter = createNumberFormatter(0).format;
