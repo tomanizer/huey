@@ -38,7 +38,20 @@ export class PromptUi {
       const ariaLabel = promptDialog.querySelector('#' + promptDialog.getAttribute('aria-labelledby'))
       ariaLabel.textContent = config.title;
       const section = promptDialog.querySelector('section')
-      section.innerHTML = config.contents;
+      section.replaceChildren();
+      const contents = config.contents;
+      if (typeof contents === 'string') {
+        if (config.allowUnsafeHtml === true) {
+          section.insertAdjacentHTML('beforeend', contents);
+        }
+        else {
+          section.textContent = contents;
+        }
+      }
+      else
+      if (contents && typeof contents === 'object' && typeof contents.nodeType === 'number') {
+        section.appendChild(contents);
+      }
 
       const closeHandler = function(event){
         byId('promptUi').removeEventListener('close', closeHandler);

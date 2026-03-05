@@ -24,6 +24,10 @@ export default [
       'no-empty': 'off',
       'no-redeclare': 'off',
       'no-unused-labels': 'off',
+      'no-restricted-properties': ['warn', {
+        property: 'innerHTML',
+        message: 'Prefer textContent, replaceChildren(), or safe DOM creation over innerHTML.'
+      }],
     },
     languageOptions: {
       ecmaVersion: 2022,
