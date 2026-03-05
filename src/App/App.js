@@ -20,9 +20,11 @@ import { initSessionCloner } from '../SessionCloner/SessionCloner.js';
 import { initQuickQueryMenu } from '../QuickQueryMenu/QuickQueryMenu.js';
 import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
 import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
+import { Theme } from '../Theme/Theme.js';
 import { analyzeDatasource } from './analyzeDatasource.js';
 
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
+window.Theme = Theme;
 
 export function getDuckDbLogLevel(duckdb){
   let loglevel;
