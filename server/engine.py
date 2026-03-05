@@ -145,18 +145,12 @@ class DuckDBManager:
         *,
         dataset_id: str | None = None,
     ) -> list[list[Any]]:
-        """Execute a SQL query and return rows as list of lists."""
-        with self.cursor() as cur:
-            try:
-                if parameters:
-                    result = cur.execute(sql, parameters).fetchall()
-                else:
-                    result = cur.execute(sql).fetchall()
-                return [list(row) for row in result]
-            except Exception as exc:
-                if dataset_id and is_missing_table_error(exc):
-                    raise DatasetUnavailableError(dataset_id) from exc
-                raise
+        """Execute a SQL query and return rows as list of lists.
+
+        Internally delegates to execute_sql_fetchmany to avoid materialising
+        the full DuckDB result buffer in a single fetchall() call.
+        """
+        return self.execute_sql_fetchmany(sql, parameters, dataset_id=dataset_id)
 
     async def execute_sql_async(
         self,

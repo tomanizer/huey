@@ -64,8 +64,8 @@ def test_queue_depth_rejects_overflow(
     """When queue depth is exceeded, subsequent requests fail fast."""
     settings_override(max_concurrent_queries=1, max_query_queue_depth=0, query_timeout_seconds=5)
 
-    original_execute = db_manager.execute_sql_fetchmany_async
-    # Signal set when the first request has entered execute_sql_fetchmany_async, meaning
+    original_execute = db_manager.execute_sql_async
+    # Signal set when the first request has entered execute_sql_async, meaning
     # the budget semaphore is already acquired and held.
     in_execute = threading.Event()
 
@@ -74,7 +74,7 @@ def test_queue_depth_rejects_overflow(
         await asyncio.sleep(1)
         return await original_execute(sql, params, **kwargs)
 
-    monkeypatch.setattr(db_manager, "execute_sql_fetchmany_async", slow_execute)
+    monkeypatch.setattr(db_manager, "execute_sql_async", slow_execute)
 
     request_body = {
         "dataset_id": "trades_v1",

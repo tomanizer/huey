@@ -82,11 +82,10 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        rows = await db_manager.execute_sql_fetchmany_async(
+        rows = await db_manager.execute_sql_async(
             sql,
             tuple(params) if params else None,
             dataset_id=body.dataset_id,
-            batch_size=settings.query_fetchmany_batch_size,
         )
         if rows:
             total_count = int(rows[0][-1])
@@ -97,11 +96,10 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
 
         if total_count == 0 and paging.offset > 0:
             count_sql, count_params = build_tuples_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-            count_rows = await db_manager.execute_sql_fetchmany_async(
+            count_rows = await db_manager.execute_sql_async(
                 count_sql,
                 tuple(count_params) if count_params else None,
                 dataset_id=body.dataset_id,
-                batch_size=settings.query_fetchmany_batch_size,
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
@@ -227,11 +225,10 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        rows = await db_manager.execute_sql_fetchmany_async(
+        rows = await db_manager.execute_sql_async(
             sql,
             tuple(params) if params else None,
             dataset_id=body.dataset_id,
-            batch_size=settings.query_fetchmany_batch_size,
         )
         duration_ms = (time.perf_counter() - start) * 1000
         cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
@@ -312,11 +309,10 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-        rows = await db_manager.execute_sql_fetchmany_async(
+        rows = await db_manager.execute_sql_async(
             sql,
             tuple(params) if params else None,
             dataset_id=body.dataset_id,
-            batch_size=settings.query_fetchmany_batch_size,
         )
         if rows:
             total_count = int(rows[0][-1])
@@ -327,11 +323,10 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
 
         if total_count == 0 and paging.offset > 0:
             count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
-            count_rows = await db_manager.execute_sql_fetchmany_async(
+            count_rows = await db_manager.execute_sql_async(
                 count_sql,
                 tuple(count_params) if count_params else None,
                 dataset_id=body.dataset_id,
-                batch_size=settings.query_fetchmany_batch_size,
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
