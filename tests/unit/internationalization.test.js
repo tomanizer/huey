@@ -26,7 +26,7 @@ describe('Internationalization', () => {
 
     Internationalization.setTexts({ Hello: 'Bonjour' });
     const script = document.createElement('script');
-    script.src = 'http://localhost/Internationalization/i18n/fr.js';
+    script.src = 'https://localhost/Internationalization/i18n/fr.js';
     Internationalization.textsLoaded({ target: script });
 
     expect(Internationalization.getText('Hello')).toBe('Bonjour');
@@ -39,7 +39,7 @@ describe('Internationalization', () => {
 
     Internationalization.setTexts({ 'Hello {1}': 'Bonjour {1}' });
     const script = document.createElement('script');
-    script.src = 'http://localhost/Internationalization/i18n/fr.js';
+    script.src = 'https://localhost/Internationalization/i18n/fr.js';
     Internationalization.textsLoaded({ target: script });
 
     expect(Internationalization.getText('Hello {1}', 'Alice')).toBe('Bonjour Alice');
@@ -52,7 +52,7 @@ describe('Internationalization', () => {
 
     Internationalization.setTexts({ Hello: 'Bonjour' });
     const script = document.createElement('script');
-    script.src = 'http://localhost/Internationalization/i18n/fr.js';
+    script.src = 'https://localhost/Internationalization/i18n/fr.js';
     Internationalization.textsLoaded({ target: script });
 
     expect(Internationalization.getText('Unknown key')).toBeUndefined();
@@ -65,7 +65,7 @@ describe('Internationalization', () => {
 
     Internationalization.setTexts({ 'Pair: {1}, {2}': 'Paire : {1}, {2}' });
     const script = document.createElement('script');
-    script.src = 'http://localhost/Internationalization/i18n/fr.js';
+    script.src = 'https://localhost/Internationalization/i18n/fr.js';
     Internationalization.textsLoaded({ target: script });
 
     expect(Internationalization.getText('Pair: {1}, {2}', 'A', 'B')).toBe('Paire : A, B');
