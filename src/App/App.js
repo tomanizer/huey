@@ -152,9 +152,7 @@ export function initApplication(){
       return;
     }
 
-    console.log(`buffered Events, event:`);
     const eventData = event.eventData;
-    console.log(eventData);
 
     let currentDatasourceCaption, datasource = queryModel.getDatasource();
     if (datasource) {

@@ -172,10 +172,9 @@ export class CellSet extends DataSetComponent {
     }
     
     if (combinationTuples[0].length !== relationDefinition.length){
-      // this is https://github.com/rpbouman/huey/issues/360
-      // I think this shouldn't happen anymore but we keep this in for now.
-      // 
-      debugger;
+      console.error(
+        `Tuple/relation length mismatch (see tomanizer/huey#360): expected ${relationDefinition.length}, got ${combinationTuples[0].length}`
+      );
     }
     
     relationDefinition = `${quoteIdentifierWhenRequired(CellSet.#tupleDataRelationName)}(\n  ${relationDefinition.join('\n, ')}\n)`;

@@ -102,7 +102,7 @@ export class EventEmitter {
     switch(trueOrFalse) {
       case true:
         if (this.#queuedEvents && this.#queuedEvents.length) {
-          debugger;
+          console.warn('emitEvents(true) called with queued events still present.');
         }
         break;
       case false:
