@@ -4,7 +4,6 @@ import asyncio
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
 
 import pytest
 from starlette.testclient import TestClient

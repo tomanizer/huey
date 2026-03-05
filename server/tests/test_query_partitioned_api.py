@@ -15,7 +15,7 @@ from server.query_budget import reset_query_budget
 
 
 @pytest.fixture(autouse=True)
-def _reset_after(monkeypatch) -> None:
+def reset_state_after_test(monkeypatch) -> None:
     """Restore environment between tests."""
     yield
     get_settings.cache_clear()

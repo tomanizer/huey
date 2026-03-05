@@ -112,11 +112,12 @@ async def post_query_tuples(
 
         if total_count == 0 and paging.offset > 0:
             count_sql, count_params = build_tuples_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
+            count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
                 count_sql,
                 tuple(count_params) if count_params else None,
                 dataset_id=body.dataset_id,
-                cancel_handle=cancel_handle,
+                cancel_handle=count_cancel_handle,
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
@@ -350,11 +351,12 @@ async def post_query_picklist(
 
         if total_count == 0 and paging.offset > 0:
             count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
+            count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
                 count_sql,
                 tuple(count_params) if count_params else None,
                 dataset_id=body.dataset_id,
-                cancel_handle=cancel_handle,
+                cancel_handle=count_cancel_handle,
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
