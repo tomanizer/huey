@@ -17,6 +17,7 @@ import {
 export class DuckDbDataSource extends EventEmitter {
   
   static #defaultNumberOfAccessAttempts = 1;
+  static #globPathPattern = /[*?\[\]]/;
 
   static types = {
     "DUCKDB": 'duckdb',
@@ -362,10 +363,10 @@ export class DuckDbDataSource extends EventEmitter {
       throw new Error(`The url should be of type string`);
     }
 
-    const pathPart = url.split('#').shift().split('?').shift();
+    const pathPart = url.split(/[?#]/).shift();
     const fileNameParts = DuckDbDataSource.getFileNameParts(pathPart);
     const fileType = fileNameParts ? fileNameParts.lowerCaseExtension : undefined;
-    const isGlobPath = /[*?\[]/.test(pathPart);
+    const isGlobPath = DuckDbDataSource.#globPathPattern.test(pathPart);
     if (isGlobPath && fileType) {
       const fileTypeInfo = DuckDbDataSource.getFileTypeInfo(fileType);
       if (fileTypeInfo && fileTypeInfo.duckdb_reader) {
