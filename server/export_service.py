@@ -6,6 +6,7 @@ export job store. All export operations go through this service.
 """
 
 import logging
+import sqlite3
 import uuid
 from pathlib import Path
 
@@ -29,6 +30,49 @@ logger = logging.getLogger("query_service.export")
 def _escape_sql_string(value: str) -> str:
     """Escape single quotes for SQL string literals."""
     return value.replace("'", "''")
+
+
+def _quote_identifier(value: str) -> str:
+    """Safely quote SQL identifiers."""
+    return '"' + value.replace('"', '""') + '"'
+
+
+def _infer_sqlite_type(rows: list[tuple], column_index: int) -> str:
+    """Infer a SQLite column affinity from result rows."""
+    for row in rows:
+        value = row[column_index]
+        if value is None:
+            continue
+        if isinstance(value, bool | int):
+            return "INTEGER"
+        if isinstance(value, float):
+            return "REAL"
+        if isinstance(value, bytes | bytearray | memoryview):
+            return "BLOB"
+        return "TEXT"
+    return "TEXT"
+
+
+def _export_sqlite_file(file_path: Path, sql: str, query_params: tuple | None) -> None:
+    """Export query results into a SQLite database file with one table."""
+    with db_manager.cursor() as cur:
+        if query_params:
+            cur.execute(sql, query_params)
+        else:
+            cur.execute(sql)
+        rows = cur.fetchall()
+        columns = [column[0] for column in (cur.description or [])]
+
+    with sqlite3.connect(file_path) as sqlite_conn:
+        quoted_columns = ", ".join(
+            f"{_quote_identifier(column)} {_infer_sqlite_type(rows, index)}"
+            for index, column in enumerate(columns)
+        )
+        sqlite_conn.execute(f"CREATE TABLE export_result ({quoted_columns})")
+        if rows:
+            placeholders = ", ".join(["?"] * len(columns))
+            sqlite_conn.executemany(f"INSERT INTO export_result VALUES ({placeholders})", rows)
+        sqlite_conn.commit()
 
 
 class ExportService:
@@ -79,7 +123,7 @@ class ExportService:
             output_dir = Path(settings.export_output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
             fmt = body.query.format.lower()
-            file_ext = "parquet" if fmt == "parquet" else "csv"
+            file_ext = fmt
             file_path = output_dir / f"{job_id}.{file_ext}"
 
             schema_fields = datasets.get_schema_field_names(body.dataset_id)
@@ -91,20 +135,42 @@ class ExportService:
             row_count = None
 
             escaped_path = _escape_sql_string(str(file_path))
-            if fmt == "parquet":
-                copy_sql = f"COPY ({sql}) TO '{escaped_path}' (FORMAT PARQUET)"
-            else:
-                copy_sql = f"COPY ({sql}) TO '{escaped_path}' (FORMAT CSV, HEADER TRUE)"
-            with db_manager.cursor() as cur:
-                try:
-                    if query_params:
-                        cur.execute(copy_sql, query_params)
-                    else:
-                        cur.execute(copy_sql)
-                except Exception as exc:
-                    if is_missing_table_error(exc):
-                        raise DatasetUnavailableError(body.dataset_id) from exc
-                    raise
+            try:
+                if fmt == "parquet":
+                    copy_sql = f"COPY ({sql}) TO '{escaped_path}' (FORMAT PARQUET)"
+                    with db_manager.cursor() as cur:
+                        if query_params:
+                            cur.execute(copy_sql, query_params)
+                        else:
+                            cur.execute(copy_sql)
+                elif fmt == "csv":
+                    copy_sql = f"COPY ({sql}) TO '{escaped_path}' (FORMAT CSV, HEADER TRUE)"
+                    with db_manager.cursor() as cur:
+                        if query_params:
+                            cur.execute(copy_sql, query_params)
+                        else:
+                            cur.execute(copy_sql)
+                elif fmt == "duckdb":
+                    quoted_db_alias = _quote_identifier("export_db")
+                    with db_manager.cursor() as cur:
+                        cur.execute(f"ATTACH '{escaped_path}' AS {quoted_db_alias}")
+                        try:
+                            create_sql = (
+                                f"CREATE TABLE {quoted_db_alias}.main.export_result "
+                                f"AS SELECT * FROM ({sql}) AS export_result"
+                            )
+                            if query_params:
+                                cur.execute(create_sql, query_params)
+                            else:
+                                cur.execute(create_sql)
+                        finally:
+                            cur.execute(f"DETACH {quoted_db_alias}")
+                elif fmt == "sqlite":
+                    _export_sqlite_file(file_path, sql, query_params)
+            except Exception as exc:
+                if is_missing_table_error(exc):
+                    raise DatasetUnavailableError(body.dataset_id) from exc
+                raise
 
             self._store.update_status(
                 job_id, "complete",

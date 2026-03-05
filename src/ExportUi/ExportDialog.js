@@ -5,7 +5,7 @@ import { DataSourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { copyToClipboard } from '../util/clipboard/clipboard.js';
-import { ensureDuckDbExtensionLoadedAndInstalled, getCopyToStatement, unQuote } from '../util/sql/SQLHelper.js';
+import { ensureDuckDbExtensionLoadedAndInstalled, getCopyToStatement, getQuotedIdentifier, quoteStringLiteral, unQuote } from '../util/sql/SQLHelper.js';
 
 /** Format a DuckDB query result as CSV (browser fallback when COPY TO cannot write). */
 function formatQueryResultAsCsv(result, options) {
@@ -269,6 +269,39 @@ export class ExportUi {
     return ExportUi.exportData(datasource, sql, exportSettings, progressCallback);
   }
 
+  static async #exportQueryToDatabaseFile(datasource, sql, fileExtension, tableName, progressCallback){
+    const exportTableName = (tableName || 'export_result').trim() || 'export_result';
+    const quotedTableName = getQuotedIdentifier(exportTableName);
+    const tmpFileName = [crypto.randomUUID(), fileExtension].join('.');
+    const exportDbAlias = '__huey_export_db';
+    const quotedExportDbAlias = getQuotedIdentifier(exportDbAlias);
+    const connection = datasource.getManagedConnection();
+    let data;
+    try {
+      progressCallback(`Preparing ${fileExtension} database ${tmpFileName}`);
+      const attachSql = fileExtension === 'sqlite'
+        ? `ATTACH ${quoteStringLiteral(tmpFileName)} AS ${quotedExportDbAlias} (TYPE SQLITE)`
+        : `ATTACH ${quoteStringLiteral(tmpFileName)} AS ${quotedExportDbAlias}`
+      ;
+      await connection.query(attachSql);
+      await connection.query(`CREATE TABLE ${quotedExportDbAlias}.main.${quotedTableName} AS SELECT * FROM (${sql}) AS __huey_export_subquery`);
+      await connection.query(`DETACH ${quotedExportDbAlias}`);
+      progressCallback(`Extracting from ${tmpFileName}`);
+      data = await connection.copyFileToBuffer(tmpFileName);
+      return data;
+    }
+    finally {
+      try {
+        await connection.query(`DETACH ${quotedExportDbAlias}`);
+      }
+      catch (error) {
+      }
+      if (data) {
+        await connection.dropFile(tmpFileName);
+      }
+    }
+  }
+
   static async exportData(datasource, sql, exportSettings, progressCallback){
     try {
       if (typeof progressCallback !== 'function'){
@@ -363,6 +396,26 @@ export class ExportUi {
             sheetName = quoteStringLiteral(sheetName);
             copyStatementOptions["SHEET"] = sheetName;
           }
+          break;
+        case 'exportSqlite':
+          fileExtension = 'sqlite';
+          data = await ExportUi.#exportQueryToDatabaseFile(
+            datasource,
+            sql,
+            fileExtension,
+            exportSettings.exportSqliteTableName,
+            progressCallback
+          );
+          break;
+        case 'exportDuckdb':
+          fileExtension = 'duckdb';
+          data = await ExportUi.#exportQueryToDatabaseFile(
+            datasource,
+            sql,
+            fileExtension,
+            exportSettings.exportDuckdbTableName,
+            progressCallback
+          );
           break;
         case 'exportQuery':
           const encodingSettings = exportSettings[exportType + 'Encoding'];
@@ -683,6 +736,16 @@ export class ExportDialog {
             'KeywordLettercase',
             'AlwaysQuoteIdentifiers',
             'CommaStyle'
+          ], tabName);
+          break;
+        case 'exportSqlite':
+          copyUiSetting([
+            'TableName'
+          ], tabName);
+          break;
+        case 'exportDuckdb':
+          copyUiSetting([
+            'TableName'
           ], tabName);
           break;
       }

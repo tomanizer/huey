@@ -655,9 +655,6 @@ export class DataSourcesUi extends EventEmitter {
         switch (fileType){
           case fromFileType:
             return includeFromFileType !== false;
-          case 'duckdb':
-          case 'sqlite':
-            return false;
         }
       }
       return true;
@@ -709,25 +706,38 @@ export class DataSourcesUi extends EventEmitter {
     let exportDelimited = false;
     let exportJson = false;
     let exportParquet = false;
+    let exportSqlite = false;
+    let exportDuckdb = false;
     let exportXlsx = false;
     
-    switch (fileTypeInfo.duckdb_reader){
-      case 'read_csv':
-        exportType = 'exportDelimited';
-        exportDelimited = true;
+    switch (targetFileType) {
+      case 'sqlite':
+        exportType = 'exportSqlite';
+        exportSqlite = true;
         break;
-      case 'read_json':
-        exportType = 'exportJson';
-        exportJson = true;
+      case 'duckdb':
+        exportType = 'exportDuckdb';
+        exportDuckdb = true;
         break;
-      case 'read_parquet':
-        exportType = 'exportParquet';
-        exportParquet = true;
-        break;
-      case 'read_xlsx':
-        exportType = 'exportXlsx';
-        exportXlsx = true;
-        break;
+      default:
+        switch (fileTypeInfo.duckdb_reader){
+          case 'read_csv':
+            exportType = 'exportDelimited';
+            exportDelimited = true;
+            break;
+          case 'read_json':
+            exportType = 'exportJson';
+            exportJson = true;
+            break;
+          case 'read_parquet':
+            exportType = 'exportParquet';
+            exportParquet = true;
+            break;
+          case 'read_xlsx':
+            exportType = 'exportXlsx';
+            exportXlsx = true;
+            break;
+        }
     }
     const exportSettings = Object.assign(
       {}, settings.getSettings('exportUi'), {
@@ -737,6 +747,8 @@ export class DataSourcesUi extends EventEmitter {
       exportDelimited: exportDelimited,
       exportJson: exportJson,
       exportParquet: exportParquet,
+      exportSqlite: exportSqlite,
+      exportDuckdb: exportDuckdb,
       exportXlsx: exportXlsx,
     });
     return exportSettings;
