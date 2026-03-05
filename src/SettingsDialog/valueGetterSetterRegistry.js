@@ -1,22 +1,22 @@
 const valueGetterRegistry = {
-  splitCommaSeparatedValue(control){
+  splitCommaSeparatedValue(control) {
     return control.value.split(String.fromCharCode(44));
   },
-  parseJsonValue(control){
+  parseJsonValue(control) {
     return JSON.parse(control.value);
   }
 };
 
 const valueSetterRegistry = {
-  joinCommaSeparatedValue(control, value){
+  joinCommaSeparatedValue(control, value) {
     control.value = value.join();
   },
-  stringifyJsonValue(control, value){
+  stringifyJsonValue(control, value) {
     control.value = JSON.stringify(value);
   }
 };
 
-function getValueGetter(control){
+function getValueGetter(control) {
   const valueGetterName = control.getAttribute('data-value-getter');
   if (!valueGetterName){
     return;
@@ -28,7 +28,7 @@ function getValueGetter(control){
   return valueGetter;
 }
 
-function getValueSetter(control){
+function getValueSetter(control) {
   const valueSetterName = control.getAttribute('data-value-setter');
   if (!valueSetterName){
     return;

@@ -4,7 +4,7 @@ describe('settings dialog value getter/setter registry', () => {
   test('resolves and executes registered locale getter/setter', () => {
     const control = {
       value: 'en-US,de-DE',
-      getAttribute(name){
+      getAttribute(name) {
         if (name === 'data-value-getter') {
           return 'splitCommaSeparatedValue';
         }
@@ -25,7 +25,7 @@ describe('settings dialog value getter/setter registry', () => {
   test('resolves and executes registered JSON getter/setter', () => {
     const control = {
       value: '{"theme":"Dark"}',
-      getAttribute(name){
+      getAttribute(name) {
         if (name === 'data-value-getter') {
           return 'parseJsonValue';
         }
@@ -45,14 +45,14 @@ describe('settings dialog value getter/setter registry', () => {
 
   test('throws for unknown getter/setter names', () => {
     const getterControl = {
-      getAttribute(name){
+      getAttribute(name) {
         if (name === 'data-value-getter') {
           return 'doesNotExist';
         }
       }
     };
     const setterControl = {
-      getAttribute(name){
+      getAttribute(name) {
         if (name === 'data-value-setter') {
           return 'doesNotExist';
         }
