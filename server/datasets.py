@@ -98,19 +98,44 @@ def load_datasets_config() -> dict[str, Any]:
     path = settings.datasets_config_path
     if path is None or path == "":
         path = _default_config_path()
+        path_source = "default"
     else:
         path = Path(path)
+        path_source = "QUERYSERVICE_DATASETS_CONFIG_PATH"
+
+    path_resolved = path.resolve()
+    logger.info(
+        "Loading datasets config from %s (source: %s)",
+        path_resolved,
+        path_source,
+        extra={"config_path": str(path_resolved), "config_source": path_source},
+    )
 
     if not path.exists():
+        logger.warning("Datasets config path does not exist: %s", path_resolved)
         return {"datasets": []}
 
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     if not data or not isinstance(data, dict):
+        logger.warning("Datasets config empty or invalid at %s", path_resolved)
         return {"datasets": []}
     if "datasets" not in data or not isinstance(data["datasets"], list):
+        logger.warning("Datasets config has no 'datasets' list at %s", path_resolved)
         return {"datasets": []}
+
+    datasets_list = data["datasets"]
+    dataset_ids = [
+        d.get("dataset_id") for d in datasets_list if isinstance(d, dict) and d.get("dataset_id")
+    ]
+    logger.info(
+        "Loaded datasets config from %s: %d dataset(s) %s",
+        path_resolved,
+        len(dataset_ids),
+        dataset_ids,
+        extra={"config_path": str(path_resolved), "dataset_count": len(dataset_ids), "dataset_ids": dataset_ids},
+    )
     return data
 
 
