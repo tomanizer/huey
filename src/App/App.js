@@ -25,6 +25,10 @@ import { Theme } from '../Theme/Theme.js';
 import duckdbLogoUrl from '../spinner/DuckDB_Logo-horizontal.svg';
 
 window.Theme = Theme;
+const localHostnames = new Set(['localhost', '127.0.0.1', '::1']);
+if (localHostnames.has(location.hostname)) {
+  window.showErrorDialog = showErrorDialog;
+}
 
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
 
