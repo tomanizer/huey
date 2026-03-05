@@ -8,6 +8,13 @@ import { PromptUi } from '../PromptUi/PromptUi.js';
 import { queryModel } from '../QueryModel/QueryModel.js';
 import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
+import {
+  parseS3Uri,
+  parseGcsUri,
+  getBaseNameFromKey,
+  fetchS3AsBlob,
+  fetchGcsAsBlob,
+} from '../util/CloudStorageLoader.js';
 
 export class UploadUi {
 
@@ -95,11 +102,19 @@ export class UploadUi {
           hueyQueryState = await UploadUi.#handleHueyFileUrl(file, uploadItem);
         }
         else {
-          duckDbDataSource = await DuckDbDataSource.createFromUrl(duckdb, instance, file);
-          progressBar.value = parseInt(progressBar.value, 10) + 20;
+          const s3Parsed = parseS3Uri(file);
+          const gcsParsed = !s3Parsed && parseGcsUri(file);
+          if (s3Parsed || gcsParsed) {
+            duckDbDataSource = await fetchCloudAndCreateDatasource(duckdb, instance, file, s3Parsed, gcsParsed);
+            progressBar.value = parseInt(progressBar.value, 10) + 60;
+          }
+          else {
+            duckDbDataSource = await DuckDbDataSource.createFromUrl(duckdb, instance, file);
+            progressBar.value = parseInt(progressBar.value, 10) + 20;
 
-          await duckDbDataSource.registerFile();
-          progressBar.value = parseInt(progressBar.value, 10) + 40;
+            await duckDbDataSource.registerFile();
+            progressBar.value = parseInt(progressBar.value, 10) + 40;
+          }
         }
       }
       else
@@ -561,6 +576,34 @@ export class UploadUi {
 
 export let uploadUi;
 
+/**
+ * Fetch an object from S3 or GCS and create a DuckDbDataSource from the resulting blob.
+ * @param {*} duckdb
+ * @param {*} instance
+ * @param {string} cloudUri   - Original cloud URI (e.g. "s3://bucket/key.parquet")
+ * @param {{ bucket: string, key: string } | null} s3Parsed
+ * @param {{ bucket: string, path: string } | null} gcsParsed
+ * @param {{ region?: string, accessKeyId?: string, secretAccessKey?: string, sessionToken?: string, accessToken?: string } | undefined} options
+ * @returns {Promise<DuckDbDataSource>}
+ */
+async function fetchCloudAndCreateDatasource(duckdb, instance, cloudUri, s3Parsed, gcsParsed, options = {}) {
+  let blob;
+  let keyOrPath;
+
+  if (s3Parsed) {
+    blob = await fetchS3AsBlob(s3Parsed.bucket, s3Parsed.key, options);
+    keyOrPath = s3Parsed.key;
+  } else {
+    blob = await fetchGcsAsBlob(gcsParsed.bucket, gcsParsed.path, options);
+    keyOrPath = gcsParsed.path;
+  }
+
+  const fileName = getBaseNameFromKey(keyOrPath) || 'data';
+  const ds = DuckDbDataSource.createFromBlob(duckdb, instance, blob, fileName, cloudUri);
+  await ds.registerFile();
+  return ds;
+}
+
 export function afterUploaded(uploadResults){
   const currentRoute = Routing.getCurrentRoute();
   if (!Routing.isSynced(queryModel)) {
@@ -628,12 +671,79 @@ export function initUploadUi(){
 
   byId('loadFromUrl')
   .addEventListener('click', async (event) =>{
-    const url = prompt('Enter URL');
-    if (!url || !url.length){
+    const formHtml = [
+      '<form id="loadFromUrlForm">',
+      '<label for="loadFromUrlInput">URL or cloud URI</label>',
+      '<input type="text" id="loadFromUrlInput" name="url" placeholder="https://… or s3://bucket/key or gs://bucket/path" required autocomplete="off" style="width:100%" />',
+      '<div id="loadFromUrlS3Options" style="display:none;margin-top:0.75em;border-top:1px solid var(--border-color,#ccc);padding-top:0.75em">',
+      '<p style="margin:0 0 0.5em"><strong>Amazon S3 options</strong></p>',
+      '<label for="loadFromUrlS3Region">Region</label>',
+      '<input type="text" id="loadFromUrlS3Region" name="s3Region" placeholder="us-east-1" autocomplete="off" />',
+      '<label for="loadFromUrlS3AccessKeyId" style="margin-top:0.5em">Access Key ID <em>(leave blank for public bucket)</em></label>',
+      '<input type="text" id="loadFromUrlS3AccessKeyId" name="s3AccessKeyId" placeholder="AKIA…" autocomplete="off" />',
+      '<label for="loadFromUrlS3SecretKey" style="margin-top:0.5em">Secret Access Key</label>',
+      '<input type="password" id="loadFromUrlS3SecretKey" name="s3SecretKey" autocomplete="new-password" />',
+      '<label for="loadFromUrlS3SessionToken" style="margin-top:0.5em">Session Token <em>(optional)</em></label>',
+      '<input type="password" id="loadFromUrlS3SessionToken" name="s3SessionToken" autocomplete="new-password" />',
+      '</div>',
+      '<div id="loadFromUrlGcsOptions" style="display:none;margin-top:0.75em;border-top:1px solid var(--border-color,#ccc);padding-top:0.75em">',
+      '<p style="margin:0 0 0.5em"><strong>Google Cloud Storage options</strong></p>',
+      '<label for="loadFromUrlGcsToken">OAuth2 Access Token <em>(leave blank for public bucket)</em></label>',
+      '<input type="password" id="loadFromUrlGcsToken" name="gcsToken" autocomplete="new-password" />',
+      '</div>',
+      '</form>',
+    ].join('');
+
+    const result = await PromptUi.show({
+      title: 'Load from URL or cloud storage',
+      contents: formHtml
+    });
+    if (result !== 'accept') {
       return;
     }
-    const uploadResults = await uploadUi.uploadFiles([url]);
-    afterUploaded(uploadResults);
+
+    const urlInput = byId('loadFromUrlInput');
+    const url = (urlInput && urlInput.value && urlInput.value.trim()) || '';
+    if (!url) {
+      return;
+    }
+
+    const s3Parsed = parseS3Uri(url);
+    const gcsParsed = !s3Parsed && parseGcsUri(url);
+
+    if (s3Parsed) {
+      const region = (byId('loadFromUrlS3Region') && byId('loadFromUrlS3Region').value.trim()) || undefined;
+      const accessKeyId = (byId('loadFromUrlS3AccessKeyId') && byId('loadFromUrlS3AccessKeyId').value.trim()) || undefined;
+      const secretAccessKey = (byId('loadFromUrlS3SecretKey') && byId('loadFromUrlS3SecretKey').value) || undefined;
+      const sessionToken = (byId('loadFromUrlS3SessionToken') && byId('loadFromUrlS3SessionToken').value) || undefined;
+      const options = { region, accessKeyId, secretAccessKey, sessionToken };
+
+      try {
+        const duckdb = window.hueyDb.duckdb;
+        const instance = window.hueyDb.instance;
+        const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, s3Parsed, null, options);
+        datasourcesUi.addDatasources([ds]);
+        afterUploaded({ success: 1, fail: 0, datasources: [ds] });
+      } catch(e) {
+        showErrorDialog({ title: 'Failed to load from S3', description: e.message || String(e) });
+      }
+    } else if (gcsParsed) {
+      const accessToken = (byId('loadFromUrlGcsToken') && byId('loadFromUrlGcsToken').value) || undefined;
+      const options = { accessToken };
+
+      try {
+        const duckdb = window.hueyDb.duckdb;
+        const instance = window.hueyDb.instance;
+        const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, null, gcsParsed, options);
+        datasourcesUi.addDatasources([ds]);
+        afterUploaded({ success: 1, fail: 0, datasources: [ds] });
+      } catch(e) {
+        showErrorDialog({ title: 'Failed to load from GCS', description: e.message || String(e) });
+      }
+    } else {
+      const uploadResults = await uploadUi.uploadFiles([url]);
+      afterUploaded(uploadResults);
+    }
   });
 
   byId('addRemoteDatasource')
