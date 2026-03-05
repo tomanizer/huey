@@ -193,8 +193,9 @@ export class PageStateManager {
             break;
         }
       })
-      .catch((error) =>{
-        reject();
+      .catch((error) => {
+        console.error('Error in chooseDataSourceForPageStateChangeDialog', error);
+        reject(error);
       });
     });
   }

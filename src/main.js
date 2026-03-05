@@ -1,5 +1,13 @@
 import { getDuckDbLogLevel, initApplication } from './App/App.js';
+import { showErrorDialog } from './ErrorDialog/ErrorDialog.js';
 import { duckDbLibraryUrl, tablerIconsFontUrl } from './version.js';
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  const message = event.reason?.message ?? String(event.reason);
+  showErrorDialog({ title: 'Unexpected error', description: message });
+  event.preventDefault();
+});
 
 // Preload the tabler icons font
 const preloadLink = document.createElement('link');

@@ -174,8 +174,10 @@ export class CellSet extends DataSetComponent {
     if (combinationTuples[0].length !== relationDefinition.length){
       // this is https://github.com/rpbouman/huey/issues/360
       // I think this shouldn't happen anymore but we keep this in for now.
-      // 
-      debugger;
+      console.error(
+        'Tuple/relation length mismatch: combinationTuples[0].length !== relationDefinition.length',
+        { combinationLength: combinationTuples[0].length, relationLength: relationDefinition.length }
+      );
     }
     
     relationDefinition = `${quoteIdentifierWhenRequired(CellSet.#tupleDataRelationName)}(\n  ${relationDefinition.join('\n, ')}\n)`;
@@ -375,27 +377,15 @@ export class CellSet extends DataSetComponent {
     return RemoteQueryAdapter.createRemoteCellsQuery(queryModel, rowCount, colCount, cellsAxisItemsToFetch);
   }
 
-  /** Map measure columnType to Arrow typeId so number formatter receives field.type (remote path). */
-  static #measureColumnTypeToArrowTypeId(columnType) {
-    var t = (columnType || '').toUpperCase();
-    if (/INT|BIGINT|INT64|INTEGER/.test(t)) return -5;
-    if (/FLOAT|DOUBLE|FLOAT64/.test(t)) return -12;
-    if (/DECIMAL/.test(t)) return 7;
-    return -12;
-  }
-
   #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount, measureAliases, measureValueOffset){
     var cells = apiResponse.cells || [];
     var colCount = columnCount || 1;
     var items = cellsAxisItemsToFetch || [];
+    var aliases = measureAliases || [];
     var offset = measureValueOffset != null ? measureValueOffset : 0;
-    // Backend returns cell.values keyed by column index ("0", "1", ...): row dims, then column dims, then measures.
+    // Use same key as pivot: getSqlForQueryAxisItem (e.g. "sum(volume)") so cell.values[sqlExpression] finds the value
     var fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map(function(item) {
-      var typeId = CellSet.#measureColumnTypeToArrowTypeId(item.columnType);
-      return {
-        name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName),
-        type: { typeId: typeId }
-      };
+      return { name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName) };
     }));
     var numRows = cells.length;
     var get = function(i) {
@@ -406,8 +396,12 @@ export class CellSet extends DataSetComponent {
       var vals = c.values || {};
       items.forEach(function(item, index) {
         var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
-        var key = String(offset + index);
-        row[sqlExpression] = vals[key];
+        var alias = aliases[index] || item.columnName;
+        var keyedByPosition = vals[String(offset + index)];
+        var keyedByMeasureIndex = vals[String(index)];
+        row[sqlExpression] = keyedByPosition !== undefined ? keyedByPosition : (
+          keyedByMeasureIndex !== undefined ? keyedByMeasureIndex : vals[alias]
+        );
       });
       return row;
     };
@@ -430,10 +424,11 @@ export class CellSet extends DataSetComponent {
       var rowDimCount = (axes.rows && axes.rows.length) || 0;
       var colDimCount = (axes.columns && axes.columns.length) || 0;
       var measureValueOffset = rowDimCount + colDimCount;
+      var measureAliases = query.axes && query.axes.measures ? query.axes.measures.map(function(measure) { return measure.alias; }) : [];
       var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
-      var connection = datasource.getManagedConnection();
+      var connection = await this.getManagedConnection();
       var apiResponse = await connection.fetchCells(dateRange, query);
-      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, null, measureValueOffset);
+      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases, measureValueOffset);
       return resultSet;
     }
 
