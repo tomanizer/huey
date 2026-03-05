@@ -409,7 +409,7 @@ export class CellSet extends DataSetComponent {
       var vals = c.values || {};
       items.forEach(function(item, index) {
         var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
-        var alias = aliases[index] || item.columnName;
+        var alias = aliases[index];
         var keyedByPosition = vals[String(offset + index)];
         var keyedByMeasureIndex = vals[String(index)];
         row[sqlExpression] = keyedByPosition !== undefined ? keyedByPosition : (
