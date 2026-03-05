@@ -1642,6 +1642,12 @@
                   type="checkbox"
                   title="Handle legacy Parquet files that store binary data without standard type annotations."
                 />
+                <label for="parquetReaderHivePartitioning" title="Infer partition columns from Hive-style key=value path segments.">Hive partitioning</label>
+                <input
+                  id="parquetReaderHivePartitioning"
+                  type="checkbox"
+                  title="Infer partition columns from Hive-style key=value path segments."
+                />
               </fieldset>
             </form>
           </div>
@@ -1984,6 +1990,21 @@
             multiple="true"
             accept=".csv,.duckdb,.json,.jsonl,.parquet,.sql,.sqlite,.tsv,.xlsx"
           />
+        </label>
+        <label for="uploaderFolder" title="Register all parquet files in a local folder">
+          <input
+            id="uploaderFolder"
+            type="file"
+            webkitdirectory="true"
+            directory="true"
+            multiple="true"
+            accept=".parquet"
+          />
+        </label>
+        <label for="loadParquetFolder" title="Load all parquet files from a local folder as one datasource">
+          <button
+            id="loadParquetFolder"
+          >Parquet folder</button>
         </label>
         <label for="loadFromUrl" title="Load data from URL">
           <button

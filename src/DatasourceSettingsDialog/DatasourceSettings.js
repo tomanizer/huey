@@ -91,7 +91,8 @@ export class DatasourceSettings extends SettingsBase {
     },
     "parquetReader": {
       "parquetReaderFilename": false,
-      "parquetReaderBinaryAsString": false
+      "parquetReaderBinaryAsString": false,
+      "parquetReaderHivePartitioning": false
     }
   };
 

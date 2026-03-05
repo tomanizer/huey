@@ -609,6 +609,68 @@ async function fetchCloudAndCreateDatasource(duckdb, instance, cloudUri, s3Parse
   return ds;
 }
 
+export function getUrlsFromInput(urlInput){
+  if (typeof urlInput !== 'string') {
+    return [];
+  }
+  return urlInput
+  .split(/[\n,]/)
+  .map((url) => url.trim())
+  .filter((url) => url);
+}
+
+export function isParquetUrl(url){
+  try {
+    const parsed = new URL(url);
+    return /\.parquet$/i.test(parsed.pathname);
+  }
+  catch (error){
+    return /\.parquet($|[?#])/i.test(url);
+  }
+}
+
+async function uploadParquetFilesAsFolderDatasource(files){
+  const parquetFiles = Array.from(files || []).filter((file) =>{
+    return file instanceof File && /\.parquet$/i.test(file.name);
+  });
+  if (!parquetFiles.length){
+    throw new Error('No parquet files found in selected folder.');
+  }
+
+  const hueyDb = window.hueyDb;
+  const duckdb = hueyDb.duckdb;
+  const instance = hueyDb.instance;
+
+  const fileNames = parquetFiles
+  .map((file) => file.webkitRelativePath || file.name)
+  .sort();
+
+  const protocol = duckdb.DuckDBDataProtocol.BROWSER_FILEREADER;
+  for (let i = 0; i < parquetFiles.length; i++){
+    const file = parquetFiles[i];
+    const fileName = file.webkitRelativePath || file.name;
+    await instance.registerFileHandle(
+      fileName,
+      file,
+      protocol
+    );
+  }
+
+  const datasource = new DuckDbDataSource(duckdb, instance, {
+    type: DuckDbDataSource.types.FILES,
+    fileNames: fileNames,
+    fileType: 'parquet'
+  });
+  const tryResult = await datasource.tryAccess(100);
+  if (!tryResult.success){
+    datasource.destroy();
+    const lastAttempt = tryResult.lastAttempt || {};
+    throw new Error(lastAttempt.message || 'Could not access parquet folder datasource.');
+  }
+  datasourcesUi.addDatasources([datasource]);
+  return datasource;
+}
+
 export function afterUploaded(uploadResults){
   const currentRoute = Routing.getCurrentRoute();
   if (!Routing.isSynced(queryModel)) {
@@ -673,6 +735,32 @@ export function initUploadUi(){
     afterUploaded(uploadResults);
   }, false);  // third arg is 'useCapture'
 
+  byId('loadParquetFolder')
+  .addEventListener('click', async () =>{
+    byId('uploaderFolder').click();
+  });
+
+  byId('uploaderFolder')
+  .addEventListener('change', async (event) =>{
+    const folderControl = event.target;
+    try {
+      const datasource = await uploadParquetFilesAsFolderDatasource(folderControl.files);
+      afterUploaded({
+        success: 1,
+        fail: 0,
+        datasources: [datasource]
+      });
+    }
+    catch (error){
+      showErrorDialog({
+        title: 'Could not load parquet folder',
+        description: error.message || String(error)
+      });
+    }
+    finally {
+      folderControl.value = '';
+    }
+  }, false);
 
   byId('loadFromUrl')
   .addEventListener('click', async (event) =>{
@@ -730,42 +818,70 @@ export function initUploadUi(){
     }
 
     const url = (urlInput && urlInput.value && urlInput.value.trim()) || '';
-    if (!url) {
+    const urls = getUrlsFromInput(url);
+    if (!urls.length) {
       return;
     }
 
-    const s3Parsed = parseS3Uri(url);
-    const gcsParsed = !s3Parsed && parseGcsUri(url);
-
-    if (s3Parsed) {
-      const region = (byId('loadFromUrlS3Region') && byId('loadFromUrlS3Region').value.trim()) || undefined;
-      const accessKeyId = (byId('loadFromUrlS3AccessKeyId') && byId('loadFromUrlS3AccessKeyId').value.trim()) || undefined;
-      const secretAccessKey = (byId('loadFromUrlS3SecretKey') && byId('loadFromUrlS3SecretKey').value) || undefined;
-      const sessionToken = (byId('loadFromUrlS3SessionToken') && byId('loadFromUrlS3SessionToken').value) || undefined;
-      const options = { region, accessKeyId, secretAccessKey, sessionToken };
-      const { duckdb, instance } = window.hueyDb;
-
-      try {
-        const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, s3Parsed, null, options);
-        datasourcesUi.addDatasources([ds]);
-        afterUploaded({ success: 1, fail: 0, datasources: [ds] });
-      } catch(e) {
-        showErrorDialog({ title: 'Failed to load from S3', description: e.message || String(e) });
+    if (urls.length > 1 && urls.every((u) => isParquetUrl(u))) {
+      const hueyDb = window.hueyDb;
+      const datasource = new DuckDbDataSource(hueyDb.duckdb, hueyDb.instance, {
+        type: DuckDbDataSource.types.FILES,
+        fileNames: urls,
+        fileType: 'parquet'
+      });
+      const tryResult = await datasource.tryAccess(100);
+      if (!tryResult.success){
+        datasource.destroy();
+        showErrorDialog({
+          title: 'Could not load parquet URLs',
+          description: (tryResult.lastAttempt && tryResult.lastAttempt.message) || 'Could not access parquet URLs.'
+        });
+        return;
       }
-    } else if (gcsParsed) {
-      const accessToken = (byId('loadFromUrlGcsToken') && byId('loadFromUrlGcsToken').value) || undefined;
-      const options = { accessToken };
-      const { duckdb, instance } = window.hueyDb;
+      datasourcesUi.addDatasources([datasource]);
+      afterUploaded({ success: 1, fail: 0, datasources: [datasource] });
+      return;
+    }
 
-      try {
-        const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, null, gcsParsed, options);
-        datasourcesUi.addDatasources([ds]);
-        afterUploaded({ success: 1, fail: 0, datasources: [ds] });
-      } catch(e) {
-        showErrorDialog({ title: 'Failed to load from GCS', description: e.message || String(e) });
+    if (urls.length === 1) {
+      const singleUrl = urls[0];
+      const s3Parsed = parseS3Uri(singleUrl);
+      const gcsParsed = !s3Parsed && parseGcsUri(singleUrl);
+
+      if (s3Parsed) {
+        const region = (byId('loadFromUrlS3Region') && byId('loadFromUrlS3Region').value.trim()) || undefined;
+        const accessKeyId = (byId('loadFromUrlS3AccessKeyId') && byId('loadFromUrlS3AccessKeyId').value.trim()) || undefined;
+        const secretAccessKey = (byId('loadFromUrlS3SecretKey') && byId('loadFromUrlS3SecretKey').value) || undefined;
+        const sessionToken = (byId('loadFromUrlS3SessionToken') && byId('loadFromUrlS3SessionToken').value) || undefined;
+        const options = { region, accessKeyId, secretAccessKey, sessionToken };
+        const { duckdb, instance } = window.hueyDb;
+
+        try {
+          const ds = await fetchCloudAndCreateDatasource(duckdb, instance, singleUrl, s3Parsed, null, options);
+          datasourcesUi.addDatasources([ds]);
+          afterUploaded({ success: 1, fail: 0, datasources: [ds] });
+        } catch(e) {
+          showErrorDialog({ title: 'Failed to load from S3', description: e.message || String(e) });
+        }
+      } else if (gcsParsed) {
+        const accessToken = (byId('loadFromUrlGcsToken') && byId('loadFromUrlGcsToken').value) || undefined;
+        const options = { accessToken };
+        const { duckdb, instance } = window.hueyDb;
+
+        try {
+          const ds = await fetchCloudAndCreateDatasource(duckdb, instance, singleUrl, null, gcsParsed, options);
+          datasourcesUi.addDatasources([ds]);
+          afterUploaded({ success: 1, fail: 0, datasources: [ds] });
+        } catch(e) {
+          showErrorDialog({ title: 'Failed to load from GCS', description: e.message || String(e) });
+        }
+      } else {
+        const uploadResults = await uploadUi.uploadFiles([singleUrl]);
+        afterUploaded(uploadResults);
       }
     } else {
-      const uploadResults = await uploadUi.uploadFiles([url]);
+      const uploadResults = await uploadUi.uploadFiles(urls);
       afterUploaded(uploadResults);
     }
   });
