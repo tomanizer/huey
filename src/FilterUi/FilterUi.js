@@ -93,6 +93,7 @@ export class FilterDialog {
   #previousFilterTypeIsArrayFilterType = false;
 
   #settings = undefined;
+  #focusOrigin = undefined;
 
   getQueryAxisItem(){
     return this.#queryAxisItem;
@@ -125,6 +126,13 @@ export class FilterDialog {
 
   #initEvents(){
     const filterDialog = this.getDom();
+    filterDialog.addEventListener('close', () =>{
+      const focusOrigin = this.#focusOrigin;
+      this.#focusOrigin = undefined;
+      if (focusOrigin && typeof focusOrigin.focus === 'function') {
+        focusOrigin.focus();
+      }
+    });
 
     // Ok button confirms the filter settings and stores them in the model
     this.#getOkButton().addEventListener('click', (event) =>{
@@ -550,7 +558,8 @@ export class FilterDialog {
     const optionElement = createEl('option', {
       value: valueObject.value,
       label: valueObject.label,
-      "data-sql-literal": valueObject.literal
+      "data-sql-literal": valueObject.literal,
+      "role": "option"
     });
     if (valueObject.isSqlNull){
       optionElement.setAttribute('data-sql-null', true);
@@ -961,6 +970,7 @@ export class FilterDialog {
 
     this.#positionFilterDialog(queryAxisItemUi);
     const filterDialog = this.getDom();
+    this.#focusOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : queryAxisItemUi;
     
     let dataType;
     if (queryModelItem.derivation) {

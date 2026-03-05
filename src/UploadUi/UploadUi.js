@@ -55,6 +55,16 @@ export class UploadUi {
     this.#cancelPendingUploads = true;
   }
 
+  #setProgressValue(progressBar, value){
+    const max = parseFloat(progressBar.max) || 100;
+    let nextValue = Number.isFinite(value) ? value : 0;
+    nextValue = Math.max(0, Math.min(max, nextValue));
+    progressBar.value = nextValue;
+    progressBar.setAttribute('aria-valuemin', '0');
+    progressBar.setAttribute('aria-valuemax', String(max));
+    progressBar.setAttribute('aria-valuenow', String(nextValue));
+  }
+
   static #handleHueyFileContents(contents, extension){
     let queryModelState;
     switch (extension) {
@@ -109,14 +119,14 @@ export class UploadUi {
           const gcsParsed = !s3Parsed && parseGcsUri(file);
           if (s3Parsed || gcsParsed) {
             duckDbDataSource = await fetchCloudAndCreateDatasource(duckdb, instance, file, s3Parsed, gcsParsed);
-            progressBar.value = parseInt(progressBar.value, 10) + 60;
+            this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 60);
           }
           else {
             duckDbDataSource = await DuckDbDataSource.createFromUrl(duckdb, instance, file);
-            progressBar.value = parseInt(progressBar.value, 10) + 20;
+            this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 20);
 
             await duckDbDataSource.registerFile();
-            progressBar.value = parseInt(progressBar.value, 10) + 40;
+            this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 40);
           }
         }
       }
@@ -128,10 +138,10 @@ export class UploadUi {
         }
         else {
           duckDbDataSource = DuckDbDataSource.createFromFile(duckdb, instance, file);
-          progressBar.value = parseInt(progressBar.value, 10) + 20;
+          this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 20);
 
           await duckDbDataSource.registerFile();
-          progressBar.value = parseInt(progressBar.value, 10) + 40;
+          this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 40);
         }
       }
 
@@ -144,7 +154,7 @@ export class UploadUi {
       if (hueyQueryState){
         isAccessible = true;
       }
-      progressBar.value = parseInt(progressBar.value, 10) + 30;
+      this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 30);
 
       if (isAccessible !== true) {
         destroyDatasource = true;
@@ -172,7 +182,7 @@ export class UploadUi {
       return error;
     }
     finally {
-      progressBar.value = 100;
+      this.#setProgressValue(progressBar, 100);
       if (destroyDatasource && (duckDbDataSource instanceof DuckDbDataSource)){
         duckDbDataSource.destroy();
       }
@@ -182,6 +192,8 @@ export class UploadUi {
   #createLoadExtensionItem(extensionId){
     const loadExtensionItem = instantiateTemplate(UploadUi.#uploadItemTemplateId, extensionId);
     loadExtensionItem.getElementsByTagName('p').item(0).setAttribute('id', extensionId + '_message');
+    const progressBar = loadExtensionItem.getElementsByTagName('progress').item(0);
+    this.#setProgressValue(progressBar, parseInt(progressBar.value, 10));
     return loadExtensionItem;
   }
 
@@ -210,6 +222,8 @@ export class UploadUi {
     if (fileSize){
       labelSpan.setAttribute('data-file-size', fileSize);
     }
+    const progressBar = uploadItem.getElementsByTagName('progress').item(0);
+    this.#setProgressValue(progressBar, parseInt(progressBar.value, 10));
     
     return uploadItem;
   }
@@ -295,12 +309,12 @@ export class UploadUi {
       appendMessageLine(Internationalization.getText('Preparing extension check'));
       const sql = `SELECT * FROM duckdb_extensions() WHERE extension_name = ?`;
       const statement = await connection.prepare(sql);
-      progressbar.value = parseInt(progressbar.value, 10) + 20;
+      this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
 
       appendMessageLine(Internationalization.getText('Checking extension {1}', extensionName));
       const result = await statement.query(extensionName);
       statement.close();
-      progressbar.value = parseInt(progressbar.value, 10) + 20;
+      this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
 
       if (result.numRows === 0) {
         appendMessageLine(Internationalization.getText('Extension {1} not found', extensionName));
@@ -325,7 +339,7 @@ export class UploadUi {
         appendMessageLine(Internationalization.getText('Installing extension {1}', extensionName));
         const result = await connection.query(installSql);
         appendMessageLine(Internationalization.getText('Extension {1} is now installed', extensionName));
-        progressbar.value = parseInt(progressbar.value, 10) + 20;
+        this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
       }
 
       if (!row['loaded']){
@@ -335,10 +349,10 @@ export class UploadUi {
       }
       
       appendMessageLine(Internationalization.getText('Extension {1} is loaded', extensionName));
-      progressbar.value = parseInt(progressbar.value, 10) + 20;
+      this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
       invalid = false;
       if (invalid === false) {
-        progressbar.value = 100;
+        this.#setProgressValue(progressbar, 100);
       }
       return !invalid;
     }
