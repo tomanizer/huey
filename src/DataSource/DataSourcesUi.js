@@ -253,6 +253,8 @@ export class DataSourcesUi extends EventEmitter {
       case DuckDbDataSource.types.TABLEFUNCTION:
       case DuckDbDataSource.types.VIEW:
         return datasource.getObjectName();
+      case 'remote':
+        return `${datasource.getBaseUrl()} — ${datasource.getDatasetId()}`;
       default:
         return datasource.getId();
     }
@@ -488,6 +490,10 @@ export class DataSourcesUi extends EventEmitter {
         this.#createDatasourceNodeAnalyzeActionButton(datasourceId, summary);
         this.#createDatasourceNodeDownloadActionButton(datasourceId, summary);
         break;
+      case 'remote':
+        this.#createDatasourceNodeAnalyzeActionButton(datasourceId, summary);
+        this.#createDatasourceNodeRemoveActionButton(datasourceId, summary);
+        break;
       default:
         this.#createDatasourceNodeActionButtons(datasourceId, summary);
     }
@@ -589,6 +595,11 @@ export class DataSourcesUi extends EventEmitter {
             });
             this.#attachRejectsDetection(datasource);
             break;
+          case 'remote':
+            const remoteIdsJSON = node.getAttribute('data-datasourceids');
+            const remoteIds = JSON.parse(remoteIdsJSON);
+            datasource = remoteIds.length ? this.#datasources[remoteIds[0]] : undefined;
+            break;
           default:
             throw new Error(`Don't know how to get a datasource from a datasourcegroup of type ${groupType}`);
         }
@@ -615,14 +626,17 @@ export class DataSourcesUi extends EventEmitter {
         datasourceIdsList = [dataSourceId];
         break;
       case 'datasourcegroup':
-        const groupType = node.getAttribute('data-grouptype');
-        switch (groupType){
+        const groupTypeRemove = node.getAttribute('data-grouptype');
+        switch (groupTypeRemove){
           case DuckDbDataSource.types.FILE:
             const datasourceIdsListJSON = node.getAttribute('data-datasourceids');
             datasourceIdsList = JSON.parse(datasourceIdsListJSON);
             break;
+          case 'remote':
+            datasourceIdsList = JSON.parse(node.getAttribute('data-datasourceids'));
+            break;
           default:
-            throw new Error(`Don't know how to get a datasource from a datasourcegroup of type ${groupType}`);
+            throw new Error(`Don't know how to get a datasource from a datasourcegroup of type ${groupTypeRemove}`);
         }
         break;
     }
@@ -764,6 +778,8 @@ export class DataSourcesUi extends EventEmitter {
         return 'DuckDB';
       case DuckDbDataSource.types.SQLITE:
         return 'SQLite';
+      case 'remote':
+        return 'RemoteDS';
       case DuckDbDataSource.types.FILE:
         const datasources = datasourceGroup.datasources;
         if (miscGroup) {
@@ -786,6 +802,9 @@ export class DataSourcesUi extends EventEmitter {
 
     let groupTitle;
     switch (groupType) {
+      case 'remote':
+        groupTitle = 'RemoteDS';
+        break;
       case DuckDbDataSource.types.FILE:
         if (miscGroup === true) {
           groupTitle = 'Miscellanous files';

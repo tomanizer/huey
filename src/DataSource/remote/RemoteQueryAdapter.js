@@ -14,8 +14,9 @@ export const RemoteQueryAdapter = (function () {
     max: 'MAX'
   };
 
-  function createTodayDateRange() {
-    return { type: 'single', date: new Date().toISOString().slice(0, 10) };
+  /** Default date when query model has no date range; use a date that matches common sample data. */
+  function createDefaultDateRange() {
+    return { type: 'single', date: '2026-03-01' };
   }
 
   function getDateRange(queryModel) {
@@ -25,7 +26,7 @@ export const RemoteQueryAdapter = (function () {
         return queryModelDateRange;
       }
     }
-    return createTodayDateRange();
+    return createDefaultDateRange();
   }
 
   function getRemoteFieldForAxisItem(axisItem, context) {

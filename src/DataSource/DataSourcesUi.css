@@ -102,6 +102,7 @@ nav#sidebar[role=tablist] > div > div[role=tabpanel] > div#datasourcesUi:has( > 
 
   details[data-nodetype=datasourcegroup][data-grouptype=duckdb] > summary > span.label::before,
   details[data-nodetype=datasourcegroup][data-grouptype=file] > summary > span.label::before,
+  details[data-nodetype=datasourcegroup][data-grouptype=remote] > summary > span.label::before,
   details[data-nodetype=datasourcegroup][data-grouptype=sqlite] > summary > span.label::before,
   details[data-nodetype=datasource][data-datasourcetype=duckdb] > details[data-nodetype=duckdb_schema] > summary > span.label::before
   {
@@ -110,10 +111,19 @@ nav#sidebar[role=tablist] > div > div[role=tabpanel] > div#datasourcesUi:has( > 
 
   details[data-nodetype=datasourcegroup][open][data-grouptype=duckdb] > summary > span.label::before,
   details[data-nodetype=datasourcegroup][open][data-grouptype=file] > summary > span.label::before,
+  details[data-nodetype=datasourcegroup][open][data-grouptype=remote] > summary > span.label::before,
   details[data-nodetype=datasourcegroup][open][data-grouptype=sqlite] > summary > span.label::before,
   details[data-nodetype=datasource][data-datasourcetype=duckdb] > details[data-nodetype=duckdb_schema][open] > summary > span.label::before
    {
     content: var( --icon-folder-open );
+  }
+
+  details[data-nodetype=datasourcegroup][data-grouptype=remote] > summary > span.label::before {
+    content: var( --icon-cloud-upload );
+  }
+
+  details[data-nodetype=datasourcegroup][open][data-grouptype=remote] > summary > span.label::before {
+    content: var( --icon-cloud-upload );
   }
 
   details[data-nodetype=datasourcegroup][data-grouptype=file][data-filetype] > summary > span.label::before {
@@ -125,7 +135,8 @@ nav#sidebar[role=tablist] > div > div[role=tabpanel] > div#datasourcesUi:has( > 
   }
 
   details[data-nodetype=datasource][data-datasourcetype=duckdb] > details[data-nodetype=duckdb_schema] > details > summary,
-  details[data-nodetype=datasourcegroup][data-grouptype=file] > details[data-nodetype=datasource][data-datasourcetype=file] > summary {
+  details[data-nodetype=datasourcegroup][data-grouptype=file] > details[data-nodetype=datasource][data-datasourcetype=file] > summary,
+  details[data-nodetype=datasourcegroup][data-grouptype=remote] > details[data-nodetype=datasource][data-datasourcetype=remote] > summary {
     list-style: none;
     margin-left: 16px;
   }
@@ -153,6 +164,10 @@ nav#sidebar[role=tablist] > div > div[role=tabpanel] > div#datasourcesUi:has( > 
 
   details[data-nodetype=datasource][data-datasourcetype=sqlite] > summary > span.label::before {
     content: var( --icon-feather );
+  }
+
+  details[data-nodetype=datasource][data-datasourcetype=remote] > summary > span.label::before {
+    content: var( --icon-database );
   }
 
   details[data-nodetype=datasource][data-reject_count] > summary > span.label::before {

@@ -3,8 +3,11 @@ import { Internationalization } from '../Internationalization/Internationalizati
 import { Routing } from '../Routing/Routing.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { RemoteDatasource } from '../DataSource/remote/RemoteDatasource.js';
+import { RemoteDatasourceConfig } from '../DataSource/remote/RemoteDatasourceConfig.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { PromptUi } from '../PromptUi/PromptUi.js';
+import { TabUi } from '../Tabs/Tabs.js';
 import { queryModel } from '../QueryModel/QueryModel.js';
 import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
@@ -773,7 +776,7 @@ export function initUploadUi(){
       '<p>Connect to a dataset served by QueryService.</p>',
       '<form id="remoteDatasourceForm">',
       '<label for="remoteDatasourceBaseUrl">Base URL</label>',
-      '<input type="text" id="remoteDatasourceBaseUrl" name="baseUrl" placeholder="http://localhost:8000" required />',
+      '<input type="text" id="remoteDatasourceBaseUrl" name="baseUrl" placeholder="http://localhost:8002" required />',
       '<label for="remoteDatasourceDatasetId">Dataset ID</label>',
       '<input type="text" id="remoteDatasourceDatasetId" name="datasetId" placeholder="trades_v1" required />',
       '</form>'

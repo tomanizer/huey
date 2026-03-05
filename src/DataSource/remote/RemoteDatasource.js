@@ -6,10 +6,35 @@ import { RemoteDatasourceConfig } from './RemoteDatasourceConfig.js';
  * Use with RemoteDatasourceConfig. Implements getId(), getType(), getManagedConnection()
  * for compatibility with Huey; connection exposes getSchema(), fetchTuples(), fetchCells(), fetchPicklist().
  */
+
+/** Default date when none set (matches common sample data: 2026-03-01). */
+const DEFAULT_SINGLE_DATE = '2026-03-01';
+
+/**
+ * Normalize date_range to backend shape: { type: 'single', date } or { type: 'range', start, end }.
+ * Handles from/to vs start/end and ensures valid YYYY-MM-DD.
+ */
+function normalizeDateRange(dateRange) {
+  if (!dateRange || typeof dateRange !== 'object') {
+    return { type: 'single', date: DEFAULT_SINGLE_DATE };
+  }
+  const type = dateRange.type === 'range' ? 'range' : 'single';
+  if (type === 'range') {
+    const start = dateRange.start ?? dateRange.from;
+    const end = dateRange.end ?? dateRange.to;
+    const s = typeof start === 'string' && start ? start.slice(0, 10) : DEFAULT_SINGLE_DATE;
+    const e = typeof end === 'string' && end ? end.slice(0, 10) : s;
+    return { type: 'range', start: s, end: e };
+  }
+  const d = dateRange.date;
+  const date = typeof d === 'string' && d ? d.slice(0, 10) : DEFAULT_SINGLE_DATE;
+  return { type: 'single', date };
+}
+
 function buildEnvelope(datasetId, dateRange, query, clientContext) {
   const envelope = {
     dataset_id: datasetId,
-    date_range: dateRange || { type: 'single', date: new Date().toISOString().slice(0, 10) },
+    date_range: normalizeDateRange(dateRange),
     query: query || {}
   };
   if (clientContext) {
@@ -58,10 +83,13 @@ class RemoteConnection {
     }).then((res) => {
       if (!res.ok) {
         return res.json().then((body) => {
-          const err = new Error(body.detail || res.statusText);
+          const msg = body?.message || body?.detail || res.statusText;
+          const details = body?.details?.errors ? ` ${JSON.stringify(body.details.errors)}` : '';
+          const err = new Error(msg + details || 'Schema request failed');
           err.status = res.status;
           throw err;
-        }).catch(() => {
+        }).catch((e) => {
+          if (e instanceof Error && e.status) throw e;
           throw new Error(res.statusText || 'Schema request failed');
         });
       }
@@ -82,10 +110,13 @@ class RemoteConnection {
     }).then((res) => {
       if (!res.ok) {
         return res.json().then((body) => {
-          const err = new Error(body.detail || res.statusText);
+          const msg = body?.message || body?.detail || res.statusText;
+          const details = body?.details?.errors ? ` ${JSON.stringify(body.details.errors)}` : '';
+          const err = new Error(msg + details || 'Tuples request failed');
           err.status = res.status;
           throw err;
-        }).catch(() => {
+        }).catch((e) => {
+          if (e instanceof Error && e.status) throw e;
           throw new Error(res.statusText || 'Tuples request failed');
         });
       }
@@ -106,10 +137,13 @@ class RemoteConnection {
     }).then((res) => {
       if (!res.ok) {
         return res.json().then((body) => {
-          const err = new Error(body.detail || res.statusText);
+          const msg = body?.message || body?.detail || res.statusText;
+          const details = body?.details?.errors ? ` ${JSON.stringify(body.details.errors)}` : '';
+          const err = new Error(msg + details || 'Cells request failed');
           err.status = res.status;
           throw err;
-        }).catch(() => {
+        }).catch((e) => {
+          if (e instanceof Error && e.status) throw e;
           throw new Error(res.statusText || 'Cells request failed');
         });
       }
@@ -130,10 +164,13 @@ class RemoteConnection {
     }).then((res) => {
       if (!res.ok) {
         return res.json().then((body) => {
-          const err = new Error(body.detail || res.statusText);
+          const msg = body?.message || body?.detail || res.statusText;
+          const details = body?.details?.errors ? ` ${JSON.stringify(body.details.errors)}` : '';
+          const err = new Error(msg + details || 'Picklist request failed');
           err.status = res.status;
           throw err;
-        }).catch(() => {
+        }).catch((e) => {
+          if (e instanceof Error && e.status) throw e;
           throw new Error(res.statusText || 'Picklist request failed');
         });
       }
