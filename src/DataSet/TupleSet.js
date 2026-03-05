@@ -290,7 +290,7 @@ export class TupleSet extends DataSetComponent {
       var query = this.#buildRemoteTuplesQuery(limit, offset);
       if (!query) return 0;
       var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
-      var connection = await this.getManagedConnection();
+      var connection = datasource.getManagedConnection();
       var apiResponse;
       try {
         apiResponse = await connection.fetchTuples(dateRange, query);

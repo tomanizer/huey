@@ -431,7 +431,7 @@ export class CellSet extends DataSetComponent {
       var colDimCount = (axes.columns && axes.columns.length) || 0;
       var measureValueOffset = rowDimCount + colDimCount;
       var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
-      var connection = await this.getManagedConnection();
+      var connection = datasource.getManagedConnection();
       var apiResponse = await connection.fetchCells(dateRange, query);
       var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, null, measureValueOffset);
       return resultSet;
