@@ -80,13 +80,15 @@ def build_cache_key(
 class _CacheEntry:
     value: Any
     size_bytes: int
-    expires_at: float  # monotonic
+    expires_at: float  # monotonic – fresh until this time
+    stale_until: float = 0.0  # monotonic – serve stale until this time (0 = same as expires_at)
 
 
 @dataclass
 class CacheMetadata:
     cache_status: str  # "hit", "miss", "bypass"
     cache_source: str  # "l1", "l2", "compute", "inflight"
+    is_stale: bool = False  # True when a stale entry was served and a background refresh was queued
 
 
 class QueryResultCache:
@@ -150,21 +152,37 @@ class QueryResultCache:
                 self._stats["evictions"] += 1
         self._stats["entries"] = len(self._entries)
 
-    async def _get_l1(self, cache_key: str) -> Any | None:
+    async def _get_l1(self, cache_key: str) -> tuple[Any | None, bool]:
+        """Return ``(value, is_stale)``.
+
+        ``is_stale=True`` means the entry's fresh TTL has expired but it is
+        still within the stale serving window.  Callers should trigger a
+        background refresh.  Returns ``(None, False)`` when there is no usable
+        entry (fully expired or absent).
+        """
         async with self._lock:
             entry = self._entries.get(cache_key)
             if not entry:
-                return None
-            if entry.expires_at <= self._now():
+                return None, False
+            now = self._now()
+            # Effective stale limit: use stale_until when it extends past expires_at,
+            # otherwise treat expires_at as the hard expiry.
+            stale_limit = entry.stale_until if entry.stale_until > entry.expires_at else entry.expires_at
+            if stale_limit <= now:
+                # Fully expired – evict and report as a miss.
                 self._stats["current_bytes"] -= entry.size_bytes
                 self._entries.pop(cache_key, None)
                 self._stats["entries"] = len(self._entries)
-                return None
+                return None, False
             self._entries.move_to_end(cache_key)
-            return entry.value
+            if entry.expires_at <= now:
+                # Within the stale window – usable but stale.
+                return entry.value, True
+            # Fresh hit.
+            return entry.value, False
 
     async def _store_l1(
-        self, cache_key: str, value: Any, ttl_seconds: float, size_bytes: int, item_cap: int | None = None
+        self, cache_key: str, value: Any, ttl_seconds: float, size_bytes: int, item_cap: int | None = None, stale_ttl_seconds: float = 0.0
     ) -> bool:
         cap = item_cap if item_cap is not None else self.max_item_bytes
         if cap and cap > 0 and size_bytes > cap:
@@ -172,11 +190,12 @@ class QueryResultCache:
         if self.max_bytes and self.max_bytes > 0 and size_bytes > self.max_bytes:
             return False
         expires_at = self._now() + ttl_seconds
+        stale_until = expires_at + stale_ttl_seconds
         async with self._lock:
             existing = self._entries.pop(cache_key, None)
             if existing:
                 self._stats["current_bytes"] -= existing.size_bytes
-            self._entries[cache_key] = _CacheEntry(value=value, size_bytes=size_bytes, expires_at=expires_at)
+            self._entries[cache_key] = _CacheEntry(value=value, size_bytes=size_bytes, expires_at=expires_at, stale_until=stale_until)
             self._entries.move_to_end(cache_key)
             self._stats["current_bytes"] += size_bytes
             await self._evict_if_needed_locked()
@@ -197,14 +216,56 @@ class QueryResultCache:
             return None, 0.0
         return value, remaining
 
-    async def _store_all(self, cache_key: str, value: Any, ttl_seconds: float, item_cap: int | None = None) -> bool:
+    async def _store_all(self, cache_key: str, value: Any, ttl_seconds: float, item_cap: int | None = None, stale_ttl_seconds: float = 0.0) -> bool:
         ttl = ttl_seconds if ttl_seconds is not None else self.default_ttl
         serialized = self._serialize_value(value)
         size_bytes = len(serialized)
-        stored = await self._store_l1(cache_key, value, ttl, size_bytes, item_cap=item_cap)
+        stored = await self._store_l1(cache_key, value, ttl, size_bytes, item_cap=item_cap, stale_ttl_seconds=stale_ttl_seconds)
         if stored and self.store:
             self.store.set(cache_key, serialized, ttl_seconds=ttl, size_bytes=size_bytes)
         return stored
+
+    async def _refresh_in_background(
+        self,
+        cache_key: str,
+        loader: Callable[[], Awaitable[Any]],
+        ttl_seconds: float | None,
+        max_item_bytes: int | None,
+        stale_ttl_seconds: float,
+    ) -> None:
+        """Refresh a stale cache entry in the background (fire-and-forget).
+
+        Uses the inflight map as a single-flight guard so only one background
+        refresh runs per key at a time.
+        """
+        async with self._inflight_lock:
+            if cache_key in self._inflight:
+                return  # Another coroutine is already refreshing this key.
+            future: asyncio.Future = asyncio.get_running_loop().create_future()
+            self._inflight[cache_key] = future
+            self._stats["inflight"] = len(self._inflight)
+
+        try:
+            result = await loader()
+            ttl = ttl_seconds if ttl_seconds is not None else self.default_ttl
+            item_cap = max_item_bytes if max_item_bytes is not None else self.max_item_bytes
+            serialized_size = len(self._serialize_value(result))
+            should_admit = True
+            if item_cap and item_cap > 0 and serialized_size > item_cap:
+                should_admit = False
+            if ttl is not None and ttl <= 0:
+                should_admit = False
+            if should_admit:
+                await self._store_all(cache_key, result, ttl, item_cap=item_cap, stale_ttl_seconds=stale_ttl_seconds)
+            if not future.done():
+                future.set_result(result)
+        except Exception as exc:  # pragma: no cover - defensive
+            if not future.done():
+                future.set_exception(exc)
+        finally:
+            async with self._inflight_lock:
+                self._inflight.pop(cache_key, None)
+                self._stats["inflight"] = len(self._inflight)
 
     async def get_or_set(
         self,
@@ -212,22 +273,38 @@ class QueryResultCache:
         loader: Callable[[], Awaitable[Any]],
         ttl_seconds: float | None = None,
         max_item_bytes: int | None = None,
+        stale_ttl_seconds: float = 0.0,
     ) -> tuple[Any, CacheMetadata]:
         """
         Return cached value or compute with single-flight.
 
         loader must be an async callable returning the computed value.
+
+        When *stale_ttl_seconds* > 0, expired-but-stale entries are returned
+        immediately and a background refresh is scheduled so the next request
+        sees a fresh value without blocking.
         """
-        value = await self._get_l1(cache_key)
-        if value is not None:
+        value, is_stale = await self._get_l1(cache_key)
+        if value is not None and not is_stale:
             self._record_hit()
             return value, CacheMetadata(cache_status="hit", cache_source="l1")
+
+        if value is not None and is_stale:
+            # Return the stale value immediately and schedule a background refresh.
+            self._record_hit()
+            async with self._inflight_lock:
+                already_refreshing = cache_key in self._inflight
+            if not already_refreshing:
+                asyncio.get_running_loop().create_task(
+                    self._refresh_in_background(cache_key, loader, ttl_seconds, max_item_bytes, stale_ttl_seconds)
+                )
+            return value, CacheMetadata(cache_status="hit", cache_source="l1", is_stale=True)
 
         value, remaining_ttl = await self._get_l2(cache_key)
         if value is not None and remaining_ttl > 0:
             ttl_for_l1 = remaining_ttl
             self._record_hit()
-            await self._store_l1(cache_key, value, ttl_for_l1, len(self._serialize_value(value)))
+            await self._store_l1(cache_key, value, ttl_for_l1, len(self._serialize_value(value)), stale_ttl_seconds=stale_ttl_seconds)
             return value, CacheMetadata(cache_status="hit", cache_source="l2")
 
         # Single-flight dedupe
@@ -265,7 +342,7 @@ class QueryResultCache:
                 should_admit = False
             stored = False
             if should_admit:
-                stored = await self._store_all(cache_key, result, ttl, item_cap=item_cap)
+                stored = await self._store_all(cache_key, result, ttl, item_cap=item_cap, stale_ttl_seconds=stale_ttl_seconds)
             future.set_result(result)
             self._record_miss()
             status = "miss" if stored else "bypass"
