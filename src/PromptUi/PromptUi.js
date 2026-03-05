@@ -4,21 +4,25 @@ export class PromptUi {
 
   static {
 
-    byId('promptDialogAcceptButton')
-    .addEventListener('click', (event) =>{
-      const dialog = byId('promptUi');
-      dialog.returnValue = 'accept';
-      // firefox seems to forget the returnValue
-      dialog.setAttribute('data-returnValue', dialog.returnValue);
-    });
+    const acceptButton = byId('promptDialogAcceptButton');
+    if (acceptButton) {
+      acceptButton.addEventListener('click', (event) =>{
+        const dialog = byId('promptUi');
+        dialog.returnValue = 'accept';
+        // firefox seems to forget the returnValue
+        dialog.setAttribute('data-returnValue', dialog.returnValue);
+      });
+    }
 
-    byId('promptDialogRejectButton')
-    .addEventListener('click', (event) =>{
-      const dialog = byId('promptUi');
-      dialog.returnValue = 'reject';
-      // firefox seems to forget the returnValue
-      dialog.setAttribute('data-returnValue', dialog.returnValue);
-    });
+    const rejectButton = byId('promptDialogRejectButton');
+    if (rejectButton) {
+      rejectButton.addEventListener('click', (event) =>{
+        const dialog = byId('promptUi');
+        dialog.returnValue = 'reject';
+        // firefox seems to forget the returnValue
+        dialog.setAttribute('data-returnValue', dialog.returnValue);
+      });
+    }
 
   }
 
