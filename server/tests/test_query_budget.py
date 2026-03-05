@@ -85,17 +85,13 @@ def test_queue_depth_rejects_overflow(
     def first_request():
         return client.post("/query/cells", json=request_body)
 
-    def second_request():
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        first = pool.submit(first_request)
         # Wait until the first request has definitely acquired the budget slot
         # before sending the second, so the queue overflow is guaranteed.
-        in_execute.wait(timeout=5)
-        return client.post("/query/cells", json=request_body)
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(first_request)
-        second = pool.submit(second_request)
+        assert in_execute.wait(timeout=5)
+        second_result = client.post("/query/cells", json=request_body)
         first_result = first.result(timeout=10)
-        second_result = second.result(timeout=10)
 
     assert first_result.status_code in (200, 504)
     assert second_result.status_code == 429

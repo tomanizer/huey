@@ -81,21 +81,21 @@ describe('SQLHelper TIMESTAMP formatter (createTimestampFormatter)', () => {
 describe('SQLHelper number formatter (createNumberFormatter)', () => {
   test('does not throw when field is undefined (e.g. remote cell value field)', () => {
     const { format } = createNumberFormatter(false);
-    expect(() => format(1500, undefined)).not.toThrow();
-    expect(format(1500, undefined)).toBeDefined();
+    expect(() => format('1500', undefined)).not.toThrow();
+    expect(format('1500', undefined)).toBe('1500');
   });
 
   test('does not throw when field has no type (remote path)', () => {
     const { format } = createNumberFormatter(false);
     const fieldWithoutType = { name: 'SUM(volume)' };
-    expect(() => format(1500, fieldWithoutType)).not.toThrow();
-    expect(format(1500, fieldWithoutType)).toBeDefined();
+    expect(() => format('1500', fieldWithoutType)).not.toThrow();
+    expect(format('1500', fieldWithoutType)).toBe('1500');
   });
 
   test('does not throw when field.type is null', () => {
     const { format } = createNumberFormatter(false);
-    expect(() => format(99, { name: 'x', type: null })).not.toThrow();
-    expect(format(99, { name: 'x', type: null })).toBeDefined();
+    expect(() => format('99', { name: 'x', type: null })).not.toThrow();
+    expect(format('99', { name: 'x', type: null })).toBe('99');
   });
 
   test('formats number when field has type with typeId', () => {
