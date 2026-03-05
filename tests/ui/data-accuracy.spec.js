@@ -31,7 +31,6 @@ test.describe('Data accuracy', () => {
     await uploadFixtureAndWaitForAttributes(page, typedFixturePath);
     await addBasicPivotAxes(page);
 
-    await page.locator('#attributeUi details[data-column_name="volume"] summary label.attributeUiAxisButton[data-axis="cells"]').click();
     await addAggregateMeasure(page, 'volume', 'count');
     await runQueryAndWaitForPivot(page);
 
@@ -43,7 +42,6 @@ test.describe('Data accuracy', () => {
     await uploadFixtureAndWaitForAttributes(page, typedFixturePath);
     await addBasicPivotAxes(page);
 
-    await page.locator('#attributeUi details[data-column_name="volume"] summary label.attributeUiAxisButton[data-axis="cells"]').click();
     await addAggregateMeasure(page, 'volume', 'avg');
     await runQueryAndWaitForPivot(page);
 
@@ -67,7 +65,6 @@ test.describe('Data accuracy', () => {
     await uploadFixtureAndWaitForAttributes(page, nullsFixturePath);
     await addBasicPivotAxes(page);
 
-    await page.locator('#attributeUi details[data-column_name="volume"] summary label.attributeUiAxisButton[data-axis="cells"]').click();
     await addAggregateMeasure(page, 'volume', 'count');
     await runQueryAndWaitForPivot(page);
 

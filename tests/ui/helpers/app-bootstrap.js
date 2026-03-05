@@ -73,9 +73,22 @@ async function addAggregateMeasure(page, columnName, aggregator) {
   const columnSummary = columnNode.locator(':scope > summary');
   await expect(columnSummary).toBeVisible({ timeout: 15000 });
   await columnSummary.click();
-  const measureToggle = columnNode.locator(`details[data-aggregator="${aggregator}"] summary label.attributeUiAxisButton[data-axis="cells"]`);
-  await expect(measureToggle).toBeVisible({ timeout: 15000 });
-  await measureToggle.click();
+
+  const checkedMeasureInputs = columnNode.locator('label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"]:checked');
+  const checkedCount = await checkedMeasureInputs.count();
+  for (let i = 0; i < checkedCount; i++) {
+    const checkedInput = checkedMeasureInputs.nth(i);
+    const activeAggregator = await checkedInput.getAttribute('data-aggregator');
+    if (activeAggregator !== aggregator) {
+      await checkedInput.click();
+    }
+  }
+
+  const measureInput = columnNode.locator(`label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"][data-aggregator="${aggregator}"]`).first();
+  await expect(measureInput).toBeVisible({ timeout: 15000 });
+  if (!(await measureInput.isChecked())) {
+    await measureInput.click();
+  }
 }
 
 async function runQueryAndWaitForPivot(page) {
