@@ -145,6 +145,13 @@ export class DatasourceSettings extends SettingsBase {
         readerArguments[argumentName] = value;
       }
     }
+    // Always pass quote and escape for CSV so DuckDB does not auto-detect (which can pick empty and break rows like "Korea, South").
+    if (readerKey === 'csvReader') {
+      const q = readerSettings.csvReaderQuote;
+      const e = readerSettings.csvReaderEscape;
+      readerArguments.quote = (q !== undefined && q !== null && String(q).trim() !== '') ? String(q) : '"';
+      readerArguments.escape = (e !== undefined && e !== null && String(e).trim() !== '') ? String(e) : '"';
+    }
     return readerArguments;
   }
 
