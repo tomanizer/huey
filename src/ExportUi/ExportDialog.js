@@ -293,8 +293,8 @@ export class ExportUi {
     finally {
       try {
         await connection.query(`DETACH ${quotedExportDbAlias}`);
-      }
-      catch (error) {
+      } catch (error) {
+        console.error('Error detaching export database alias', error);
       }
       if (data) {
         await connection.dropFile(tmpFileName);
@@ -518,7 +518,9 @@ export class ExportUi {
         }
         finally {
           if (connection && !usedFallback) {
-            await connection.dropFile(tmpFileName).catch(() => {});
+            await connection.dropFile(tmpFileName).catch((err) => {
+              console.error('Error dropping temporary export file', err);
+            });
           }
         }
       }

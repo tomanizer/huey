@@ -1070,8 +1070,8 @@
                   id="locale"
                   type="text"
                   pattern="^(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?)(\s*,\s*(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?))*$"
-                  data-value-getter="new Function('control','settings','return control.value.split(String.fromCharCode(44));')"
-                  data-value-setter="new Function('control','value','settings','control.value = value.join();')"
+                  data-value-getter="splitCommaSeparatedValue"
+                  data-value-setter="joinCommaSeparatedValue"
                 />
               </fieldset>
 
@@ -1305,8 +1305,8 @@
               <select
                 id="themes"
                 onchange="Theme.applyTheme(this.selectedIndex)"
-                data-value-getter="new Function('control', 'settings', 'return JSON.parse(control.value);')"
-                data-value-setter="new Function('control', 'value', 'settings', 'control.value = JSON.stringify(value);')"
+                data-value-getter="parseJsonValue"
+                data-value-setter="stringifyJsonValue"
               >
               </select>
             </form>
