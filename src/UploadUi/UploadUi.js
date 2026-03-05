@@ -3,8 +3,11 @@ import { Internationalization } from '../Internationalization/Internationalizati
 import { Routing } from '../Routing/Routing.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { RemoteDatasource } from '../DataSource/remote/RemoteDatasource.js';
+import { RemoteDatasourceConfig } from '../DataSource/remote/RemoteDatasourceConfig.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { PromptUi } from '../PromptUi/PromptUi.js';
+import { TabUi } from '../Tabs/Tabs.js';
 import { queryModel } from '../QueryModel/QueryModel.js';
 import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
@@ -275,57 +278,63 @@ export class UploadUi {
     const body = this.#getBody();
     const installExtensionItem = this.#createInstallExtensionItem(extensionName);
     body.appendChild(installExtensionItem);
+    const message = installExtensionItem.getElementsByTagName('p').item(0);
+    const appendMessageLine = function(text){
+      const messageLine = document.createElement('span');
+      messageLine.textContent = text;
+      message.appendChild(messageLine);
+      message.appendChild(document.createElement('br'));
+    };
 
     try {
 
       const progressbar = installExtensionItem.getElementsByTagName('progress').item(0);
-      const message = installExtensionItem.getElementsByTagName('p').item(0);
 
       const connection = hueyDb.connection;
 
-      message.innerHTML += Internationalization.getText('Preparing extension check') + '<br/>';
+      appendMessageLine(Internationalization.getText('Preparing extension check'));
       const sql = `SELECT * FROM duckdb_extensions() WHERE extension_name = ?`;
       const statement = await connection.prepare(sql);
       progressbar.value = parseInt(progressbar.value, 10) + 20;
 
-      message.innerHTML += Internationalization.getText('Checking extension {1}', extensionName) + '<br/>';
+      appendMessageLine(Internationalization.getText('Checking extension {1}', extensionName));
       const result = await statement.query(extensionName);
       statement.close();
       progressbar.value = parseInt(progressbar.value, 10) + 20;
 
       if (result.numRows === 0) {
-        message.innerHTML += Internationalization.getText('Extension {1} not found', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not found', extensionName));
         throw new Error(`Extension not found`);
       }
       else {
-        message.innerHTML += Internationalization.getText('Extension {1} exists', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} exists', extensionName));
       }
 
       const row = result.get(0);
       if (row['installed']){
-        message.innerHTML += Internationalization.getText('Extension {1} already installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} already installed', extensionName));
       }
       else {
-        message.innerHTML += Internationalization.getText('Extension {1} not installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not installed', extensionName));
 
         let installSql = `INSTALL ${extensionName}`;
         if (extensionRepository){
-          message.innerHTML += Internationalization.getText('Extension {1} comes from non-standard location {2}', extensionName, extensionRepository) + '<br/>';          
+          appendMessageLine(Internationalization.getText('Extension {1} comes from non-standard location {2}', extensionName, extensionRepository));
           installSql += ` FROM ${extensionRepository}`;
         }
-        message.innerHTML += Internationalization.getText('Installing extension {1}', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Installing extension {1}', extensionName));
         const result = await connection.query(installSql);
-        message.innerHTML += Internationalization.getText('Extension {1} is now installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} is now installed', extensionName));
         progressbar.value = parseInt(progressbar.value, 10) + 20;
       }
 
       if (!row['loaded']){
-        message.innerHTML += Internationalization.getText('Extension {1} not loaded', extensionName) + '<br/>';
-        message.innerHTML += Internationalization.getText('Loading extension {1}', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not loaded', extensionName));
+        appendMessageLine(Internationalization.getText('Loading extension {1}', extensionName));
         await connection.query(`LOAD ${extensionName}`);
       }
       
-      message.innerHTML += Internationalization.getText('Extension {1} is loaded', extensionName) + '<br/>';
+      appendMessageLine(Internationalization.getText('Extension {1} is loaded', extensionName));
       progressbar.value = parseInt(progressbar.value, 10) + 20;
       invalid = false;
       if (invalid === false) {
@@ -334,10 +343,14 @@ export class UploadUi {
       return !invalid;
     }
     catch (e){
-      message.innerHTML += e.message + '<br/>';
-      message.innerHTML += e.stack.split('\n').map((stackItem) =>{
-        return `<pre>${stackItem}</pre>`
-      }).join('\n');
+      appendMessageLine(e.message);
+      if (e.stack) {
+        e.stack.split('\n').forEach((stackItem) =>{
+          const stackElement = document.createElement('pre');
+          stackElement.textContent = stackItem;
+          message.appendChild(stackElement);
+        });
+      }
       installExtensionItem.setAttribute('open', true);
       return e;
     }
@@ -432,7 +445,7 @@ export class UploadUi {
     Internationalization.setTextContent(descriptionElement, 'Upload in progress. This will take a few moments...');
 
     const body = this.#getBody();
-    body.innerHTML = '';
+    body.replaceChildren();
 
     dom.showModal();
 
@@ -522,6 +535,7 @@ export class UploadUi {
     }
 
     this.#getHeader().textContent = message;
+    // description markup is constructed from fixed UI templates and i18n strings only.
     this.#getDescription().innerHTML = description;
     
     return {
@@ -606,6 +620,68 @@ async function fetchCloudAndCreateDatasource(duckdb, instance, cloudUri, s3Parse
   return ds;
 }
 
+export function getUrlsFromInput(urlInput){
+  if (typeof urlInput !== 'string') {
+    return [];
+  }
+  return urlInput
+  .split(/[\n,]/)
+  .map((url) => url.trim())
+  .filter((url) => url);
+}
+
+export function isParquetUrl(url){
+  try {
+    const parsed = new URL(url);
+    return /\.parquet$/i.test(parsed.pathname);
+  }
+  catch (error){
+    return /\.parquet($|[?#])/i.test(url);
+  }
+}
+
+async function uploadParquetFilesAsFolderDatasource(files){
+  const parquetFiles = Array.from(files || []).filter((file) =>{
+    return file instanceof File && /\.parquet$/i.test(file.name);
+  });
+  if (!parquetFiles.length){
+    throw new Error('No parquet files found in selected folder.');
+  }
+
+  const hueyDb = window.hueyDb;
+  const duckdb = hueyDb.duckdb;
+  const instance = hueyDb.instance;
+
+  const fileNames = parquetFiles
+  .map((file) => file.webkitRelativePath || file.name)
+  .sort();
+
+  const protocol = duckdb.DuckDBDataProtocol.BROWSER_FILEREADER;
+  for (let i = 0; i < parquetFiles.length; i++){
+    const file = parquetFiles[i];
+    const fileName = file.webkitRelativePath || file.name;
+    await instance.registerFileHandle(
+      fileName,
+      file,
+      protocol
+    );
+  }
+
+  const datasource = new DuckDbDataSource(duckdb, instance, {
+    type: DuckDbDataSource.types.FILES,
+    fileNames: fileNames,
+    fileType: 'parquet'
+  });
+  const tryResult = await datasource.tryAccess(100);
+  if (!tryResult.success){
+    datasource.destroy();
+    const lastAttempt = tryResult.lastAttempt || {};
+    throw new Error(lastAttempt.message || 'Could not access parquet folder datasource.');
+  }
+  datasourcesUi.addDatasources([datasource]);
+  return datasource;
+}
+
 export function afterUploaded(uploadResults){
   const currentRoute = Routing.getCurrentRoute();
   if (!Routing.isSynced(queryModel)) {
@@ -670,6 +746,27 @@ export function initUploadUi(){
     afterUploaded(uploadResults);
   }, false);  // third arg is 'useCapture'
 
+  byId('uploaderFolder')
+  .addEventListener('change', async (event) =>{
+    const folderControl = event.target;
+    try {
+      const datasource = await uploadParquetFilesAsFolderDatasource(folderControl.files);
+      afterUploaded({
+        success: 1,
+        fail: 0,
+        datasources: [datasource]
+      });
+    }
+    catch (error){
+      showErrorDialog({
+        title: 'Could not load parquet folder',
+        description: error.message || String(error)
+      });
+    }
+    finally {
+      folderControl.value = '';
+    }
+  }, false);
 
   byId('loadFromUrl')
   .addEventListener('click', async (event) =>{
@@ -698,12 +795,13 @@ export function initUploadUi(){
 
     const showPromise = PromptUi.show({
       title: 'Load from URL or cloud storage',
-      contents: formHtml
+      contents: formHtml,
+      allowUnsafeHtml: true
     });
 
     // Attach a live input listener so the S3/GCS credential sections appear as
     // soon as the user types a matching URI scheme.  PromptUi.show() sets the
-    // section.innerHTML synchronously in its Promise executor, so the elements
+    // section content synchronously in its Promise executor, so the elements
     // are already in the DOM when we reach this point.
     const urlInput = byId('loadFromUrlInput');
     if (urlInput) {
@@ -727,42 +825,70 @@ export function initUploadUi(){
     }
 
     const url = (urlInput && urlInput.value && urlInput.value.trim()) || '';
-    if (!url) {
+    const urls = getUrlsFromInput(url);
+    if (!urls.length) {
       return;
     }
 
-    const s3Parsed = parseS3Uri(url);
-    const gcsParsed = !s3Parsed && parseGcsUri(url);
-
-    if (s3Parsed) {
-      const region = (byId('loadFromUrlS3Region') && byId('loadFromUrlS3Region').value.trim()) || undefined;
-      const accessKeyId = (byId('loadFromUrlS3AccessKeyId') && byId('loadFromUrlS3AccessKeyId').value.trim()) || undefined;
-      const secretAccessKey = (byId('loadFromUrlS3SecretKey') && byId('loadFromUrlS3SecretKey').value) || undefined;
-      const sessionToken = (byId('loadFromUrlS3SessionToken') && byId('loadFromUrlS3SessionToken').value) || undefined;
-      const options = { region, accessKeyId, secretAccessKey, sessionToken };
-      const { duckdb, instance } = window.hueyDb;
-
-      try {
-        const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, s3Parsed, null, options);
-        datasourcesUi.addDatasources([ds]);
-        afterUploaded({ success: 1, fail: 0, datasources: [ds] });
-      } catch(e) {
-        showErrorDialog({ title: 'Failed to load from S3', description: e.message || String(e) });
+    if (urls.length > 1 && urls.every((u) => isParquetUrl(u))) {
+      const hueyDb = window.hueyDb;
+      const datasource = new DuckDbDataSource(hueyDb.duckdb, hueyDb.instance, {
+        type: DuckDbDataSource.types.FILES,
+        fileNames: urls,
+        fileType: 'parquet'
+      });
+      const tryResult = await datasource.tryAccess(100);
+      if (!tryResult.success){
+        datasource.destroy();
+        showErrorDialog({
+          title: 'Could not load parquet URLs',
+          description: (tryResult.lastAttempt && tryResult.lastAttempt.message) || 'Could not access parquet URLs.'
+        });
+        return;
       }
-    } else if (gcsParsed) {
-      const accessToken = (byId('loadFromUrlGcsToken') && byId('loadFromUrlGcsToken').value) || undefined;
-      const options = { accessToken };
-      const { duckdb, instance } = window.hueyDb;
+      datasourcesUi.addDatasources([datasource]);
+      afterUploaded({ success: 1, fail: 0, datasources: [datasource] });
+      return;
+    }
 
-      try {
-        const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, null, gcsParsed, options);
-        datasourcesUi.addDatasources([ds]);
-        afterUploaded({ success: 1, fail: 0, datasources: [ds] });
-      } catch(e) {
-        showErrorDialog({ title: 'Failed to load from GCS', description: e.message || String(e) });
+    if (urls.length === 1) {
+      const singleUrl = urls[0];
+      const s3Parsed = parseS3Uri(singleUrl);
+      const gcsParsed = !s3Parsed && parseGcsUri(singleUrl);
+
+      if (s3Parsed) {
+        const region = (byId('loadFromUrlS3Region') && byId('loadFromUrlS3Region').value.trim()) || undefined;
+        const accessKeyId = (byId('loadFromUrlS3AccessKeyId') && byId('loadFromUrlS3AccessKeyId').value.trim()) || undefined;
+        const secretAccessKey = (byId('loadFromUrlS3SecretKey') && byId('loadFromUrlS3SecretKey').value) || undefined;
+        const sessionToken = (byId('loadFromUrlS3SessionToken') && byId('loadFromUrlS3SessionToken').value) || undefined;
+        const options = { region, accessKeyId, secretAccessKey, sessionToken };
+        const { duckdb, instance } = window.hueyDb;
+
+        try {
+          const ds = await fetchCloudAndCreateDatasource(duckdb, instance, singleUrl, s3Parsed, null, options);
+          datasourcesUi.addDatasources([ds]);
+          afterUploaded({ success: 1, fail: 0, datasources: [ds] });
+        } catch(e) {
+          showErrorDialog({ title: 'Failed to load from S3', description: e.message || String(e) });
+        }
+      } else if (gcsParsed) {
+        const accessToken = (byId('loadFromUrlGcsToken') && byId('loadFromUrlGcsToken').value) || undefined;
+        const options = { accessToken };
+        const { duckdb, instance } = window.hueyDb;
+
+        try {
+          const ds = await fetchCloudAndCreateDatasource(duckdb, instance, singleUrl, null, gcsParsed, options);
+          datasourcesUi.addDatasources([ds]);
+          afterUploaded({ success: 1, fail: 0, datasources: [ds] });
+        } catch(e) {
+          showErrorDialog({ title: 'Failed to load from GCS', description: e.message || String(e) });
+        }
+      } else {
+        const uploadResults = await uploadUi.uploadFiles([singleUrl]);
+        afterUploaded(uploadResults);
       }
     } else {
-      const uploadResults = await uploadUi.uploadFiles([url]);
+      const uploadResults = await uploadUi.uploadFiles(urls);
       afterUploaded(uploadResults);
     }
   });
@@ -773,14 +899,15 @@ export function initUploadUi(){
       '<p>Connect to a dataset served by QueryService.</p>',
       '<form id="remoteDatasourceForm">',
       '<label for="remoteDatasourceBaseUrl">Base URL</label>',
-      '<input type="text" id="remoteDatasourceBaseUrl" name="baseUrl" placeholder="http://localhost:8000" required />',
+      '<input type="text" id="remoteDatasourceBaseUrl" name="baseUrl" placeholder="http://localhost:8002" required />',
       '<label for="remoteDatasourceDatasetId">Dataset ID</label>',
       '<input type="text" id="remoteDatasourceDatasetId" name="datasetId" placeholder="trades_v1" required />',
       '</form>'
     ].join('');
     const result = await PromptUi.show({
       title: 'Add remote dataset',
-      contents: formHtml
+      contents: formHtml,
+      allowUnsafeHtml: true
     });
     if (result !== 'accept') {
       return;

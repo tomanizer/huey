@@ -64,11 +64,9 @@ export class DuckDbConnection extends EventEmitter {
     if (this.#physicalConnection === undefined){
       return this.#state;
     }
-    console.log(`canceling pending queries for ${this.getConnectionId()}, current state: ${this.#state}.`);
     this.#state = 'canceling';
     try {
       const canceled = await this.#duckDbInstance.cancelPendingQuery(this.#physicalConnection);
-      console.log(`canceled pending queries for ${this.getConnectionId()}, result: ${canceled}.`);
       if (canceled) {
         this.#state = 'canceled';
       }
@@ -78,9 +76,7 @@ export class DuckDbConnection extends EventEmitter {
     }
     catch(e){
       this.#state = 'cancelingerror';
-      console.log(`Error encountered while canceling pending queries on connection ${this.getConnectionId()}.`);
-      console.log(e.message);
-      console.log(e.stack);
+      console.error('Error encountered while canceling pending queries on connection', this.getConnectionId(), e);
     }
     return this.#state;
   }
@@ -108,36 +104,33 @@ export class DuckDbConnection extends EventEmitter {
   async close(){
     if (this.#physicalConnection){
       try {
-        this.#state = 'closing';        
+        this.#state = 'closing';
         const result = await this.#physicalConnection.close();
         this.#state = 'closed';
         return result;
-      }
-      catch(e){
-        console.error(e);
-      }
-      finally {
+      } catch (e) {
+        console.error('DuckDB connection close failed', e);
+        throw e;
+      } finally {
         this.#state = 'destroyed';
         this.#physicalConnection = null;
         this.#duckDbInstance = null;
       }
     }
-    else {
-      return null;
-    }
+    return null;
   }
   
   async destroy(){
     if (this.#physicalConnection){
       try {
         await this.close();
-      }
-      catch(e){
-        console.error(e);
+      } catch (e) {
+        console.error('DuckDB connection destroy failed', e);
+        throw e;
       }
     }
     this.#state = 'destroyed';
-    this.#physicalConnection = null
+    this.#physicalConnection = null;
   }
  
   getState(){

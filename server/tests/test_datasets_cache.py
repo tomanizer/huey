@@ -132,6 +132,50 @@ def test_partition_metadata_hooks(monkeypatch) -> None:
     assert datasets.get_partition_metadata("ds") is None
 
 
+def test_data_version_token_stable_with_reordered_metadata(monkeypatch) -> None:
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=1))
+    datasets.reset_cache()
+    datasets.set_partition_metadata(
+        "ds",
+        {
+            "partitions": [
+                {"date": "2026-03-01", "files": [{"path": "b.parquet", "size": 2, "etag": "e2"}]},
+                {"date": "2026-03-01", "files": [{"path": "a.parquet", "size": 1, "etag": "e1"}]},
+            ]
+        },
+    )
+    token_a = datasets.get_data_version_token("ds", {"type": "single", "date": "2026-03-01"})
+
+    datasets.set_partition_metadata(
+        "ds",
+        {
+            "partitions": [
+                {"date": "2026-03-01", "files": [{"etag": "e1", "size": 1, "path": "a.parquet"}]},
+                {"date": "2026-03-01", "files": [{"etag": "e2", "size": 2, "path": "b.parquet"}]},
+            ]
+        },
+    )
+    token_b = datasets.get_data_version_token("ds", {"type": "single", "date": "2026-03-01"})
+    assert token_a == token_b
+
+
+def test_data_version_token_changes_on_partition_metadata_change(monkeypatch) -> None:
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=1))
+    datasets.reset_cache()
+    datasets.set_partition_metadata(
+        "ds",
+        {"partitions": [{"date": "2026-03-01", "files": [{"path": "a.parquet", "size": 1, "etag": "e1"}]}]},
+    )
+    token_a = datasets.get_data_version_token("ds", {"type": "single", "date": "2026-03-01"})
+
+    datasets.set_partition_metadata(
+        "ds",
+        {"partitions": [{"date": "2026-03-01", "files": [{"path": "a.parquet", "size": 2, "etag": "e1"}]}]},
+    )
+    token_b = datasets.get_data_version_token("ds", {"type": "single", "date": "2026-03-01"})
+    assert token_a != token_b
+
+
 def test_schema_cache_concurrent_reads_consistent(monkeypatch) -> None:
     calls = {"count": 0}
 

@@ -1,7 +1,7 @@
 import { QueryAxisItem, QueryAxis, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { DragAndDropHelper } from '../DragAndDrop/DragAndDropHelper.js';
-import { byId, instantiateTemplate, setAttributes, getAncestorWithTagName, getClassNames } from '../util/dom/dom.js';
+import { byId, createEl, instantiateTemplate, setAttributes, getAncestorWithTagName, getClassNames } from '../util/dom/dom.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import {
   getDataTypeInfo,
@@ -1180,14 +1180,12 @@ export class AttributeUi {
 
   clear(showBusy){
     const attributesUi = this.getDom();
-    let content;
+    attributesUi.replaceChildren();
     if (showBusy) {
-      content = '<div class="loader loader-medium"></div>';
+      attributesUi.appendChild(createEl('div', {
+        "class": 'loader loader-medium'
+      }));
     }
-    else {
-      content = '';
-    }
-    attributesUi.innerHTML = content;
   }
 
   render(columnSummary){

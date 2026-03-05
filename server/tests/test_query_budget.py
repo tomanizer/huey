@@ -4,6 +4,7 @@ import asyncio
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 
 import pytest
 from starlette.testclient import TestClient
@@ -72,7 +73,7 @@ def test_queue_depth_rejects_overflow(
     async def slow_execute(sql, params=None, *, dataset_id=None, cancel_handle=None):
         in_execute.set()  # budget is held at this point
         await asyncio.sleep(1)
-        return await original_execute(sql, params, dataset_id=dataset_id)
+        return await original_execute(sql, params, dataset_id=dataset_id, cancel_handle=cancel_handle)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", slow_execute)
 

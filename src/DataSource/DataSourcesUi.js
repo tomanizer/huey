@@ -112,10 +112,16 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   clear(content){
-    if (!content){
-      content = '';
+    const dom = this.getDom();
+    dom.replaceChildren();
+    if (!content) {
+      return;
     }
-    this.getDom().innerHTML = content;
+    if (typeof content === 'string') {
+      dom.textContent = content;
+      return;
+    }
+    dom.appendChild(content);
   }
 
   #getLooseColumnType(columnType){
@@ -253,6 +259,8 @@ export class DataSourcesUi extends EventEmitter {
       case DuckDbDataSource.types.TABLEFUNCTION:
       case DuckDbDataSource.types.VIEW:
         return datasource.getObjectName();
+      case 'remote':
+        return `${datasource.getBaseUrl()} — ${datasource.getDatasetId()}`;
       default:
         return datasource.getId();
     }
@@ -488,6 +496,10 @@ export class DataSourcesUi extends EventEmitter {
         this.#createDatasourceNodeAnalyzeActionButton(datasourceId, summary);
         this.#createDatasourceNodeDownloadActionButton(datasourceId, summary);
         break;
+      case 'remote':
+        this.#createDatasourceNodeAnalyzeActionButton(datasourceId, summary);
+        this.#createDatasourceNodeRemoveActionButton(datasourceId, summary);
+        break;
       default:
         this.#createDatasourceNodeActionButtons(datasourceId, summary);
     }
@@ -589,6 +601,11 @@ export class DataSourcesUi extends EventEmitter {
             });
             this.#attachRejectsDetection(datasource);
             break;
+          case 'remote':
+            const remoteIdsJSON = node.getAttribute('data-datasourceids');
+            const remoteIds = JSON.parse(remoteIdsJSON);
+            datasource = remoteIds.length ? this.#datasources[remoteIds[0]] : undefined;
+            break;
           default:
             throw new Error(`Don't know how to get a datasource from a datasourcegroup of type ${groupType}`);
         }
@@ -615,14 +632,17 @@ export class DataSourcesUi extends EventEmitter {
         datasourceIdsList = [dataSourceId];
         break;
       case 'datasourcegroup':
-        const groupType = node.getAttribute('data-grouptype');
-        switch (groupType){
+        const groupTypeRemove = node.getAttribute('data-grouptype');
+        switch (groupTypeRemove){
           case DuckDbDataSource.types.FILE:
             const datasourceIdsListJSON = node.getAttribute('data-datasourceids');
             datasourceIdsList = JSON.parse(datasourceIdsListJSON);
             break;
+          case 'remote':
+            datasourceIdsList = JSON.parse(node.getAttribute('data-datasourceids'));
+            break;
           default:
-            throw new Error(`Don't know how to get a datasource from a datasourcegroup of type ${groupType}`);
+            throw new Error(`Don't know how to get a datasource from a datasourcegroup of type ${groupTypeRemove}`);
         }
         break;
     }
@@ -641,9 +661,6 @@ export class DataSourcesUi extends EventEmitter {
         switch (fileType){
           case fromFileType:
             return includeFromFileType !== false;
-          case 'duckdb':
-          case 'sqlite':
-            return false;
         }
       }
       return true;
@@ -674,7 +691,8 @@ export class DataSourcesUi extends EventEmitter {
     const menu = DataSourcesUi.#getDownloadMenuHTML(fromFileType, includeFromFileType);
     const result = await PromptUi.show({
       title: 'Export Datasource',
-      contents: menu
+      contents: menu,
+      allowUnsafeHtml: true
     });
 
     if (result !== 'accept'){
@@ -695,25 +713,38 @@ export class DataSourcesUi extends EventEmitter {
     let exportDelimited = false;
     let exportJson = false;
     let exportParquet = false;
+    let exportSqlite = false;
+    let exportDuckdb = false;
     let exportXlsx = false;
     
-    switch (fileTypeInfo.duckdb_reader){
-      case 'read_csv':
-        exportType = 'exportDelimited';
-        exportDelimited = true;
+    switch (targetFileType) {
+      case 'sqlite':
+        exportType = 'exportSqlite';
+        exportSqlite = true;
         break;
-      case 'read_json':
-        exportType = 'exportJson';
-        exportJson = true;
+      case 'duckdb':
+        exportType = 'exportDuckdb';
+        exportDuckdb = true;
         break;
-      case 'read_parquet':
-        exportType = 'exportParquet';
-        exportParquet = true;
-        break;
-      case 'read_xlsx':
-        exportType = 'exportXlsx';
-        exportXlsx = true;
-        break;
+      default:
+        switch (fileTypeInfo.duckdb_reader){
+          case 'read_csv':
+            exportType = 'exportDelimited';
+            exportDelimited = true;
+            break;
+          case 'read_json':
+            exportType = 'exportJson';
+            exportJson = true;
+            break;
+          case 'read_parquet':
+            exportType = 'exportParquet';
+            exportParquet = true;
+            break;
+          case 'read_xlsx':
+            exportType = 'exportXlsx';
+            exportXlsx = true;
+            break;
+        }
     }
     const exportSettings = Object.assign(
       {}, settings.getSettings('exportUi'), {
@@ -723,6 +754,8 @@ export class DataSourcesUi extends EventEmitter {
       exportDelimited: exportDelimited,
       exportJson: exportJson,
       exportParquet: exportParquet,
+      exportSqlite: exportSqlite,
+      exportDuckdb: exportDuckdb,
       exportXlsx: exportXlsx,
     });
     return exportSettings;
@@ -764,6 +797,8 @@ export class DataSourcesUi extends EventEmitter {
         return 'DuckDB';
       case DuckDbDataSource.types.SQLITE:
         return 'SQLite';
+      case 'remote':
+        return 'RemoteDS';
       case DuckDbDataSource.types.FILE:
         const datasources = datasourceGroup.datasources;
         if (miscGroup) {
@@ -786,6 +821,9 @@ export class DataSourcesUi extends EventEmitter {
 
     let groupTitle;
     switch (groupType) {
+      case 'remote':
+        groupTitle = 'RemoteDS';
+        break;
       case DuckDbDataSource.types.FILE:
         if (miscGroup === true) {
           groupTitle = 'Miscellanous files';

@@ -233,15 +233,29 @@ export class TupleSet extends DataSetComponent {
     return RemoteQueryAdapter.createRemoteTuplesQuery(queryModel, this.#queryAxisId, limit, offset);
   }
 
+  /** Map QueryService/columnType string to Arrow typeId so pivot formatters and literal writers work. */
+  static #columnTypeToArrowTypeId(columnType) {
+    var t = (columnType || 'VARCHAR').toUpperCase();
+    if (t === 'DATE') return 8;
+    if (t === 'TIMESTAMP' || t.indexOf('TIMESTAMP') >= 0) return 10;
+    if (t === 'BIGINT' || t === 'INTEGER' || t === 'INT64') return -5;
+    if (t === 'DOUBLE' || t === 'FLOAT' || t === 'FLOAT64') return -12;
+    if (t === 'BOOLEAN' || t === 'BOOL') return 6;
+    return 5; // Utf8 / VARCHAR
+  }
+
   #remoteResponseToResultSet(apiResponse, axisItems, includeCountAll){
     var items = apiResponse.items || [];
     var totalCount = apiResponse.total_count != null ? apiResponse.total_count : items.length;
     var hasGroupingId = items.some(function(item) { return item.grouping_id != null; });
-    var fieldNames = axisItems.map(function(item) { return item.columnName; });
     var fields = [];
     if (hasGroupingId) fields.push({ name: TupleSet.groupingIdAlias });
-    fieldNames.forEach(function(name) { fields.push({ name: name }); });
+    axisItems.forEach(function(item) {
+      var typeId = TupleSet.#columnTypeToArrowTypeId(item.columnType);
+      fields.push({ name: item.columnName, type: { typeId: typeId } });
+    });
     if (includeCountAll) fields.push({ name: '__huey_count' });
+    var fieldNames = axisItems.map(function(item) { return item.columnName; });
     var numRows = items.length;
     var get = (function(items, fieldNames, totalCount, includeCountAll, hasGroupingId) {
       return function(i) {
@@ -276,7 +290,7 @@ export class TupleSet extends DataSetComponent {
       var query = this.#buildRemoteTuplesQuery(limit, offset);
       if (!query) return 0;
       var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
-      var connection = await this.getManagedConnection();
+      var connection = datasource.getManagedConnection();
       var apiResponse;
       try {
         apiResponse = await connection.fetchTuples(dateRange, query);
@@ -298,10 +312,7 @@ export class TupleSet extends DataSetComponent {
     axisSql = `${axisSql}\nLIMIT ${limit} OFFSET ${offset}`;
 
     var connection = await this.getManagedConnection();
-    console.log(`SQL to fetch tuples for ${this.#queryAxisId} axis:`);
-    console.log(axisSql);
     var resultset = await connection.query(axisSql);
-    console.log(`Query method returned, connection ${connection.getConnectionId()} in state ${connection.getState()}` );
     var rejects = await this.getQueryModel().getDatasource().getRejects();
     if (connection.getState() === 'canceled') {
       return 0;

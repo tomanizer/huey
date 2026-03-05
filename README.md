@@ -93,6 +93,22 @@ After confirming, the upload dialog appears just like when uploading local files
 
 Note that loading data from URL is subject to certain restrictions due to browser security policies. Typically the URL needs to be either in the same domain as from where Huey is served, or the remote server needs to pass CORS headers to overcome the same-origin policy. 
 
+#### Parquet folders, URL lists and Hive partitioning
+
+Huey supports loading Parquet datasets in addition to single files:
+
+- **Local Parquet folder**: click **Parquet folder** on the toolbar and choose a folder. Huey collects `.parquet` files in that folder tree and registers them as one Parquet datasource.
+- **Multiple Parquet URLs**: in **Load data from URL**, enter a comma or newline-separated list of parquet URLs. Huey will load them as one Parquet datasource.
+- **Parquet glob URL/path**: you can enter a glob path such as `data/*/*/*.parquet` (or an HTTP URL with the same pattern).
+
+To infer Hive partition columns like `year=2020/month=01` from folder names:
+
+1. Load the Parquet datasource (folder, URL list, or glob).
+2. Open datasource settings.
+3. In **Parquet Reader Parameters**, enable **Hive partitioning**.
+
+This makes Huey pass `hive_partitioning = true` to DuckDB `read_parquet()`.
+
 ### Opening DuckDb files
 Apart from reading data files directly, Huey can also open existing duckdb files and access its tables and views. The process for accessing duckdb files is exactly the same as for accessing data files. Just make sure you give your duckdb file a '.duckdb' extension - that's how Huey knows it's a duckdb file. (DuckDB data files are not required to have any particular name or extension, but Huey currently cannot detect that, so it relies on a file extension convention instead.) Successfully loaded .duckdb files will appear in the DuckDb Folder, which appears at the top of the DataSources tab. 
 
@@ -366,7 +382,7 @@ Hitting the Clone button on the toolbar will open a new instance of Huey in a ne
 
 ## Export
 Huey provides export capabilities so you can use the results of your analysis outside huey.
-The export dialog lets you export query results by downloading it as csv, parquet, or JSON file, or you can choose to have your results copied to your operating system clipboard.
+The export dialog lets you export query results by downloading it as delimited text (CSV/TSV), parquet, JSON, SQLite, DuckDB, or Excel file, or you can choose to have your results copied to your operating system clipboard.
 
 Apart from the result data, Huey also lets you export the SQL statements that would produce the query result.
 

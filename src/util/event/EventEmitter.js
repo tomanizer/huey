@@ -102,7 +102,14 @@ export class EventEmitter {
     switch(trueOrFalse) {
       case true:
         if (this.#queuedEvents && this.#queuedEvents.length) {
-          debugger;
+          const queued = this.#queuedEvents;
+          this.#queuedEvents = [];
+          queued.forEach((event) => {
+            const eventListeners = this.#eventListeners[event.type];
+            if (eventListeners) {
+              eventListeners.forEach((listener) => listener.call(null, event));
+            }
+          });
         }
         break;
       case false:

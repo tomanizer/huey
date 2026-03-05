@@ -130,3 +130,147 @@ def test_cache_key_is_canonical() -> None:
     assert key_a == key_b
     # Canonical JSON must be stable for the same payload
     assert canonical_json({"b": 2, "a": 1}) == canonical_json({"a": 1, "b": 2})
+
+
+def test_cache_key_differs_by_data_token() -> None:
+    """Different data_token values produce different cache keys (dim_version_token behaviour)."""
+    date_range = {"type": "single", "date": "2026-03-01"}
+    query = {"field": "symbol"}
+    key_v1 = build_cache_key("picklist", "ds1", date_range, query, data_token="abc123")
+    key_v2 = build_cache_key("picklist", "ds1", date_range, query, data_token="def456")
+    assert key_v1 != key_v2
+    # Same token must produce the same key every time.
+    key_v1b = build_cache_key("picklist", "ds1", date_range, query, data_token="abc123")
+    assert key_v1 == key_v1b
+
+
+def test_stale_while_revalidate_returns_stale_immediately() -> None:
+    """Stale entries within the stale window are returned synchronously without calling the loader."""
+    import time
+
+    from server.cache import _CacheEntry
+
+    async def _run():
+        cache = QueryResultCache(max_bytes=1024 * 1024, max_item_bytes=1024 * 1024, default_ttl=60)
+
+        now = time.monotonic()
+        # Insert a manually crafted stale entry: expired 5 s ago, but stale window extends 300 s.
+        stale_entry = _CacheEntry(
+            value={"items": ["stale_value"]},
+            size_bytes=100,
+            expires_at=now - 5.0,  # already past fresh TTL
+            stale_until=now + 300.0,  # still within stale serving window
+        )
+        cache._entries["stale_key"] = stale_entry
+        cache._stats["current_bytes"] += stale_entry.size_bytes
+        cache._stats["entries"] = 1
+
+        loader_calls = 0
+
+        async def loader():
+            nonlocal loader_calls
+            loader_calls += 1
+            return {"items": ["fresh_value"]}
+
+        result, meta = await cache.get_or_set(
+            "stale_key",
+            loader,
+            ttl_seconds=60.0,
+            stale_ttl_seconds=300.0,
+        )
+
+        # Stale value is returned immediately without calling the loader.
+        assert result == {"items": ["stale_value"]}
+        assert meta.cache_status == "hit"
+        assert meta.cache_source == "l1"
+        assert meta.is_stale is True
+        assert loader_calls == 0  # Loader was NOT called synchronously
+
+        await cache.close()
+
+    asyncio.run(_run())
+
+
+def test_per_endpoint_stats() -> None:
+    async def _run():
+        cache = QueryResultCache(max_bytes=1024 * 1024, max_item_bytes=1024 * 1024, default_ttl=5)
+
+        async def loader():
+            return {"data": "ok"}
+
+        # Miss on tuples
+        await cache.get_or_set("t1", loader, endpoint="tuples")
+        # Hit on tuples
+        await cache.get_or_set("t1", loader, endpoint="tuples")
+        # Miss on cells
+        await cache.get_or_set("c1", loader, endpoint="cells")
+        # Miss on picklist
+        await cache.get_or_set("p1", loader, endpoint="picklist")
+        # Hit on picklist
+        await cache.get_or_set("p1", loader, endpoint="picklist")
+
+        stats = cache.stats()
+        assert stats["endpoint_tuples_hits"] == 1
+        assert stats["endpoint_tuples_misses"] == 1
+        assert stats["endpoint_cells_hits"] == 0
+        assert stats["endpoint_cells_misses"] == 1
+        assert stats["endpoint_picklist_hits"] == 1
+        assert stats["endpoint_picklist_misses"] == 1
+
+        await cache.close()
+
+    asyncio.run(_run())
+
+
+def test_stale_entry_fully_expired_causes_miss() -> None:
+    """Entries past the stale window are evicted and cause a cache miss."""
+    import time
+
+    from server.cache import _CacheEntry
+
+    async def _run():
+        cache = QueryResultCache(max_bytes=1024 * 1024, max_item_bytes=1024 * 1024, default_ttl=60)
+
+        now = time.monotonic()
+        # Both expires_at and stale_until are in the past.
+        expired_entry = _CacheEntry(
+            value={"items": ["old"]},
+            size_bytes=100,
+            expires_at=now - 20.0,
+            stale_until=now - 5.0,
+        )
+        cache._entries["expired_key"] = expired_entry
+        cache._stats["current_bytes"] += expired_entry.size_bytes
+        cache._stats["entries"] = 1
+
+        loader_calls = 0
+
+        async def loader():
+            nonlocal loader_calls
+            loader_calls += 1
+            return {"items": ["fresh"]}
+
+        result, meta = await cache.get_or_set("expired_key", loader, ttl_seconds=60.0, stale_ttl_seconds=300.0)
+
+        assert result == {"items": ["fresh"]}
+        assert meta.cache_status in {"miss", "bypass"}
+        assert loader_calls == 1  # Loader must have been called
+
+        await cache.close()
+
+    asyncio.run(_run())
+
+
+def test_stats_include_all_expected_keys() -> None:
+    async def _run():
+        cache = QueryResultCache(max_bytes=1024 * 1024, max_item_bytes=1024 * 1024, default_ttl=5)
+        stats = cache.stats()
+        for key in ("hits", "misses", "evictions", "current_bytes", "entries", "inflight",
+                    "endpoint_tuples_hits", "endpoint_tuples_misses",
+                    "endpoint_cells_hits", "endpoint_cells_misses",
+                    "endpoint_picklist_hits", "endpoint_picklist_misses"):
+            assert key in stats, f"Missing stat key: {key}"
+
+        await cache.close()
+
+    asyncio.run(_run())

@@ -87,24 +87,21 @@ export function createNumberFormatter(fractionDigits){
         case 'number':
           return formatter.format(value);
       }
-      
+
       let strValue;
-      if (field) {
+      if (field?.type != null && field.type.typeId != null) {
         const fieldType = field.type;
         const fieldTypeId = fieldType.typeId;
         switch (fieldTypeId){
-          case 7: // arrrow decimal
+          case 7: // arrow decimal
             return formatArrowDecimal(value, fieldType);
           default:
         }
-        let fieldTypeScale;
       }
-      else {
-        strValue = String(value);
-      }
-      
-      // fallback
-      console.warn(`Using fallback formatter for number "${strValue}" (${typeof value}; ${field ? field.type.typeId : ''}).`);
+      strValue = String(value);
+
+      // fallback (e.g. remote cell value fields without type, or non-numeric string)
+      console.warn(`Using fallback formatter for number "${strValue}" (${typeof value}; ${field?.type?.typeId ?? 'no type'}).`);
       return strValue;
     }
   };
@@ -127,21 +124,24 @@ export function createTimestampFormatter(withTimeZone){
     fractionalSecondDigits: 3
   });
   return function(value, field){
-    if (value === null ){
+    if (value === null || value === undefined){
       return getNullString();
     }
-    const date = new Date(value);
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
     const parts = String(value).split('.');
     let micros;
     if (parts.length === 2) {
       micros = parseInt( parts[1], 10 );
     }
     const dateTimeString = formatter.format(date);
-    
+
     if (!micros) {
       return dateTimeString;
     }
-    
+
     return `${dateTimeString} ${micros}μs`;
   };
 }
@@ -775,10 +775,14 @@ export const dataTypes = {
         day: '2-digit'
       });
       return function(value, field){
-        if (value === null){
+        if (value === null || value === undefined){
           return getNullString();
         }
-        return formatter.format(value);
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return String(value);
+        }
+        return formatter.format(date);
       };
     },
     createLiteralWriter: function(dataTypeInfo, dataType){

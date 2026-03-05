@@ -114,13 +114,19 @@ class QueryResultCache:
         self._lock = asyncio.Lock()
         self._inflight_lock = asyncio.Lock()
         self._inflight: dict[str, asyncio.Future] = {}
-        self._stats = {
+        self._stats: dict[str, int] = {
             "hits": 0,
             "misses": 0,
             "evictions": 0,
             "current_bytes": 0,
             "entries": 0,
             "inflight": 0,
+            "endpoint_tuples_hits": 0,
+            "endpoint_tuples_misses": 0,
+            "endpoint_cells_hits": 0,
+            "endpoint_cells_misses": 0,
+            "endpoint_picklist_hits": 0,
+            "endpoint_picklist_misses": 0,
         }
 
     async def close(self) -> None:
@@ -129,8 +135,11 @@ class QueryResultCache:
             self.store.close()
 
     def stats(self) -> dict[str, int]:
-        """Return a copy of cache statistics."""
-        return dict(self._stats)
+        """Return a copy of cache statistics, including L2 stats when available."""
+        result = dict(self._stats)
+        if self.store:
+            result.update(self.store.stats())
+        return result
 
     def _record_hit(self) -> None:
         self._stats["hits"] += 1
@@ -277,6 +286,7 @@ class QueryResultCache:
         ttl_seconds: float | None = None,
         max_item_bytes: int | None = None,
         stale_ttl_seconds: float = 0.0,
+        endpoint: str | None = None,
     ) -> tuple[Any, CacheMetadata]:
         """
         Return cached value or compute with single-flight.
@@ -286,10 +296,14 @@ class QueryResultCache:
         When *stale_ttl_seconds* > 0, expired-but-stale entries are returned
         immediately and a background refresh is scheduled so the next request
         sees a fresh value without blocking.
+
+        endpoint is an optional label (e.g. "tuples", "cells", "picklist") used for per-endpoint stats.
         """
         value, is_stale = await self._get_l1(cache_key)
         if value is not None and not is_stale:
             self._record_hit()
+            if endpoint:
+                self._stats[f"endpoint_{endpoint}_hits"] = self._stats.get(f"endpoint_{endpoint}_hits", 0) + 1
             return value, CacheMetadata(cache_status="hit", cache_source="l1")
 
         if value is not None and is_stale:
@@ -307,6 +321,8 @@ class QueryResultCache:
         if value is not None and remaining_ttl > 0:
             ttl_for_l1 = remaining_ttl
             self._record_hit()
+            if endpoint:
+                self._stats[f"endpoint_{endpoint}_hits"] = self._stats.get(f"endpoint_{endpoint}_hits", 0) + 1
             await self._store_l1(cache_key, value, ttl_for_l1, len(self._serialize_value(value)), stale_ttl_seconds=stale_ttl_seconds)
             return value, CacheMetadata(cache_status="hit", cache_source="l2")
 
@@ -326,6 +342,8 @@ class QueryResultCache:
             try:
                 result = await future
                 self._record_hit()
+                if endpoint:
+                    self._stats[f"endpoint_{endpoint}_hits"] = self._stats.get(f"endpoint_{endpoint}_hits", 0) + 1
                 return result, CacheMetadata(cache_status="hit", cache_source="inflight")
             finally:
                 # no cleanup; owner cleans inflight
@@ -348,6 +366,8 @@ class QueryResultCache:
                 stored = await self._store_all(cache_key, result, ttl, item_cap=item_cap, stale_ttl_seconds=stale_ttl_seconds)
             future.set_result(result)
             self._record_miss()
+            if endpoint:
+                self._stats[f"endpoint_{endpoint}_misses"] = self._stats.get(f"endpoint_{endpoint}_misses", 0) + 1
             status = "miss" if stored else "bypass"
             source = "compute"
             return result, CacheMetadata(cache_status=status, cache_source=source)
@@ -364,7 +384,12 @@ class QueryResultCache:
         """Clear L1 and L2 (used in tests)."""
         async with self._lock:
             self._entries.clear()
-            self._stats.update({"hits": 0, "misses": 0, "evictions": 0, "current_bytes": 0, "entries": 0, "inflight": 0})
+            self._stats.update({
+                "hits": 0, "misses": 0, "evictions": 0, "current_bytes": 0, "entries": 0, "inflight": 0,
+                "endpoint_tuples_hits": 0, "endpoint_tuples_misses": 0,
+                "endpoint_cells_hits": 0, "endpoint_cells_misses": 0,
+                "endpoint_picklist_hits": 0, "endpoint_picklist_misses": 0,
+            })
         if self.store:
             self.store.reset()
 

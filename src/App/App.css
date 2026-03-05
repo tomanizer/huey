@@ -84,11 +84,19 @@ body {
         }
       }
 
+      > label[for=uploaderFolder] {
+        > input[type=file]#uploaderFolder {
+          display: none;
+        }
+      }
 
       > label[for=uploader]::before {
         content: var( --icon-upload );
       }
-      
+
+      > label[for=uploaderFolder]::before {
+        content: var( --icon-folder );
+      }
       
       > label[for=loadFromUrl]::before {
         content: var( --icon-cloud-upload );

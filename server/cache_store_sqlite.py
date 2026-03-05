@@ -27,6 +27,7 @@ class SQLiteCacheStore:
         self.max_bytes = max_bytes
         self._lock = threading.RLock()
         self._conn: sqlite3.Connection | None = None
+        self._stats = {"l2_hits": 0, "l2_misses": 0, "l2_evictions": 0, "l2_prune_count": 0}
 
     def initialize(self) -> None:
         """Initialize database and schema."""
@@ -58,13 +59,19 @@ class SQLiteCacheStore:
                 self._conn.close()
                 self._conn = None
 
+    def stats(self) -> dict[str, int]:
+        """Return a copy of L2 cache statistics."""
+        with self._lock:
+            return dict(self._stats)
+
     def reset(self) -> None:
-        """Drop all cache rows (used in tests)."""
+        """Drop all cache rows and reset counters (used in tests)."""
         with self._lock:
             if not self._conn:
                 return
             self._conn.execute("DELETE FROM cache_entries")
             self._conn.commit()
+            self._stats = {"l2_hits": 0, "l2_misses": 0, "l2_evictions": 0, "l2_prune_count": 0}
 
     def _execute(self, sql: str, params: tuple[Any, ...]) -> sqlite3.Cursor:
         if not self._conn:
@@ -83,12 +90,14 @@ class SQLiteCacheStore:
             )
             row = cur.fetchone()
             if not row:
+                self._stats["l2_misses"] += 1
                 return None
             value_blob, expires_at, size_bytes = row
             if expires_at <= self._now():
                 self._execute("DELETE FROM cache_entries WHERE cache_key=?", (cache_key,))
                 if self._conn:
                     self._conn.commit()
+                self._stats["l2_misses"] += 1
                 return None
             self._execute(
                 "UPDATE cache_entries SET last_access=? WHERE cache_key=?",
@@ -96,6 +105,7 @@ class SQLiteCacheStore:
             )
             if self._conn:
                 self._conn.commit()
+            self._stats["l2_hits"] += 1
             return SQLiteCacheEntry(value_blob=value_blob, size_bytes=size_bytes, expires_at=expires_at)
 
     def set(self, cache_key: str, value_blob: bytes, ttl_seconds: float, size_bytes: int) -> None:
@@ -118,7 +128,9 @@ class SQLiteCacheStore:
         with self._lock:
             cur = self._execute("DELETE FROM cache_entries WHERE expires_at <= ?", (self._now(),))
             self._conn and self._conn.commit()
-            return cur.rowcount or 0
+            removed = cur.rowcount or 0
+            self._stats["l2_prune_count"] += removed
+            return removed
 
     def _total_size_locked(self) -> int:
         cur = self._execute("SELECT COALESCE(SUM(size_bytes), 0) FROM cache_entries", ())
@@ -143,4 +155,5 @@ class SQLiteCacheStore:
             cache_key, size_bytes = row
             self._execute("DELETE FROM cache_entries WHERE cache_key=?", (cache_key,))
             total -= int(size_bytes or 0)
+            self._stats["l2_evictions"] += 1
         self._conn and self._conn.commit()

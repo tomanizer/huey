@@ -673,6 +673,58 @@
         <div>
           <label
             role="tab"
+            for="exportSqlite"
+            title="Use this tab to export the data to a SQLite database file."
+          >SQLite</label>
+          <input
+            id="exportSqlite"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportSqliteSettings">
+              <label
+                for="exportSqliteTableName"
+                title="Name of the SQLite table to create."
+              >Table name</label>
+              <input
+                id="exportSqliteTableName"
+                title="Enter the SQLite table name that will receive the exported result set."
+                type="text"
+                value="export_result"
+              />
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportDuckdb"
+            title="Use this tab to export the data to a DuckDB database file."
+          >DuckDB</label>
+          <input
+            id="exportDuckdb"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportDuckdbSettings">
+              <label
+                for="exportDuckdbTableName"
+                title="Name of the DuckDB table to create."
+              >Table name</label>
+              <input
+                id="exportDuckdbTableName"
+                title="Enter the DuckDB table name that will receive the exported result set."
+                type="text"
+                value="export_result"
+              />
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
             for="exportQuery"
             title="Use this tab to export your query."
           >Query</label>
@@ -1018,8 +1070,8 @@
                   id="locale"
                   type="text"
                   pattern="^(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?)(\s*,\s*(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?))*$"
-                  data-value-getter="new Function('control','settings','return control.value.split(String.fromCharCode(44));')"
-                  data-value-setter="new Function('control','value','settings','control.value = value.join();')"
+                  data-value-getter="splitCommaSeparatedValue"
+                  data-value-setter="joinCommaSeparatedValue"
                 />
               </fieldset>
 
@@ -1253,8 +1305,8 @@
               <select
                 id="themes"
                 onchange="Theme.applyTheme(this.selectedIndex)"
-                data-value-getter="new Function('control', 'settings', 'return JSON.parse(control.value);')"
-                data-value-setter="new Function('control', 'value', 'settings', 'control.value = JSON.stringify(value);')"
+                data-value-getter="parseJsonValue"
+                data-value-setter="stringifyJsonValue"
               >
               </select>
             </form>
@@ -1642,6 +1694,12 @@
                   type="checkbox"
                   title="Handle legacy Parquet files that store binary data without standard type annotations."
                 />
+                <label for="parquetReaderHivePartitioning" title="Infer partition columns from Hive-style key=value path segments.">Hive partitioning</label>
+                <input
+                  id="parquetReaderHivePartitioning"
+                  type="checkbox"
+                  title="Infer partition columns from Hive-style key=value path segments."
+                />
               </fieldset>
             </form>
           </div>
@@ -1983,6 +2041,16 @@
             type="file"
             multiple="true"
             accept=".csv,.duckdb,.json,.jsonl,.parquet,.sql,.sqlite,.tsv,.xlsx"
+          />
+        </label>
+        <label for="uploaderFolder" title="Load all parquet files from a local folder as one datasource">
+          <input
+            id="uploaderFolder"
+            type="file"
+            webkitdirectory="true"
+            directory="true"
+            multiple="true"
+            accept=".parquet"
           />
         </label>
         <label for="loadFromUrl" title="Load data from URL">

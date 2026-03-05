@@ -7,7 +7,9 @@
 
 # Node (UI tests)
 node_modules/
+dist/
 test-results/
+playwright-results/
 playwright-report/
 .playwright/
 

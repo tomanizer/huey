@@ -76,6 +76,59 @@ Example: `QUERYSERVICE_PORT=8000` maps to `port` setting.
 | `QUERYSERVICE_CACHE_SQLITE_PATH` | unset | string | Optional SQLite-backed cache path |
 | `QUERYSERVICE_CACHE_SQLITE_MAX_BYTES` | `268435456` | int | Max SQLite cache size budget |
 
+## Dimension Dictionary Cache (`/query/picklist`)
+
+Picklist / filter-dropdown queries are backed by a dedicated dimension cache
+with a longer default TTL and optional stale-while-revalidate behaviour,
+because dimension reference data changes infrequently.
+
+| Variable | Default | Type | Purpose |
+|---|---:|---|---|
+| `QUERYSERVICE_DIM_CACHE_TTL_SECONDS` | `3600` | int | Fresh TTL for dimension (picklist) results |
+| `QUERYSERVICE_DIM_STALE_TTL_SECONDS` | `0` | int | Extra seconds to serve a stale response while a background refresh runs (`0` disables stale-while-revalidate) |
+| `QUERYSERVICE_DIM_VERSION_TOKEN` | unset | string | Optional external override for the dimension version token; change this value to force cache invalidation across all fields (useful after a reference-data reload or in multi-node deployments) |
+| `QUERYSERVICE_DIM_PREWARM_FIELDS` | unset | string | Comma-separated list of `dataset_id:field_name` pairs to prewarm on startup (e.g. `trades_v1:symbol,trades_v1:region`) |
+
+### How dimension cache invalidation works
+
+Each picklist cache key includes a **`dim_version_token`**.  By default the
+token is a short SHA-256 derived from the datasets config file path, its
+modification timestamp, and the field definitions for the requested dataset.
+The token therefore changes automatically whenever the config file is edited.
+
+Operators can force a global invalidation at any time by setting
+`QUERYSERVICE_DIM_VERSION_TOKEN` to a new value without restarting the
+service (a live settings refresh is not required – the new value takes effect
+on the next request after the environment variable is updated and the process
+is restarted, or immediately when the setting is changed in a test/override
+context).
+
+### Stale-while-revalidate
+
+When `QUERYSERVICE_DIM_STALE_TTL_SECONDS > 0` a stale dimension result is
+returned immediately to the client while a background task fetches a fresh
+copy and updates the cache.  The total serving window is
+`DIM_CACHE_TTL_SECONDS + DIM_STALE_TTL_SECONDS`.
+
+Example: `DIM_CACHE_TTL_SECONDS=3600 DIM_STALE_TTL_SECONDS=300` means
+responses are fresh for 1 hour and stale-but-served for an additional 5
+minutes, after which the entry is fully evicted and the next request blocks
+on a fresh computation.
+
+### Configurable prewarming
+
+Set `QUERYSERVICE_DIM_PREWARM_FIELDS` to a comma-separated list of
+`dataset_id:field_name` pairs.  On startup the server executes one picklist
+query per configured field and stores the result in the dimension cache so
+the first real client request is served from cache:
+
+```bash
+QUERYSERVICE_DIM_PREWARM_FIELDS=trades_v1:symbol,trades_v1:region
+```
+
+Prewarming runs as a background task and never blocks or fails the startup
+sequence.
+
 ## Execution Mode and Partitions
 
 | Variable | Default | Type | Purpose |

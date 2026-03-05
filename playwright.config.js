@@ -3,6 +3,7 @@ const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: 'tests/ui',
+  outputDir: 'test-results/playwright-output',
   timeout: 120000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -11,10 +12,11 @@ module.exports = defineConfig({
   reporter: process.env.CI
     ? [
         ['list'],
-        ['junit', { outputFile: 'test-results/playwright-junit.xml' }],
-        ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }],
+        ['junit', { outputFile: 'playwright-results/junit.xml' }],
+        ['html', { outputFolder: 'playwright-results/report', open: 'never' }],
       ]
     : 'list',
+  outputDir: 'playwright-results/test-results',
   expect: {
     timeout: 10000,
   },
@@ -26,8 +28,9 @@ module.exports = defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'npx vite --port 8765',
+    command: 'npx vite --host 127.0.0.1 --port 8765',
     url: 'http://127.0.0.1:8765',
     reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
 });

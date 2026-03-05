@@ -255,6 +255,61 @@ QUERYSERVICE_EXPORT_OUTPUT_DIR=/srv/queryservice/exports
 QUERYSERVICE_EXPORT_DB_PATH=/srv/queryservice/exports/jobs.db
 ```
 
+### Query cache tuning presets
+
+Query caching is disabled by default. When enabled, the cache uses a weighted in-memory LRU (L1) with an optional SQLite-backed overflow (L2). The table below shows three practical starting points:
+
+#### Very low memory (≤ 512 MB total process)
+
+Use a small L1, rely on L2 for spillover, and disable cells caching. Raise the admission threshold to avoid caching results from fast queries that don't benefit.
+
+```env
+QUERYSERVICE_CACHE_ENABLED=true
+QUERYSERVICE_CACHE_MAX_BYTES=8388608          # 8 MB L1
+QUERYSERVICE_CACHE_MAX_ITEM_BYTES=524288      # 512 KB max per item
+QUERYSERVICE_CACHE_TTL_SECONDS=60
+QUERYSERVICE_CACHE_ADMISSION_MIN_DURATION_MS=50
+QUERYSERVICE_CACHE_SQLITE_PATH=/tmp/huey-cache/l2.db
+QUERYSERVICE_CACHE_SQLITE_MAX_BYTES=67108864  # 64 MB L2
+QUERYSERVICE_DUCKDB_THREADS=1
+QUERYSERVICE_DUCKDB_MEMORY_LIMIT=256MB
+QUERYSERVICE_MAX_CONCURRENT_QUERIES=2
+QUERYSERVICE_MAX_QUERY_QUEUE_DEPTH=4
+```
+
+#### Default balanced (1–4 GB available)
+
+Suitable for most deployments. L1 holds frequent hot results; L2 extends cache lifetime to disk.
+
+```env
+QUERYSERVICE_CACHE_ENABLED=true
+QUERYSERVICE_CACHE_MAX_BYTES=67108864         # 64 MB L1 (default)
+QUERYSERVICE_CACHE_MAX_ITEM_BYTES=1048576     # 1 MB max per item (default)
+QUERYSERVICE_CACHE_TTL_SECONDS=120            # 2 min TTL (default)
+QUERYSERVICE_CACHE_ADMISSION_MIN_DURATION_MS=0
+QUERYSERVICE_CACHE_SQLITE_PATH=/tmp/huey-cache/l2.db
+QUERYSERVICE_CACHE_SQLITE_MAX_BYTES=268435456 # 256 MB L2 (default)
+```
+
+#### High-throughput (8+ GB available, many concurrent users)
+
+Increase L1 budget, use a longer TTL, and raise concurrency to maximize hit rate for repeated analytics patterns.
+
+```env
+QUERYSERVICE_CACHE_ENABLED=true
+QUERYSERVICE_CACHE_MAX_BYTES=536870912        # 512 MB L1
+QUERYSERVICE_CACHE_MAX_ITEM_BYTES=4194304     # 4 MB max per item
+QUERYSERVICE_CACHE_TTL_SECONDS=300            # 5 min TTL
+QUERYSERVICE_CACHE_ADMISSION_MIN_DURATION_MS=0
+QUERYSERVICE_CACHE_SQLITE_PATH=/var/lib/queryservice/cache/l2.db
+QUERYSERVICE_CACHE_SQLITE_MAX_BYTES=2147483648  # 2 GB L2
+QUERYSERVICE_DUCKDB_THREADS=8
+QUERYSERVICE_DUCKDB_MEMORY_LIMIT=16GB
+QUERYSERVICE_MAX_CONCURRENT_QUERIES=16
+```
+
+> **Note:** `QUERYSERVICE_CACHE_MAX_ITEM_BYTES` applies a per-item size cap. Items larger than this cap are never stored in L1 even if the total L1 budget would allow it. For cells queries, the effective cap is halved automatically (see architecture docs).
+
 ## 8. Operational Considerations
 
 ### Logging and monitoring

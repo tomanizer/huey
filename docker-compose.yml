@@ -7,11 +7,14 @@ services:
     ports:
       - "8002:8000"
     volumes:
-      - ./server/datasets_config/datasets.yaml:/app/server/datasets_config/datasets.yaml:ro
+      # Mount workspace config to a path that does not exist in the image so the app cannot read the baked-in file.
+      - ./server/datasets_config/datasets.yaml:/data/datasets.yaml:ro
     environment:
       UVICORN_WORKERS: "1"
-      QUERYSERVICE_SEED_SAMPLE_DATA: "false"
-      QUERYSERVICE_EXECUTION_MODE: "parquet_partitioned"
+      QUERYSERVICE_CORS_ORIGINS: '["http://localhost:8765"]'
+      QUERYSERVICE_SEED_SAMPLE_DATA: "true"
+      QUERYSERVICE_EXECUTION_MODE: "sample_table"
       QUERYSERVICE_S3_BUCKET: "aws-public-blockchain"
       QUERYSERVICE_S3_REGION: "us-east-2"
+      QUERYSERVICE_DATASETS_CONFIG_PATH: "/data/datasets.yaml"
     restart: unless-stopped

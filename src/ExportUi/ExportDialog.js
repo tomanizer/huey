@@ -2,9 +2,41 @@ import { byId } from '../util/dom/dom.js';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
 import { DataSourcesUi } from '../DataSource/DataSourcesUi.js';
+import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { copyToClipboard } from '../util/clipboard/clipboard.js';
-import { getCopyToStatement, unQuote } from '../util/sql/SQLHelper.js';
+import { ensureDuckDbExtensionLoadedAndInstalled, getCopyToStatement, getQuotedIdentifier, quoteStringLiteral, unQuote } from '../util/sql/SQLHelper.js';
+
+/** Format a DuckDB query result as CSV (browser fallback when COPY TO cannot write). */
+function formatQueryResultAsCsv(result, options) {
+  const { delimiter, nullString, header, quoteChar, escapeChar } = options;
+  const numRows = result.numRows ?? 0;
+  if (numRows === 0) {
+    return header ? '' : '';
+  }
+  const first = result.get(0);
+  const columnNames = result.columnNames ?? Object.keys(first);
+  const escapeRe = new RegExp(quoteChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+  const escapeVal = (v) => {
+    if (v === null || v === undefined) return nullString;
+    const s = String(v);
+    return s.replace(escapeRe, escapeChar + quoteChar);
+  };
+  const needQuote = (s) => /[\r\n"\\]/.test(s) || s.includes(delimiter) || s.includes(quoteChar);
+  const cell = (v) => {
+    const escaped = escapeVal(v);
+    return needQuote(escaped) ? quoteChar + escaped + quoteChar : escaped;
+  };
+  const rows = [];
+  if (header) {
+    rows.push(columnNames.map((c) => cell(c)).join(delimiter));
+  }
+  for (let i = 0; i < numRows; i++) {
+    const row = result.get(i);
+    rows.push(columnNames.map((col) => cell(row[col])).join(delimiter));
+  }
+  return rows.join('\n');
+}
 
 export class ExportUi {
 
@@ -237,11 +269,43 @@ export class ExportUi {
     return ExportUi.exportData(datasource, sql, exportSettings, progressCallback);
   }
 
+  static async #exportQueryToDatabaseFile(datasource, sql, fileExtension, tableName, progressCallback){
+    const exportTableName = (tableName || 'export_result').trim() || 'export_result';
+    const quotedTableName = getQuotedIdentifier(exportTableName);
+    const tmpFileName = [crypto.randomUUID(), fileExtension].join('.');
+    const exportDbAlias = '__huey_export_db';
+    const quotedExportDbAlias = getQuotedIdentifier(exportDbAlias);
+    const connection = datasource.getManagedConnection();
+    let data;
+    try {
+      progressCallback(`Preparing ${fileExtension} database ${tmpFileName}`);
+      const attachSql = fileExtension === 'sqlite'
+        ? `ATTACH ${quoteStringLiteral(tmpFileName)} AS ${quotedExportDbAlias} (TYPE SQLITE)`
+        : `ATTACH ${quoteStringLiteral(tmpFileName)} AS ${quotedExportDbAlias}`
+      ;
+      await connection.query(attachSql);
+      await connection.query(`CREATE TABLE ${quotedExportDbAlias}.main.${quotedTableName} AS SELECT * FROM (${sql}) AS __huey_export_subquery`);
+      await connection.query(`DETACH ${quotedExportDbAlias}`);
+      progressCallback(`Extracting from ${tmpFileName}`);
+      data = await connection.copyFileToBuffer(tmpFileName);
+      return data;
+    }
+    finally {
+      try {
+        await connection.query(`DETACH ${quotedExportDbAlias}`);
+      } catch (error) {
+        console.error('Error detaching export database alias', error);
+      }
+      if (data) {
+        await connection.dropFile(tmpFileName);
+      }
+    }
+  }
+
   static async exportData(datasource, sql, exportSettings, progressCallback){
     try {
       if (typeof progressCallback !== 'function'){
-        progressCallback = function(text){
-          console.log(text);
+        progressCallback = function(_text){
         };
       }
       progressCallback('initSettings');
@@ -332,6 +396,26 @@ export class ExportUi {
             copyStatementOptions["SHEET"] = sheetName;
           }
           break;
+        case 'exportSqlite':
+          fileExtension = 'sqlite';
+          data = await ExportUi.#exportQueryToDatabaseFile(
+            datasource,
+            sql,
+            fileExtension,
+            exportSettings.exportSqliteTableName,
+            progressCallback
+          );
+          break;
+        case 'exportDuckdb':
+          fileExtension = 'duckdb';
+          data = await ExportUi.#exportQueryToDatabaseFile(
+            datasource,
+            sql,
+            fileExtension,
+            exportSettings.exportDuckdbTableName,
+            progressCallback
+          );
+          break;
         case 'exportQuery':
           const encodingSettings = exportSettings[exportType + 'Encoding'];
           const encodingOption = encodingSettings.value;
@@ -393,15 +477,18 @@ export class ExportUi {
 
       if (copyStatementOptions){
         const tmpFileName = [crypto.randomUUID(), fileExtension].join('.');
-        progressCallback(`Preparing copy to ${tmpFileName}`);
-        const copyStatement = getCopyToStatement(sql, tmpFileName, copyStatementOptions);
-        let connection, result;
+        const isCsvTsvUncompressed = (fileExtension === 'csv' || fileExtension === 'tsv') &&
+          compression?.value === 'UNCOMPRESSED';
+        let connection;
+        let usedFallback = false;
         try {
           connection = datasource.getManagedConnection();
-          result = await connection.query(copyStatement);
+          progressCallback(`Preparing copy to ${tmpFileName}`);
+          const copyStatement = getCopyToStatement(sql, tmpFileName, copyStatementOptions);
+          await connection.query(copyStatement);
           progressCallback(`Extracting from ${tmpFileName}`);
           data = await connection.copyFileToBuffer(tmpFileName);
-          
+
           // fix for https://github.com/rpbouman/huey/issues/627
           // for some reason, we get the buffer back with a leading byte.
           // It does not appear to be the same byte
@@ -410,9 +497,30 @@ export class ExportUi {
             data  = data.slice(1);
           }
         }
+        catch (e) {
+          if (isCsvTsvUncompressed && connection) {
+            progressCallback('Exporting as CSV (browser fallback)');
+            const queryResult = await connection.query(sql);
+            const delim = columnDelimiter === '\\t' ? '\t' : columnDelimiter;
+            const csvText = formatQueryResultAsCsv(queryResult, {
+              delimiter: delim,
+              nullString: nullValueString,
+              header: includeHeaders,
+              quoteChar: quote,
+              escapeChar: escape,
+            });
+            data = new TextEncoder().encode(csvText);
+            usedFallback = true;
+          }
+          else {
+            throw e;
+          }
+        }
         finally {
-          if (data) {
-            await connection.dropFile(tmpFileName);
+          if (connection && !usedFallback) {
+            await connection.dropFile(tmpFileName).catch((err) => {
+              console.error('Error dropping temporary export file', err);
+            });
           }
         }
       }
@@ -629,6 +737,16 @@ export class ExportDialog {
             'KeywordLettercase',
             'AlwaysQuoteIdentifiers',
             'CommaStyle'
+          ], tabName);
+          break;
+        case 'exportSqlite':
+          copyUiSetting([
+            'TableName'
+          ], tabName);
+          break;
+        case 'exportDuckdb':
+          copyUiSetting([
+            'TableName'
           ], tabName);
           break;
       }

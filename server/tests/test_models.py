@@ -171,6 +171,11 @@ class TestExportQueryBody:
         with pytest.raises(ValidationError, match="format"):
             ExportQueryBody(format="xlsx")
 
+    @pytest.mark.parametrize("fmt", ["csv", "parquet", "sqlite", "duckdb"])
+    def test_supported_formats_accepted(self, fmt: str) -> None:
+        eq = ExportQueryBody(format=fmt)
+        assert eq.format == fmt
+
 
 class TestQueryTuplesRequest:
     def test_valid_full(self) -> None:

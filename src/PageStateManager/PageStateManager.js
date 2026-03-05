@@ -164,7 +164,8 @@ export class PageStateManager {
 
       const choice = PromptUi.show({
         title: Internationalization.getText(title),
-        contents: message
+        contents: message,
+        allowUnsafeHtml: true
       });
 
       choice
@@ -193,8 +194,9 @@ export class PageStateManager {
             break;
         }
       })
-      .catch((error) =>{
-        reject();
+      .catch((error) => {
+        console.error('Error in chooseDataSourceForPageStateChangeDialog', error);
+        reject(error);
       });
     });
   }
