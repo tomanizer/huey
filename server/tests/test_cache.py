@@ -191,6 +191,37 @@ def test_stale_while_revalidate_returns_stale_immediately() -> None:
     asyncio.run(_run())
 
 
+def test_per_endpoint_stats() -> None:
+    async def _run():
+        cache = QueryResultCache(max_bytes=1024 * 1024, max_item_bytes=1024 * 1024, default_ttl=5)
+
+        async def loader():
+            return {"data": "ok"}
+
+        # Miss on tuples
+        await cache.get_or_set("t1", loader, endpoint="tuples")
+        # Hit on tuples
+        await cache.get_or_set("t1", loader, endpoint="tuples")
+        # Miss on cells
+        await cache.get_or_set("c1", loader, endpoint="cells")
+        # Miss on picklist
+        await cache.get_or_set("p1", loader, endpoint="picklist")
+        # Hit on picklist
+        await cache.get_or_set("p1", loader, endpoint="picklist")
+
+        stats = cache.stats()
+        assert stats["endpoint_tuples_hits"] == 1
+        assert stats["endpoint_tuples_misses"] == 1
+        assert stats["endpoint_cells_hits"] == 0
+        assert stats["endpoint_cells_misses"] == 1
+        assert stats["endpoint_picklist_hits"] == 1
+        assert stats["endpoint_picklist_misses"] == 1
+
+        await cache.close()
+
+    asyncio.run(_run())
+
+
 def test_stale_entry_fully_expired_causes_miss() -> None:
     """Entries past the stale window are evicted and cause a cache miss."""
     import time
@@ -224,6 +255,21 @@ def test_stale_entry_fully_expired_causes_miss() -> None:
         assert result == {"items": ["fresh"]}
         assert meta.cache_status in {"miss", "bypass"}
         assert loader_calls == 1  # Loader must have been called
+
+        await cache.close()
+
+    asyncio.run(_run())
+
+
+def test_stats_include_all_expected_keys() -> None:
+    async def _run():
+        cache = QueryResultCache(max_bytes=1024 * 1024, max_item_bytes=1024 * 1024, default_ttl=5)
+        stats = cache.stats()
+        for key in ("hits", "misses", "evictions", "current_bytes", "entries", "inflight",
+                    "endpoint_tuples_hits", "endpoint_tuples_misses",
+                    "endpoint_cells_hits", "endpoint_cells_misses",
+                    "endpoint_picklist_hits", "endpoint_picklist_misses"):
+            assert key in stats, f"Missing stat key: {key}"
 
         await cache.close()
 
