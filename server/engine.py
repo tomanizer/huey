@@ -145,18 +145,12 @@ class DuckDBManager:
         *,
         dataset_id: str | None = None,
     ) -> list[list[Any]]:
-        """Execute a SQL query and return rows as list of lists."""
-        with self.cursor() as cur:
-            try:
-                if parameters:
-                    result = cur.execute(sql, parameters).fetchall()
-                else:
-                    result = cur.execute(sql).fetchall()
-                return [list(row) for row in result]
-            except Exception as exc:
-                if dataset_id and is_missing_table_error(exc):
-                    raise DatasetUnavailableError(dataset_id) from exc
-                raise
+        """Execute a SQL query and return rows as list of lists.
+
+        Internally delegates to execute_sql_fetchmany to avoid materialising
+        the full DuckDB result buffer in a single fetchall() call.
+        """
+        return self.execute_sql_fetchmany(sql, parameters, dataset_id=dataset_id)
 
     async def execute_sql_async(
         self,
@@ -171,6 +165,55 @@ class DuckDBManager:
             sql,
             parameters,
             dataset_id=dataset_id,
+        )
+
+    def execute_sql_fetchmany(
+        self,
+        sql: str,
+        parameters: tuple[Any, ...] | None = None,
+        *,
+        dataset_id: str | None = None,
+        batch_size: int = 1000,
+    ) -> list[list[Any]]:
+        """Execute SQL and return rows fetched in bounded batches via fetchmany.
+
+        Fetching in controlled chunks avoids materialising the full DuckDB
+        result buffer in one call, reducing peak memory pressure for large
+        result sets while preserving the same list-of-lists return contract.
+        """
+        with self.cursor() as cur:
+            try:
+                if parameters:
+                    cur.execute(sql, parameters)
+                else:
+                    cur.execute(sql)
+                rows: list[list[Any]] = []
+                while True:
+                    batch = cur.fetchmany(batch_size)
+                    if not batch:
+                        break
+                    rows.extend([list(row) for row in batch])
+                return rows
+            except Exception as exc:
+                if dataset_id and is_missing_table_error(exc):
+                    raise DatasetUnavailableError(dataset_id) from exc
+                raise
+
+    async def execute_sql_fetchmany_async(
+        self,
+        sql: str,
+        parameters: tuple[Any, ...] | None = None,
+        *,
+        dataset_id: str | None = None,
+        batch_size: int = 1000,
+    ) -> list[list[Any]]:
+        """Run fetchmany-based SQL execution in a thread pool."""
+        return await asyncio.to_thread(
+            self.execute_sql_fetchmany,
+            sql,
+            parameters,
+            dataset_id=dataset_id,
+            batch_size=batch_size,
         )
 
     def table_exists(self, table_name: str) -> bool:

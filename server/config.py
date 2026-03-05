@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     max_cells_per_response: int = 10000
     max_axis_cardinality: int = 5000
 
+    # Fetch batch size for query endpoints (fetchmany chunk size)
+    query_fetchmany_batch_size: int = Field(default=1000, ge=1)
+
     # Optional: S3 / engine config (for later issues)
     s3_bucket: str | None = None
     s3_region: str | None = None
