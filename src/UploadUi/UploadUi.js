@@ -593,9 +593,11 @@ async function fetchCloudAndCreateDatasource(duckdb, instance, cloudUri, s3Parse
   if (s3Parsed) {
     blob = await fetchS3AsBlob(s3Parsed.bucket, s3Parsed.key, options);
     keyOrPath = s3Parsed.key;
-  } else {
+  } else if (gcsParsed) {
     blob = await fetchGcsAsBlob(gcsParsed.bucket, gcsParsed.path, options);
     keyOrPath = gcsParsed.path;
+  } else {
+    throw new Error(`Neither a parsed S3 nor a parsed GCS URI was provided for "${cloudUri}".`);
   }
 
   const fileName = getBaseNameFromKey(keyOrPath) || 'data';
@@ -694,15 +696,36 @@ export function initUploadUi(){
       '</form>',
     ].join('');
 
-    const result = await PromptUi.show({
+    const showPromise = PromptUi.show({
       title: 'Load from URL or cloud storage',
       contents: formHtml
     });
+
+    // Attach a live input listener so the S3/GCS credential sections appear as
+    // soon as the user types a matching URI scheme.  PromptUi.show() sets the
+    // section.innerHTML synchronously in its Promise executor, so the elements
+    // are already in the DOM when we reach this point.
+    const urlInput = byId('loadFromUrlInput');
+    if (urlInput) {
+      const s3Options = byId('loadFromUrlS3Options');
+      const gcsOptions = byId('loadFromUrlGcsOptions');
+      const updateVisibility = () => {
+        const val = urlInput.value.trim();
+        if (s3Options) {
+          s3Options.style.display = parseS3Uri(val) ? '' : 'none';
+        }
+        if (gcsOptions) {
+          gcsOptions.style.display = parseGcsUri(val) ? '' : 'none';
+        }
+      };
+      urlInput.addEventListener('input', updateVisibility);
+    }
+
+    const result = await showPromise;
     if (result !== 'accept') {
       return;
     }
 
-    const urlInput = byId('loadFromUrlInput');
     const url = (urlInput && urlInput.value && urlInput.value.trim()) || '';
     if (!url) {
       return;
@@ -717,10 +740,9 @@ export function initUploadUi(){
       const secretAccessKey = (byId('loadFromUrlS3SecretKey') && byId('loadFromUrlS3SecretKey').value) || undefined;
       const sessionToken = (byId('loadFromUrlS3SessionToken') && byId('loadFromUrlS3SessionToken').value) || undefined;
       const options = { region, accessKeyId, secretAccessKey, sessionToken };
+      const { duckdb, instance } = window.hueyDb;
 
       try {
-        const duckdb = window.hueyDb.duckdb;
-        const instance = window.hueyDb.instance;
         const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, s3Parsed, null, options);
         datasourcesUi.addDatasources([ds]);
         afterUploaded({ success: 1, fail: 0, datasources: [ds] });
@@ -730,10 +752,9 @@ export function initUploadUi(){
     } else if (gcsParsed) {
       const accessToken = (byId('loadFromUrlGcsToken') && byId('loadFromUrlGcsToken').value) || undefined;
       const options = { accessToken };
+      const { duckdb, instance } = window.hueyDb;
 
       try {
-        const duckdb = window.hueyDb.duckdb;
-        const instance = window.hueyDb.instance;
         const ds = await fetchCloudAndCreateDatasource(duckdb, instance, url, null, gcsParsed, options);
         datasourcesUi.addDatasources([ds]);
         afterUploaded({ success: 1, fail: 0, datasources: [ds] });
