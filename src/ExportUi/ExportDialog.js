@@ -305,7 +305,7 @@ export class ExportUi {
   static async exportData(datasource, sql, exportSettings, progressCallback){
     try {
       if (typeof progressCallback !== 'function'){
-        progressCallback = function(){
+        progressCallback = function(_text){
         };
       }
       progressCallback('initSettings');

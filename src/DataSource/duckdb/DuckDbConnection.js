@@ -76,8 +76,7 @@ export class DuckDbConnection extends EventEmitter {
     }
     catch(e){
       this.#state = 'cancelingerror';
-      console.error(`Error encountered while canceling pending queries on connection ${this.getConnectionId()}.`);
-      console.error(e);
+      console.error('Error encountered while canceling pending queries on connection', this.getConnectionId(), e);
     }
     return this.#state;
   }
