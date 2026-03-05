@@ -65,5 +65,7 @@ test.describe('Error handling', () => {
     const dialog = page.locator('#errorDialog');
     await expect(dialog).toBeVisible({ timeout: 5000 });
     await expect(dialog.locator('#errorDialogTitle')).toContainText(/Second message/);
+    await expect(dialog.locator('#errorDialogTitle')).not.toContainText(/First message/);
+    await expect(dialog.locator('#errorDialogDescription')).not.toContainText(/First message/);
   });
 });

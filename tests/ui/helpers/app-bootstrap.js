@@ -72,7 +72,9 @@ async function addAggregateMeasure(page, columnName, aggregator) {
   await expect(columnNode).toBeVisible({ timeout: 15000 });
   const columnSummary = columnNode.locator(':scope > summary');
   await expect(columnSummary).toBeVisible({ timeout: 15000 });
-  await columnSummary.click();
+  if ((await columnNode.getAttribute('open')) === null) {
+    await columnSummary.click();
+  }
 
   const checkedMeasureInputs = columnNode.locator('label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"]:checked');
   const checkedCount = await checkedMeasureInputs.count();

@@ -19,12 +19,9 @@ async function preparePivot(page) {
 }
 
 async function openFilterDialog(page) {
-  await page.evaluate(() => {
-    const filterButton = document.querySelector('#queryUi section[data-axis="filters"] li button[id$="-edit-filter-condition"]');
-    if (filterButton) {
-      filterButton.click();
-    }
-  });
+  const filterButton = page.locator('#queryUi section[data-axis="filters"] li button[id$="-edit-filter-condition"]');
+  await expect(filterButton).toBeVisible({ timeout: 10000 });
+  await filterButton.click();
   const filterDialog = page.locator('#filterDialog');
   await expect(filterDialog).toBeVisible({ timeout: 10000 });
   return filterDialog;
@@ -44,6 +41,7 @@ test.describe('Filters', () => {
     await page.click('#filterDialogOkButton');
     const pivot = await runQueryAndWaitForPivot(page);
     await expect(pivot).toContainText('AAPL');
+    await expect(pivot).not.toContainText('GOOG');
     await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveAttribute('data-filtertype', 'in');
     await expect(filterDialog).not.toBeVisible();
   });
@@ -77,7 +75,10 @@ test.describe('Filters', () => {
 
     await runQueryAndWaitForPivot(page);
     await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveAttribute('data-filtertype', 'between');
-    await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li ol li')).toContainText(/2026-01-01|2026-01-02/);
+    const filterValues = page.locator('#queryUi section[data-axis="filters"] > ol > li ol li');
+    await expect(filterValues).toHaveCount(2);
+    await expect(filterValues.nth(0)).toContainText('2026-01-01');
+    await expect(filterValues.nth(1)).toContainText('2026-01-02');
   });
 
   test('clear all filter values', async ({ page }) => {
