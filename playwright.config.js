@@ -11,10 +11,11 @@ module.exports = defineConfig({
   reporter: process.env.CI
     ? [
         ['list'],
-        ['junit', { outputFile: 'test-results/playwright-junit.xml' }],
-        ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }],
+        ['junit', { outputFile: 'playwright-results/junit.xml' }],
+        ['html', { outputFolder: 'playwright-results/report', open: 'never' }],
       ]
     : 'list',
+  outputDir: 'playwright-results/test-results',
   expect: {
     timeout: 10000,
   },
@@ -29,5 +30,6 @@ module.exports = defineConfig({
     command: 'npx vite --port 8765',
     url: 'http://127.0.0.1:8765',
     reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
 });
