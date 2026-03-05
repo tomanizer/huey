@@ -55,11 +55,42 @@ async function addBasicPivotAxes(page) {
 }
 
 async function addSymbolFilterAxis(page) {
+  await addFilterAxis(page, 'symbol');
+}
+
+async function addFilterAxis(page, columnName) {
   await openAttributesTab(page);
-  const symbolFilterToggle = page.locator('#attributeUi details[data-column_name="symbol"] summary label.attributeUiAxisButton[data-axis="filters"]');
-  await expect(symbolFilterToggle).toBeVisible({ timeout: 15000 });
-  await symbolFilterToggle.click();
+  const filterToggle = page.locator(`#attributeUi details[data-column_name="${columnName}"] summary label.attributeUiAxisButton[data-axis="filters"]`);
+  await expect(filterToggle).toBeVisible({ timeout: 15000 });
+  await filterToggle.click();
   await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveCount(1, { timeout: 30000 });
+}
+
+async function addAggregateMeasure(page, columnName, aggregator) {
+  await openAttributesTab(page);
+  const columnNode = page.locator(`#attributeUi details[data-column_name="${columnName}"]`).first();
+  await expect(columnNode).toBeVisible({ timeout: 15000 });
+  const columnSummary = columnNode.locator(':scope > summary');
+  await expect(columnSummary).toBeVisible({ timeout: 15000 });
+  if ((await columnNode.getAttribute('open')) === null) {
+    await columnSummary.click();
+  }
+
+  const checkedMeasureInputs = columnNode.locator('label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"]:checked');
+  const checkedCount = await checkedMeasureInputs.count();
+  for (let i = 0; i < checkedCount; i++) {
+    const checkedInput = checkedMeasureInputs.nth(i);
+    const activeAggregator = await checkedInput.getAttribute('data-aggregator');
+    if (activeAggregator !== aggregator) {
+      await checkedInput.click();
+    }
+  }
+
+  const measureInput = columnNode.locator(`label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"][data-aggregator="${aggregator}"]`).first();
+  await expect(measureInput).toBeVisible({ timeout: 15000 });
+  if (!(await measureInput.isChecked())) {
+    await measureInput.click();
+  }
 }
 
 async function runQueryAndWaitForPivot(page) {
@@ -87,6 +118,8 @@ module.exports = {
   uploadFixtureAndWaitForAttributes,
   openAttributesTab,
   addBasicPivotAxes,
+  addFilterAxis,
   addSymbolFilterAxis,
+  addAggregateMeasure,
   runQueryAndWaitForPivot,
 };
