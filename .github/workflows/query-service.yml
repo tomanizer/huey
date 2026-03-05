@@ -25,6 +25,9 @@ on:
       - 'package-lock.json'
       - 'playwright.config.js'
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
