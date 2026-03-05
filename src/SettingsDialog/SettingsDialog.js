@@ -1,5 +1,6 @@
 import { byId, createEl } from '../util/dom/dom.js';
 import { EventEmitter } from '../util/event/EventEmitter.js';
+import { getValueGetter, getValueSetter } from './valueGetterSetterRegistry.js';
 
 export class Settings extends EventEmitter {
 
@@ -528,9 +529,8 @@ export class Settings extends EventEmitter {
         if (control.validityState && control.valid === false){
           break;
         }
-        let valueGetter = control.getAttribute('data-value-getter');
+        const valueGetter = getValueGetter(control);
         if (valueGetter){
-          valueGetter = eval(valueGetter);
           value = valueGetter.call(null, control, this);
         }
         else
@@ -544,9 +544,8 @@ export class Settings extends EventEmitter {
         break;
       case 'dialog':
         value = settings[property];
-        let valueSetter = control.getAttribute('data-value-setter');
+        const valueSetter = getValueSetter(control);
         if (valueSetter){
-          valueSetter = eval(valueSetter);
           valueSetter.call(null, control, value, this);
         }
         else
@@ -568,10 +567,7 @@ export class Settings extends EventEmitter {
     const exists = {};
     switch (settingsOrDialog) {
       case 'settings':
-        let valueGetter = control.getAttribute('data-value-getter');
-        if (valueGetter){
-          valueGetter = eval(valueGetter);
-        }
+        const valueGetter = getValueGetter(control);
 
         if (optionsFromControl) {
           optionsFromSettings = [];
@@ -605,10 +601,7 @@ export class Settings extends EventEmitter {
       case 'dialog':
         const valueFromSettings = settings[property].value;
 
-        let valueSetter = control.getAttribute('data-value-setter');
-        if (valueSetter){
-          valueSetter = eval(valueSetter);
-        }
+        const valueSetter = getValueSetter(control);
 
         if (optionsFromSettings) {
           control.options.length = 0;
