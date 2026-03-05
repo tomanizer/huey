@@ -366,7 +366,7 @@ Hitting the Clone button on the toolbar will open a new instance of Huey in a ne
 
 ## Export
 Huey provides export capabilities so you can use the results of your analysis outside huey.
-The export dialog lets you export query results by downloading it as csv, parquet, or JSON file, or you can choose to have your results copied to your operating system clipboard.
+The export dialog lets you export query results by downloading it as delimited text (CSV/TSV), parquet, JSON, SQLite, DuckDB, or Excel file, or you can choose to have your results copied to your operating system clipboard.
 
 Apart from the result data, Huey also lets you export the SQL statements that would produce the query result.
 

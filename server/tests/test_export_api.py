@@ -2,8 +2,10 @@
 
 import csv
 import io
+import sqlite3
 import time
 
+import duckdb
 import pytest
 from fastapi.testclient import TestClient
 
@@ -124,6 +126,62 @@ class TestExportLifecycle:
         assert "filename=\"exp-" in dl.headers.get("content-disposition", "")
         assert ".parquet" in dl.headers.get("content-disposition", "")
         assert len(dl.content) > 0
+
+    def test_sqlite_export_download(self, client: TestClient, tmp_path) -> None:
+        body = _valid_body()
+        body["query"]["format"] = "sqlite"
+
+        r = client.post("/export", json=body)
+        assert r.status_code == 200
+        export_id = r.json()["export_id"]
+
+        for _ in range(20):
+            status_r = client.get(f"/export/{export_id}")
+            assert status_r.status_code == 200
+            if status_r.json()["status"] == "complete":
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail("Export did not complete in time")
+
+        dl = client.get(f"/export/{export_id}/download")
+        assert dl.status_code == 200
+        assert dl.headers["content-type"].startswith("application/vnd.sqlite3")
+        assert ".sqlite" in dl.headers.get("content-disposition", "")
+
+        sqlite_file = tmp_path / f"{export_id}.sqlite"
+        sqlite_file.write_bytes(dl.content)
+        with sqlite3.connect(sqlite_file) as conn:
+            row_count = conn.execute("SELECT COUNT(*) FROM export_result").fetchone()[0]
+        assert row_count > 0
+
+    def test_duckdb_export_download(self, client: TestClient, tmp_path) -> None:
+        body = _valid_body()
+        body["query"]["format"] = "duckdb"
+
+        r = client.post("/export", json=body)
+        assert r.status_code == 200
+        export_id = r.json()["export_id"]
+
+        for _ in range(20):
+            status_r = client.get(f"/export/{export_id}")
+            assert status_r.status_code == 200
+            if status_r.json()["status"] == "complete":
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail("Export did not complete in time")
+
+        dl = client.get(f"/export/{export_id}/download")
+        assert dl.status_code == 200
+        assert dl.headers["content-type"].startswith("application/vnd.duckdb")
+        assert ".duckdb" in dl.headers.get("content-disposition", "")
+
+        duckdb_file = tmp_path / f"{export_id}.duckdb"
+        duckdb_file.write_bytes(dl.content)
+        with duckdb.connect(str(duckdb_file), read_only=True) as conn:
+            row_count = conn.execute("SELECT COUNT(*) FROM export_result").fetchone()[0]
+        assert row_count > 0
 
 
 class TestExportWithFilters:

@@ -28,6 +28,10 @@ test.describe('Export', () => {
     const exportDialog = page.locator('#exportDialog');
     await expect(exportDialog).toBeVisible({ timeout: 20000 });
 
+    await expect(page.locator('#exportParquet')).toBeVisible();
+    await expect(page.locator('#exportSqlite')).toBeVisible();
+    await expect(page.locator('#exportDuckdb')).toBeVisible();
+
     // Default is delimited; ensure option is selected for clarity.
     await page.locator('#exportDelimited').check();
 

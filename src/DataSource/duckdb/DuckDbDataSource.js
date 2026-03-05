@@ -78,12 +78,12 @@ export class DuckDbDataSource extends EventEmitter {
     },
     "duckdb": {
       datasourceType: DuckDbDataSource.types.DUCKDB,
-      mimeType: 'application/duckdb'
+      mimeType: 'application/vnd.duckdb'
     },
     "sqlite": {
       datasourceType: DuckDbDataSource.types.SQLITE,
       duckdb_extension: 'sqlite_scanner',
-      mimeType: 'application/sqlite'
+      mimeType: 'application/vnd.sqlite3'
     }
   };
 

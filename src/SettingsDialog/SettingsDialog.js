@@ -91,6 +91,8 @@ export class Settings extends EventEmitter {
       exportJson: false,
       exportParquet: false,
       exportSql: false,
+      exportSqlite: false,
+      exportDuckdb: false,
       exportXlsx: false,
       // options for delimited
       exportDelimitedCompression: {
@@ -129,6 +131,8 @@ export class Settings extends EventEmitter {
       exportSqlCommaStyle: {
         value: 'newlineBefore'
       },
+      exportSqliteTableName: 'export_result',
+      exportDuckdbTableName: 'export_result',
       exportXlsxIncludeHeaders: true,
       exportXlsxSheet: '',
       exportXlsxSheetRowLimit: 1048576,

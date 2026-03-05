@@ -673,6 +673,58 @@
         <div>
           <label
             role="tab"
+            for="exportSqlite"
+            title="Use this tab to export the data to a SQLite database file."
+          >SQLite</label>
+          <input
+            id="exportSqlite"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportSqliteSettings">
+              <label
+                for="exportSqliteTableName"
+                title="Name of the SQLite table to create."
+              >Table name</label>
+              <input
+                id="exportSqliteTableName"
+                title="Enter the SQLite table name that will receive the exported result set."
+                type="text"
+                value="export_result"
+              />
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportDuckdb"
+            title="Use this tab to export the data to a DuckDB database file."
+          >DuckDB</label>
+          <input
+            id="exportDuckdb"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportDuckdbSettings">
+              <label
+                for="exportDuckdbTableName"
+                title="Name of the DuckDB table to create."
+              >Table name</label>
+              <input
+                id="exportDuckdbTableName"
+                title="Enter the DuckDB table name that will receive the exported result set."
+                type="text"
+                value="export_result"
+              />
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
             for="exportQuery"
             title="Use this tab to export your query."
           >Query</label>
