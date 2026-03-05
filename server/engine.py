@@ -19,6 +19,37 @@ import duckdb
 from server.config import get_settings
 from server.errors import DatasetUnavailableError
 
+
+class QueryCancelHandle:
+    """Thread-safe per-query cancellation handle.
+
+    Register the active DuckDB cursor before query execution and call
+    ``cancel()`` to interrupt only that cursor's query, without affecting
+    other concurrent queries on the shared connection.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._cursor: duckdb.DuckDBPyConnection | None = None
+
+    def _set_cursor(self, cursor: duckdb.DuckDBPyConnection) -> None:
+        with self._lock:
+            self._cursor = cursor
+
+    def _clear_cursor(self) -> None:
+        with self._lock:
+            self._cursor = None
+
+    def cancel(self) -> None:
+        """Interrupt the active DuckDB cursor for this query only."""
+        with self._lock:
+            cur = self._cursor
+        if cur is not None:
+            try:
+                cur.interrupt()
+            except Exception:
+                pass
+
 logger = logging.getLogger("query_service.engine")
 
 
@@ -144,9 +175,17 @@ class DuckDBManager:
         parameters: tuple[Any, ...] | None = None,
         *,
         dataset_id: str | None = None,
+        cancel_handle: "QueryCancelHandle | None" = None,
     ) -> list[list[Any]]:
-        """Execute a SQL query and return rows as list of lists."""
+        """Execute a SQL query and return rows as list of lists.
+
+        When *cancel_handle* is provided the active cursor is registered on it
+        so that an external caller can interrupt only this query's cursor,
+        leaving other concurrent queries unaffected.
+        """
         with self.cursor() as cur:
+            if cancel_handle is not None:
+                cancel_handle._set_cursor(cur)
             try:
                 if parameters:
                     result = cur.execute(sql, parameters).fetchall()
@@ -157,6 +196,9 @@ class DuckDBManager:
                 if dataset_id and is_missing_table_error(exc):
                     raise DatasetUnavailableError(dataset_id) from exc
                 raise
+            finally:
+                if cancel_handle is not None:
+                    cancel_handle._clear_cursor()
 
     async def execute_sql_async(
         self,
@@ -164,13 +206,19 @@ class DuckDBManager:
         parameters: tuple[Any, ...] | None = None,
         *,
         dataset_id: str | None = None,
+        cancel_handle: "QueryCancelHandle | None" = None,
     ) -> list[list[Any]]:
-        """Run SQL in a thread pool to avoid blocking the event loop."""
+        """Run SQL in a thread pool to avoid blocking the event loop.
+
+        Pass *cancel_handle* to enable per-query cancellation that does not
+        interfere with other concurrent queries on the shared connection.
+        """
         return await asyncio.to_thread(
             self.execute_sql,
             sql,
             parameters,
             dataset_id=dataset_id,
+            cancel_handle=cancel_handle,
         )
 
     def table_exists(self, table_name: str) -> bool:

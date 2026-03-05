@@ -100,3 +100,26 @@ def test_queue_depth_rejects_overflow(
     assert first_result.status_code in (200, 504)
     assert second_result.status_code == 429
     assert second_result.json()["code"] == "TOO_MANY_QUERIES"
+
+
+def test_timeout_uses_per_query_cancel_not_global_interrupt(
+    client: TestClient, settings_override, monkeypatch
+) -> None:
+    """When a query times out the per-cursor cancel_fn is used; the global
+    db_manager.interrupt() must NOT be called, so other concurrent queries
+    on the shared connection are unaffected (#194)."""
+    settings_override(query_timeout_seconds=0.0001)
+
+    global_interrupt_called = {"called": False}
+
+    def mock_global_interrupt() -> None:
+        global_interrupt_called["called"] = True
+
+    monkeypatch.setattr(db_manager, "interrupt", mock_global_interrupt)
+
+    r = client.post("/query/cells", json=_cells_body())
+    assert r.status_code == 504
+    assert r.json()["code"] == "QUERY_TIMEOUT"
+    assert not global_interrupt_called["called"], (
+        "db_manager.interrupt() must NOT be called when a per-cursor cancel_fn is available"
+    )

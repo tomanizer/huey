@@ -11,7 +11,7 @@ from server import datasets
 from server.auth import require_api_key
 from server.cache import build_cache_key, get_query_cache
 from server.config import get_settings
-from server.engine import db_manager
+from server.engine import QueryCancelHandle, db_manager
 from server.errors import CellsWindowTooLargeError, DatasetNotFoundError
 from server.models import (
     CellsResponse,
@@ -79,6 +79,8 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
     cache_status = "disabled"
     cache_source = "compute"
 
+    cancel_handle = QueryCancelHandle()
+
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
@@ -86,6 +88,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
             sql,
             tuple(params) if params else None,
             dataset_id=body.dataset_id,
+            cancel_handle=cancel_handle,
         )
         if rows:
             total_count = int(rows[0][-1])
@@ -100,6 +103,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
                 count_sql,
                 tuple(count_params) if count_params else None,
                 dataset_id=body.dataset_id,
+                cancel_handle=cancel_handle,
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
@@ -120,7 +124,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
         nonlocal queue_wait_ms, execution_ms
         async with budget.acquire() as _qwms:
             queue_wait_ms = _qwms
-            result_inner, exec_ms = await budget.run_with_budget(request, _execute)
+            result_inner, exec_ms = await budget.run_with_budget(request, _execute, cancel_fn=cancel_handle.cancel)
             execution_ms = exec_ms
         return result_inner
 
@@ -222,6 +226,8 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
     cache_status = "disabled"
     cache_source = "compute"
 
+    cancel_handle = QueryCancelHandle()
+
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)
@@ -229,6 +235,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
             sql,
             tuple(params) if params else None,
             dataset_id=body.dataset_id,
+            cancel_handle=cancel_handle,
         )
         duration_ms = (time.perf_counter() - start) * 1000
         cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
@@ -240,7 +247,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
         nonlocal queue_wait_ms, execution_ms
         async with budget.acquire() as _qwms:
             queue_wait_ms = _qwms
-            result_inner, exec_ms = await budget.run_with_budget(request, _execute)
+            result_inner, exec_ms = await budget.run_with_budget(request, _execute, cancel_fn=cancel_handle.cancel)
             execution_ms = exec_ms
         return result_inner
 
@@ -306,6 +313,8 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
     cache_status = "disabled"
     cache_source = "compute"
 
+    cancel_handle = QueryCancelHandle()
+
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
@@ -313,6 +322,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
             sql,
             tuple(params) if params else None,
             dataset_id=body.dataset_id,
+            cancel_handle=cancel_handle,
         )
         if rows:
             total_count = int(rows[0][-1])
@@ -327,6 +337,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
                 count_sql,
                 tuple(count_params) if count_params else None,
                 dataset_id=body.dataset_id,
+                cancel_handle=cancel_handle,
             )
             if count_rows:
                 total_count = int(count_rows[0][0])
@@ -347,7 +358,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
         nonlocal queue_wait_ms, execution_ms
         async with budget.acquire() as _qwms:
             queue_wait_ms = _qwms
-            result_inner, exec_ms = await budget.run_with_budget(request, _execute)
+            result_inner, exec_ms = await budget.run_with_budget(request, _execute, cancel_fn=cancel_handle.cancel)
             execution_ms = exec_ms
         return result_inner
 
