@@ -305,6 +305,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
 
     cache_status = "disabled"
     cache_source = "compute"
+    dim_version_token: str | None = None
 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
@@ -353,17 +354,20 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
 
     if settings.cache_enabled:
         cache = await get_query_cache()
+        dim_version_token = datasets.get_dim_version_token(body.dataset_id)
         cache_key = build_cache_key(
             "picklist",
             body.dataset_id,
             body.date_range.model_dump(),
             body.query.model_dump(),
+            data_token=dim_version_token,
         )
         result, meta = await cache.get_or_set(
             cache_key,
             _budgeted_execute,
-            ttl_seconds=settings.cache_ttl_seconds,
+            ttl_seconds=float(settings.dim_cache_ttl_seconds),
             max_item_bytes=settings.cache_max_item_bytes,
+            stale_ttl_seconds=float(settings.dim_stale_ttl_seconds),
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
@@ -383,6 +387,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
             "total_count": resp_body["total_count"],
             "cache_status": cache_status,
             "cache_source": cache_source,
+            "dim_version_token": dim_version_token,
             "queue_wait_ms": round(queue_wait_ms, 2),
             "execution_ms": round(execution_ms, 2),
             "time_filter_applied": time_filter_applied,

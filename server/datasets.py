@@ -4,6 +4,8 @@ Dataset configuration loader.
 Loads dataset and schema metadata from a YAML config file (e.g. dataset_id, fields).
 """
 
+import hashlib
+import json
 import logging
 import threading
 import time
@@ -380,6 +382,45 @@ def reset_cache() -> None:
 def get_cache_stats() -> dict[str, int]:
     """Expose instrumentation counters."""
     return _schema_cache.stats()
+
+
+def get_dim_version_token(dataset_id: str) -> str:
+    """Return a version token that identifies the current state of dimension data.
+
+    The token is included in picklist cache keys so that any change to the
+    dataset's configuration (field definitions, config file mtime) automatically
+    causes a cache miss and a fresh computation.
+
+    If ``QUERYSERVICE_DIM_VERSION_TOKEN`` is set in the environment, that value
+    is returned directly.  This allows operators to force a global invalidation
+    (e.g. after a reference-data reload) or coordinate token values across a
+    multi-node deployment.
+
+    Otherwise the token is derived from the datasets config file identity and
+    the field definitions for the given dataset.
+    """
+    settings = get_settings()
+    external = getattr(settings, "dim_version_token", None)
+    if external:
+        return str(external)
+
+    # Compute a stable token from config mtime + dataset field definitions.
+    entry = get_dataset_entry(dataset_id)
+    fields = entry.get("fields", []) if entry else []
+
+    cfg_path = settings.datasets_config_path
+    path = Path(cfg_path) if cfg_path else _default_config_path()
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:
+        mtime = None
+
+    token_input = json.dumps(
+        {"config_path": str(path), "config_mtime": mtime, "dataset_id": dataset_id, "fields": fields},
+        sort_keys=True,
+        default=str,
+    )
+    return hashlib.sha256(token_input.encode()).hexdigest()[:16]
 
 
 _DUCKDB_TYPE_MAP = {
