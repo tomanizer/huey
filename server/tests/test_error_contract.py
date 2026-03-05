@@ -138,7 +138,7 @@ class TestErrorResponseSchema:
             "get_schema_field_names",
             lambda _dataset_id: {"symbol", "date", "volume"},
         )
-        original_execute = query_router.db_manager.execute_sql_async
+        original_execute = query_router.db_manager.execute_sql_fetchmany_async
 
         async def execute_raise_unavailable(*args, **kwargs):
             # Router may pass (sql, params) or (sql, params, dataset_id=...); detect dataset from SQL/params
@@ -147,7 +147,7 @@ class TestErrorResponseSchema:
                 raise DatasetUnavailableError("not_materialized_ds")
             return await original_execute(*args, **kwargs)
 
-        monkeypatch.setattr(query_router.db_manager, "execute_sql_async", execute_raise_unavailable)
+        monkeypatch.setattr(query_router.db_manager, "execute_sql_fetchmany_async", execute_raise_unavailable)
 
         body = _query_body(dataset_id="not_materialized_ds")
         if endpoint == "/query/tuples":
@@ -310,7 +310,7 @@ class TestInternalErrorEnvelope:
         async def boom(*args, **kwargs):
             raise RuntimeError("unexpected failure")
 
-        monkeypatch.setattr(query_router.db_manager, "execute_sql_async", boom)
+        monkeypatch.setattr(query_router.db_manager, "execute_sql_fetchmany_async", boom)
         # raise_server_exceptions=False so we get the HTTP response instead of the re-raised exception
         no_raise_client = TestClient(app, raise_server_exceptions=False)
         r = no_raise_client.post("/query/cells", json={

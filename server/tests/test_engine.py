@@ -95,6 +95,99 @@ class TestDuckDBManager:
         finally:
             mgr.shutdown()
 
+    def test_execute_sql_fetchmany(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            rows = mgr.execute_sql_fetchmany("SELECT 42 AS x")
+            assert rows == [[42]]
+        finally:
+            mgr.shutdown()
+
+    def test_execute_sql_fetchmany_with_params(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            rows = mgr.execute_sql_fetchmany("SELECT ?::int AS v", (99,))
+            assert rows == [[99]]
+        finally:
+            mgr.shutdown()
+
+    def test_execute_sql_fetchmany_multiple_batches(self) -> None:
+        """Rows spanning multiple fetchmany batches are all returned correctly."""
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            rows = mgr.execute_sql_fetchmany(
+                "SELECT i FROM range(0, 10) t(i) ORDER BY i",
+                batch_size=3,
+            )
+            assert rows == [[i] for i in range(10)]
+        finally:
+            mgr.shutdown()
+
+    def test_execute_sql_fetchmany_empty_result(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            rows = mgr.execute_sql_fetchmany(
+                "SELECT i FROM range(0, 0) t(i)"
+            )
+            assert rows == []
+        finally:
+            mgr.shutdown()
+
+    def test_execute_sql_fetchmany_missing_table_raises_dataset_unavailable(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            with pytest.raises(DatasetUnavailableError):
+                mgr.execute_sql_fetchmany(
+                    "SELECT * FROM missing_table", dataset_id="missing_ds"
+                )
+        finally:
+            mgr.shutdown()
+
+    def test_execute_sql_fetchmany_large_result(self) -> None:
+        """Large result sets (>1 batch) are fully retrieved without error."""
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            n = 5000
+            rows = mgr.execute_sql_fetchmany(
+                "SELECT i FROM range(0, ?) t(i) ORDER BY i",
+                (n,),
+                batch_size=500,
+            )
+            assert len(rows) == n
+            assert rows[0] == [0]
+            assert rows[-1] == [n - 1]
+        finally:
+            mgr.shutdown()
+
+    @pytest.mark.anyio
+    async def test_execute_sql_fetchmany_async(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            rows = await mgr.execute_sql_fetchmany_async("SELECT 5 AS v")
+            assert rows == [[5]]
+        finally:
+            mgr.shutdown()
+
+    @pytest.mark.anyio
+    async def test_execute_sql_fetchmany_async_multiple_batches(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            rows = await mgr.execute_sql_fetchmany_async(
+                "SELECT i FROM range(0, 7) t(i) ORDER BY i",
+                batch_size=2,
+            )
+            assert rows == [[i] for i in range(7)]
+        finally:
+            mgr.shutdown()
+
     def test_initialize_applies_runtime_tuning(self, monkeypatch, tmp_path) -> None:
         class MockSettings:
             data_dir = None
