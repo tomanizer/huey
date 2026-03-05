@@ -2043,7 +2043,7 @@
             accept=".csv,.duckdb,.json,.jsonl,.parquet,.sql,.sqlite,.tsv,.xlsx"
           />
         </label>
-        <label for="uploaderFolder" title="Register all parquet files in a local folder">
+        <label for="uploaderFolder" title="Load all parquet files from a local folder as one datasource">
           <input
             id="uploaderFolder"
             type="file"
@@ -2052,11 +2052,6 @@
             multiple="true"
             accept=".parquet"
           />
-        </label>
-        <label for="loadParquetFolder" title="Load all parquet files from a local folder as one datasource">
-          <button
-            id="loadParquetFolder"
-          >Parquet folder</button>
         </label>
         <label for="loadFromUrl" title="Load data from URL">
           <button

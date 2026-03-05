@@ -735,11 +735,6 @@ export function initUploadUi(){
     afterUploaded(uploadResults);
   }, false);  // third arg is 'useCapture'
 
-  byId('loadParquetFolder')
-  .addEventListener('click', async () =>{
-    byId('uploaderFolder').click();
-  });
-
   byId('uploaderFolder')
   .addEventListener('change', async (event) =>{
     const folderControl = event.target;
