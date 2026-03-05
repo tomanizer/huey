@@ -78,8 +78,6 @@ async def post_query_tuples(
 ) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
-    queue_wait_ms = 0.0
-    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
@@ -190,8 +188,6 @@ async def post_query_cells(
 ) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
-    queue_wait_ms = 0.0
-    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
@@ -312,8 +308,6 @@ async def post_query_picklist(
 ) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
-    queue_wait_ms = 0.0
-    execution_ms = 0.0
     settings = get_settings()
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
