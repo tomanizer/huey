@@ -362,6 +362,22 @@ export class DuckDbDataSource extends EventEmitter {
       throw new Error(`The url should be of type string`);
     }
 
+    const pathPart = url.split('#').shift().split('?').shift();
+    const fileNameParts = DuckDbDataSource.getFileNameParts(pathPart);
+    const fileType = fileNameParts ? fileNameParts.lowerCaseExtension : undefined;
+    const isGlobPath = /[*?\[]/.test(pathPart);
+    if (isGlobPath && fileType) {
+      const fileTypeInfo = DuckDbDataSource.getFileTypeInfo(fileType);
+      if (fileTypeInfo && fileTypeInfo.duckdb_reader) {
+        return new DuckDbDataSource(duckdb, instance, {
+          type: DuckDbDataSource.types.FILE,
+          fileName: url,
+          url: url,
+          fileType: fileType
+        });
+      }
+    }
+
     const config = {
       type: DuckDbDataSource.types.FILE,
       fileName: url,

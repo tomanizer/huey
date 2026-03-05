@@ -32,6 +32,7 @@ vi.mock('../../src/QueryModel/QueryModel.js', () => ({
 }));
 
 import { DatasourceSettings } from '../../src/DatasourceSettingsDialog/DatasourceSettings.js';
+import { DuckDbDataSource } from '../../src/DataSource/duckdb/DuckDbDataSource.js';
 import { getUrlsFromInput, isParquetUrl } from '../../src/UploadUi/UploadUi.js';
 
 describe('Parquet support settings', () => {
@@ -61,5 +62,21 @@ describe('Upload URL parsing helpers', () => {
     expect(isParquetUrl('https://example.org/data/file.parquet')).toBe(true);
     expect(isParquetUrl('https://example.org/data/file.parquet?token=x')).toBe(true);
     expect(isParquetUrl('https://example.org/data/file.csv')).toBe(false);
+  });
+});
+
+describe('Parquet glob datasource creation', () => {
+  test('createFromUrl accepts parquet glob path without HEAD probing', async () => {
+    const getResourceInfoSpy = vi.spyOn(DuckDbDataSource, 'getResourceInfoForUrl');
+    const datasource = await DuckDbDataSource.createFromUrl(
+      {},
+      {},
+      '/dataset/*/*/*.parquet'
+    );
+
+    expect(getResourceInfoSpy).not.toHaveBeenCalled();
+    expect(datasource.getType()).toBe(DuckDbDataSource.types.FILE);
+    expect(datasource.getFileType()).toBe('parquet');
+    expect(datasource.getFileName()).toBe('/dataset/*/*/*.parquet');
   });
 });
