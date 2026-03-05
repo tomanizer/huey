@@ -388,6 +388,7 @@ export class CellSet extends DataSetComponent {
     var cells = apiResponse.cells || [];
     var colCount = columnCount || 1;
     var items = cellsAxisItemsToFetch || [];
+    var aliases = measureAliases || [];
     var offset = measureValueOffset != null ? measureValueOffset : 0;
     // Backend returns cell.values keyed by column index ("0", "1", ...): row dims, then column dims, then measures.
     var fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map(function(item) {
@@ -407,7 +408,8 @@ export class CellSet extends DataSetComponent {
       items.forEach(function(item, index) {
         var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
         var key = String(offset + index);
-        row[sqlExpression] = vals[key];
+        var alias = aliases[index] || item.columnName;
+        row[sqlExpression] = vals[key] !== undefined ? vals[key] : vals[alias];
       });
       return row;
     };
@@ -430,10 +432,11 @@ export class CellSet extends DataSetComponent {
       var rowDimCount = (axes.rows && axes.rows.length) || 0;
       var colDimCount = (axes.columns && axes.columns.length) || 0;
       var measureValueOffset = rowDimCount + colDimCount;
+      var measureAliases = query.axes && query.axes.measures ? query.axes.measures.map(function(measure) { return measure.alias; }) : [];
       var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
       var connection = datasource.getManagedConnection();
       var apiResponse = await connection.fetchCells(dateRange, query);
-      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, null, measureValueOffset);
+      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases, measureValueOffset);
       return resultSet;
     }
 
