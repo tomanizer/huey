@@ -99,12 +99,11 @@ export class PivotTableUi extends EventEmitter {
   }
 
   async #cancelQueryButtonClicked(event){
-    const cancelResults = await Promise.all([
+    await Promise.all([
       this.#columnsTupleSet.cancelPendingQuery(),
       this.#rowsTupleSet.cancelPendingQuery(),
       this.#cellsSet.cancelPendingQuery()
     ]);
-    console.log(`Results: `, cancelResults);
     this.#setNeedsUpdate(true);
   }
 
@@ -258,7 +257,6 @@ export class PivotTableUi extends EventEmitter {
       if (width.endsWith('px')) {
         // user changed column width - this is where we should store the width in the corresponding column tuple.
         const info = this.#getColumnHeaderTupleAndCellAxisInfo(target);
-        //debugger;
       }
       clearTimeout(this.#columnHeaderResizeTimeoutId);
       this.#columnHeaderResizeTimeoutId = undefined;
