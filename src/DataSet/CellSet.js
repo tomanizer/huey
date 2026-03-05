@@ -375,14 +375,27 @@ export class CellSet extends DataSetComponent {
     return RemoteQueryAdapter.createRemoteCellsQuery(queryModel, rowCount, colCount, cellsAxisItemsToFetch);
   }
 
-  #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount, measureAliases){
+  /** Map measure columnType to Arrow typeId so number formatter receives field.type (remote path). */
+  static #measureColumnTypeToArrowTypeId(columnType) {
+    var t = (columnType || '').toUpperCase();
+    if (/INT|BIGINT|INT64|INTEGER/.test(t)) return -5;
+    if (/FLOAT|DOUBLE|FLOAT64/.test(t)) return -12;
+    if (/DECIMAL/.test(t)) return 7;
+    return -12;
+  }
+
+  #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount, measureAliases, measureValueOffset){
     var cells = apiResponse.cells || [];
     var colCount = columnCount || 1;
     var items = cellsAxisItemsToFetch || [];
-    var aliases = measureAliases || [];
-    // Use same key as pivot: getSqlForQueryAxisItem (e.g. "sum(volume)") so cell.values[sqlExpression] finds the value
+    var offset = measureValueOffset != null ? measureValueOffset : 0;
+    // Backend returns cell.values keyed by column index ("0", "1", ...): row dims, then column dims, then measures.
     var fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map(function(item) {
-      return { name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName) };
+      var typeId = CellSet.#measureColumnTypeToArrowTypeId(item.columnType);
+      return {
+        name: QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName),
+        type: { typeId: typeId }
+      };
     }));
     var numRows = cells.length;
     var get = function(i) {
@@ -393,8 +406,8 @@ export class CellSet extends DataSetComponent {
       var vals = c.values || {};
       items.forEach(function(item, index) {
         var sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
-        var alias = aliases[index] || item.columnName;
-        row[sqlExpression] = vals[alias];
+        var key = String(offset + index);
+        row[sqlExpression] = vals[key];
       });
       return row;
     };
@@ -413,11 +426,14 @@ export class CellSet extends DataSetComponent {
     if (isRemote && datasource.getManagedConnection().fetchCells) {
       var query = this.#buildRemoteCellsQuery(tuplesToQuery, tuplesFields, cellsAxisItemsToFetch);
       var colCount = query.columns && query.columns.count ? query.columns.count : 1;
-      var measureAliases = query.axes && query.axes.measures ? query.axes.measures.map(function(measure) { return measure.alias; }) : [];
+      var axes = query.axes || {};
+      var rowDimCount = (axes.rows && axes.rows.length) || 0;
+      var colDimCount = (axes.columns && axes.columns.length) || 0;
+      var measureValueOffset = rowDimCount + colDimCount;
       var dateRange = RemoteQueryAdapter.getDateRange(queryModel);
       var connection = await this.getManagedConnection();
       var apiResponse = await connection.fetchCells(dateRange, query);
-      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases);
+      var resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, null, measureValueOffset);
       return resultSet;
     }
 

@@ -11,7 +11,7 @@ import { FilterDialog } from '../FilterUi/FilterUi.js';
 import { PivotTableUiHighlighting } from './PivotTableUiHighlighting.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { copyToClipboard } from '../util/clipboard/clipboard.js';
-import { getDuckDbLiteralForValue } from '../util/sql/SQLHelper.js';
+import { getDuckDbLiteralForValue, quoteStringLiteral } from '../util/sql/SQLHelper.js';
 
 export class PivotTableUi extends EventEmitter {
 
@@ -1006,13 +1006,23 @@ export class PivotTableUi extends EventEmitter {
       console.warn(`No query axis item!`);
       return;
     }
-    
+
     if (!tupleValue && !tupleValueField) {
       // this really should't happen but sometimes does when the cached tuples are out of sync witht he query model.
       console.warn(`No tuple value and no tuple value field.`);
       return;
     }
-    
+
+    if (!tupleValueField?.type || tupleValueField.type.typeId == null) {
+      // Remote tuple sets may provide fields without type (e.g. { name } only); set a safe literal and type.
+      const safeLiteral = tupleValue == null ? 'NULL' : (typeof tupleValue === 'string' ? quoteStringLiteral(tupleValue) : String(tupleValue));
+      cellElement.setAttribute('data-value-literal', safeLiteral);
+      cellElement.setAttribute('data-value-type', queryAxisItem.columnType || 'VARCHAR');
+      cellElement.setAttribute('data-axis', queryAxisItem.axis);
+      cellElement.setAttribute('data-axis-item', QueryAxisItem.getIdForQueryAxisItem(queryAxisItem));
+      return;
+    }
+
     switch (tupleValueField.type.typeId){
       case 12:  // variable size list
         if (tupleValue !== null){
