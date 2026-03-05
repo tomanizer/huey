@@ -236,6 +236,7 @@ export class DuckDbDataSource extends EventEmitter {
   #columnMetadata = undefined;
   #alias = undefined;
   #sqlQuery = undefined;
+  #cloudUri = undefined;
 
   #settings = new DatasourceSettings();
 
@@ -260,6 +261,9 @@ export class DuckDbDataSource extends EventEmitter {
     return Boolean(this.#url);
   }
 
+  getCloudUri(){
+    return this.#cloudUri;
+  }
   static getFileNameParts(fileName){
     if (fileName instanceof File) {
       fileName = fileName.name;
@@ -438,6 +442,47 @@ export class DuckDbDataSource extends EventEmitter {
     return dsInstance;
   }
 
+  /**
+   * Create a datasource from a cloud-fetched Blob (S3, GCS, etc.).
+   * The caller is responsible for fetching the blob from the cloud provider.
+   * @param {*} duckdb
+   * @param {*} instance
+   * @param {Blob} blob       - The fetched content as a Blob
+   * @param {string} fileName - The synthetic file name (including extension) used by DuckDB
+   * @param {string} [cloudUri] - Original URI for display purposes (e.g. "s3://bucket/key")
+   * @returns {DuckDbDataSource}
+   */
+  static createFromBlob(duckdb, instance, blob, fileName, cloudUri) {
+    if (!(blob instanceof Blob)) {
+      throw new Error(`The blob argument must be an instance of Blob`);
+    }
+    if (typeof fileName !== 'string' || !fileName.length) {
+      throw new Error(`A non-empty fileName is required`);
+    }
+
+    const fileNameParts = DuckDbDataSource.getFileNameParts(fileName);
+    if (!fileNameParts) {
+      throw new Error(`Could not determine filetype from fileName "${fileName}".`);
+    }
+    const fileExtension = fileNameParts.lowerCaseExtension;
+    const fileType = DuckDbDataSource.getFileTypeInfo(fileExtension);
+    if (!fileType) {
+      throw new Error(`Unrecognized file extension "${fileExtension}" in fileName "${fileName}".`);
+    }
+
+    const config = {
+      type: fileType.datasourceType,
+      file: blob,
+      fileName: fileName,
+      fileType: fileType,
+    };
+    const dsInstance = new DuckDbDataSource(duckdb, instance, config);
+    if (cloudUri) {
+      dsInstance.#cloudUri = cloudUri;
+    }
+    return dsInstance;
+  }
+
   static createFromSql(duckdb, instance, sql){
     const config = {
       type: DuckDbDataSource.types.SQLQUERY,
@@ -488,6 +533,12 @@ export class DuckDbDataSource extends EventEmitter {
             case 'object':
               if (file instanceof File) {
                 this.#objectName = file.name;
+                this.#file = file;
+                this.#fileProtocol = config.protocol || this.#duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
+                break;
+              }
+              if (file instanceof Blob && config.fileName) {
+                this.#objectName = config.fileName;
                 this.#file = file;
                 this.#fileProtocol = config.protocol || this.#duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
                 break;
@@ -626,7 +677,7 @@ export class DuckDbDataSource extends EventEmitter {
     }
     else
     if (file){
-      if (!(file instanceof File)){
+      if (!(file instanceof File) && !(file instanceof Blob)){
         throw new Error(`Configuration error: datasource of type ${DuckDbDataSource.types.FILE} needs to have a file handle set in order to register it.`);
       }
       const type = this.getType();
@@ -639,8 +690,9 @@ export class DuckDbDataSource extends EventEmitter {
           throw new Error(`Registerfile is not appropriate for datasources of type ${type}.`);
       }
       let protocol = this.#fileProtocol || this.#duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
+      const fileName = (file instanceof File) ? file.name : this.#objectName;
       await this.#duckDbInstance.registerFileHandle(
-        file.name,
+        fileName,
         file,
         protocol
       );
@@ -1070,7 +1122,7 @@ export class DuckDbDataSource extends EventEmitter {
   }
 
   getObjectName(){
-    return this.#objectName;
+    return this.#cloudUri || this.#objectName;
   }
 
   getSchemaName(){
