@@ -561,6 +561,74 @@ export class UploadUi {
 
 export let uploadUi;
 
+export function getUrlsFromInput(urlInput){
+  if (typeof urlInput !== 'string') {
+    return [];
+  }
+  return urlInput
+  .split(/[\n,]/)
+  .map((url) =>{
+    return url.trim();
+  })
+  .filter((url) =>{
+    return Boolean(url);
+  });
+}
+
+export function isParquetUrl(url){
+  try {
+    const parsed = new URL(url);
+    return /\.parquet$/i.test(parsed.pathname);
+  }
+  catch (error){
+    return /\.parquet($|[?#])/i.test(url);
+  }
+}
+
+async function uploadParquetFilesAsFolderDatasource(files){
+  const parquetFiles = Array.from(files || []).filter((file) =>{
+    return file instanceof File && /\.parquet$/i.test(file.name);
+  });
+  if (!parquetFiles.length){
+    throw new Error('No parquet files found in selected folder.');
+  }
+
+  const hueyDb = window.hueyDb;
+  const duckdb = hueyDb.duckdb;
+  const instance = hueyDb.instance;
+
+  const fileNames = parquetFiles
+  .map((file) =>{
+    return file.webkitRelativePath || file.name;
+  })
+  .sort();
+
+  const protocol = duckdb.DuckDBDataProtocol.BROWSER_FILEREADER;
+  for (let i = 0; i < parquetFiles.length; i++){
+    const file = parquetFiles[i];
+    const fileName = file.webkitRelativePath || file.name;
+    await instance.registerFileHandle(
+      fileName,
+      file,
+      protocol
+    );
+  }
+
+  const datasource = new DuckDbDataSource(duckdb, instance, {
+    type: DuckDbDataSource.types.FILES,
+    fileNames: fileNames,
+    fileType: 'parquet'
+  });
+  const tryResult = await datasource.tryAccess(100);
+  if (!tryResult.success){
+    datasource.destroy();
+    const lastAttempt = tryResult.lastAttempt || {};
+    throw new Error(lastAttempt.message || 'Could not access parquet folder datasource.');
+  }
+  datasourcesUi.addDatasources([datasource]);
+  return datasource;
+}
+
 export function afterUploaded(uploadResults){
   const currentRoute = Routing.getCurrentRoute();
   if (!Routing.isSynced(queryModel)) {
@@ -625,14 +693,69 @@ export function initUploadUi(){
     afterUploaded(uploadResults);
   }, false);  // third arg is 'useCapture'
 
+  byId('loadParquetFolder')
+  .addEventListener('click', async () =>{
+    byId('uploaderFolder').click();
+  });
+
+  byId('uploaderFolder')
+  .addEventListener('change', async (event) =>{
+    const folderControl = event.target;
+    try {
+      const datasource = await uploadParquetFilesAsFolderDatasource(folderControl.files);
+      afterUploaded({
+        success: 1,
+        fail: 0,
+        datasources: [datasource]
+      });
+    }
+    catch (error){
+      showErrorDialog({
+        title: 'Could not load parquet folder',
+        description: error.message || String(error)
+      });
+    }
+    finally {
+      folderControl.value = '';
+    }
+  }, false);
 
   byId('loadFromUrl')
   .addEventListener('click', async (event) =>{
-    const url = prompt('Enter URL');
-    if (!url || !url.length){
+    const urlInput = prompt('Enter URL (or multiple URLs separated by comma or newline)');
+    const urls = getUrlsFromInput(urlInput);
+    if (!urls.length){
       return;
     }
-    const uploadResults = await uploadUi.uploadFiles([url]);
+
+    if (urls.length > 1 && urls.every((url) =>{
+      return isParquetUrl(url);
+    })){
+      const hueyDb = window.hueyDb;
+      const datasource = new DuckDbDataSource(hueyDb.duckdb, hueyDb.instance, {
+        type: DuckDbDataSource.types.FILES,
+        fileNames: urls,
+        fileType: 'parquet'
+      });
+      const tryResult = await datasource.tryAccess(100);
+      if (!tryResult.success){
+        datasource.destroy();
+        showErrorDialog({
+          title: 'Could not load parquet URLs',
+          description: (tryResult.lastAttempt && tryResult.lastAttempt.message) || 'Could not access parquet URLs.'
+        });
+        return;
+      }
+      datasourcesUi.addDatasources([datasource]);
+      afterUploaded({
+        success: 1,
+        fail: 0,
+        datasources: [datasource]
+      });
+      return;
+    }
+
+    const uploadResults = await uploadUi.uploadFiles(urls);
     afterUploaded(uploadResults);
   });
 
