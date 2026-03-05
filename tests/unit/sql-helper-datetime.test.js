@@ -16,6 +16,13 @@ vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
 import { dataTypes, createTimestampFormatter, createNumberFormatter } from '../../src/util/sql/SQLHelper.js';
 
 describe('SQLHelper DATE formatter', () => {
+  test('formats ISO datetime string without throwing', () => {
+    const info = dataTypes['DATE'];
+    const formatter = info.createFormatter();
+    expect(() => formatter('2026-03-01T12:34:56.000Z')).not.toThrow();
+    expect(typeof formatter('2026-03-01T12:34:56.000Z')).toBe('string');
+  });
+
   test('formats ISO date string without throwing', () => {
     const info = dataTypes['DATE'];
     const formatter = info.createFormatter();
