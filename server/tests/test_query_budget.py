@@ -2,8 +2,8 @@
 
 import asyncio
 import os
-import time
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 
 import pytest
 from starlette.testclient import TestClient
@@ -59,10 +59,12 @@ def test_queue_depth_rejects_overflow(
     settings_override(max_concurrent_queries=1, max_query_queue_depth=0, query_timeout_seconds=1)
 
     original_execute = db_manager.execute_sql_async
+    first_query_started = Event()
 
-    async def slow_execute(sql, params=None):
+    async def slow_execute(sql, params=None, *, dataset_id=None):
+        first_query_started.set()
         await asyncio.sleep(0.1)
-        return await original_execute(sql, params)
+        return await original_execute(sql, params, dataset_id=dataset_id)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", slow_execute)
 
@@ -78,7 +80,7 @@ def test_queue_depth_rejects_overflow(
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         first = pool.submit(slow_request)
-        time.sleep(0.01)
+        assert first_query_started.wait(timeout=1)
         second = pool.submit(slow_request)
         first_result = first.result(timeout=5)
         second_result = second.result(timeout=5)
