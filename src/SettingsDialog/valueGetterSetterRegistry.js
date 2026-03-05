@@ -1,6 +1,9 @@
 const valueGetterRegistry = {
   splitCommaSeparatedValue(control) {
-    return control.value.split(String.fromCharCode(44));
+    if (!control.value) {
+      return [];
+    }
+    return control.value.split(',');
   },
   parseJsonValue(control) {
     return JSON.parse(control.value);
