@@ -137,6 +137,7 @@ async def post_query_tuples(body: QueryTuplesRequest, request: Request, response
             _budgeted_execute,
             ttl_seconds=settings.cache_ttl_seconds,
             max_item_bytes=settings.cache_max_item_bytes,
+            endpoint="tuples",
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
@@ -259,6 +260,7 @@ async def post_query_cells(body: QueryCellsRequest, request: Request, response: 
             _budgeted_execute,
             ttl_seconds=ttl,
             max_item_bytes=max_item,
+            endpoint="cells",
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
@@ -364,6 +366,7 @@ async def post_query_picklist(body: QueryPicklistRequest, request: Request, resp
             _budgeted_execute,
             ttl_seconds=settings.cache_ttl_seconds,
             max_item_bytes=settings.cache_max_item_bytes,
+            endpoint="picklist",
         )
         cache_status = meta.cache_status
         cache_source = meta.cache_source
