@@ -88,6 +88,10 @@ export class DatasourceSettings extends SettingsBase {
       "jsonReaderUnionByName": true,
       "jsonReaderMapInferenceThreshold": 200,
       "jsonReaderFieldAppearanceThreshold": 0.1
+    },
+    "parquetReader": {
+      "parquetReaderFilename": false,
+      "parquetReaderBinaryAsString": false
     }
   };
 

@@ -358,7 +358,10 @@ export class PivotTableUi extends EventEmitter {
 
       if (propertiesChangedInfo.datasource || propertiesChangedInfo.datasourceId) {
         clearCellsSet = clearRowsTupleSet = clearColumnsTupleSet = true;
-        needsClearing = true;
+        const hadDatasourceBefore = queryModelStateBeforeChange && (queryModelStateBeforeChange.datasourceId || queryModelStateBeforeChange.datasource);
+        if (hadDatasourceBefore) {
+          needsClearing = true;
+        }
       }
 
       if (propertiesChangedInfo.cellsHeaders){
@@ -721,7 +724,7 @@ export class PivotTableUi extends EventEmitter {
           this.#setCellValueLiteral(cell, queryAxisItem, tupleValue, tupleValueField);
 
           if (isTotalsMember > j) {
-            if (queryAxisItem.formatter) {
+            if (queryAxisItem && queryAxisItem.formatter) {
               titleText = queryAxisItem.formatter(tupleValue, tupleValueField);
             }
             else {
@@ -733,7 +736,7 @@ export class PivotTableUi extends EventEmitter {
           }
           else
           if (isTotalsMember === j){
-            titleText = this.#getTotalsString(queryAxisItem);
+            titleText = queryAxisItem ? this.#getTotalsString(queryAxisItem) : '';
             if (cellsAxisItemIndex === 0 || i === columnsOffset){
               labelText = titleText;
             }
@@ -741,7 +744,7 @@ export class PivotTableUi extends EventEmitter {
           else {
             labelText = '';
           }
-          titleText = `${QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem)} (${tupleIndex + 1}): ${titleText}`;
+          titleText = queryAxisItem ? `${QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem)} (${tupleIndex + 1}): ${titleText}` : `${tupleIndex + 1}: ${titleText}`;
 
           if (hideRepeatingAxisValues){
             let isRepeatingValue;
@@ -895,7 +898,7 @@ export class PivotTableUi extends EventEmitter {
           const tupleValueField = tupleValueFields[j];
           this.#setCellValueLiteral(cell, queryAxisItem, tupleValue, tupleValueField);
           if (isTotalsMember > j) {
-            if (queryAxisItem.formatter) {
+            if (queryAxisItem && queryAxisItem.formatter) {
               labelText = queryAxisItem.formatter(tupleValue, tupleValueField);
             }
             else {
@@ -907,21 +910,21 @@ export class PivotTableUi extends EventEmitter {
             isTotals = isTotalsOrigin = true;
             if (doCellHeaders){
               if (i === 0 || cellsAxisItemIndex === 0){
-                labelText = this.#getTotalsString(queryAxisItem);
+                labelText = queryAxisItem ? this.#getTotalsString(queryAxisItem) : '';
               }
               else {
                 labelText = undefined;
               }
             }
             else {
-              labelText = this.#getTotalsString(queryAxisItem);
+              labelText = queryAxisItem ? this.#getTotalsString(queryAxisItem) : '';
             }
           }
           else {
             labelText = '';
             isTotals = true;
           }
-          titleText = `${QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem)}: ${labelText}`;
+          titleText = queryAxisItem ? `${QueryAxisItem.getCaptionForQueryAxisItem(queryAxisItem)}: ${labelText}` : String(labelText);
 
           if (hideRepeatingAxisValues){
             let isRepeatingValue;
@@ -1545,6 +1548,9 @@ export class PivotTableUi extends EventEmitter {
     const innerContainerWidth = containerDom.clientWidth;
     const tableDom = this.#getTableDom();
 
+    if (innerContainerWidth <= 0) {
+      return;
+    }
     while (tableDom.clientWidth > innerContainerWidth) {
       // table exceeds allowed width remove the last column.
       for (let j = lastHeaderRowIndex; j >=0; j--){
@@ -1571,6 +1577,9 @@ export class PivotTableUi extends EventEmitter {
     const innerContainerHeight = containerDom.clientHeight;
     const tableDom = this.#getTableDom();
 
+    if (innerContainerHeight <= 0) {
+      return;
+    }
     const tableBodyDom = this.#getTableBodyDom();
     const tableBodyDomRows = tableBodyDom.childNodes;
 
@@ -1884,6 +1893,10 @@ export class PivotTableUi extends EventEmitter {
       };
 
       setTimeout(() =>{
+        const columnsSizeInfo = this.#getColumnsAxisSizeInfo();
+        if (!columnsSizeInfo) {
+          return;
+        }
         this.#removeExcessColumns();
         this.#updateHorizontalSizer();
         this.#removeExcessRows();

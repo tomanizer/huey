@@ -67,6 +67,27 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
     return DatasourceSettingsDialog.#fileSizeFormatter.format(fileSize);
   }
 
+  /** Settings stub for dialog pivots: no auto-run, safe defaults for TupleSet/PivotTableUi. */
+  static #dialogPivotSettings(){
+    return {
+      getSettings(path) {
+        const p = Array.isArray(path) ? path : (path ? [path] : []);
+        if (p[0] === 'querySettings') {
+          if (p.length <= 1) return { autoRunQuery: false, autoRunQueryTimeout: 1000 };
+          if (p[1] === 'autoRunQueryTimeout') return 1000;
+          return false;
+        }
+        if (p[0] === 'pivotSettings') {
+          if (p.length <= 1) return { totalsString: 'Total' };
+          if (p[1] === 'totalsPosition' && p[2] === 'value') return 'AFTER';
+          return undefined;
+        }
+        if (p[0] === 'localeSettings' && p[1] === 'nullsSortOrder' && p[2] === 'value') return 'FIRST';
+        return undefined;
+      }
+    };
+  }
+
   constructor(){
     super({
       id: DatasourceSettingsDialog.#id
@@ -184,7 +205,7 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
       container: columnsTabPanel,
       id: tabId + 'PivotTableUi',
       queryModel: this.#columnsTabQueryModel,
-      settings: {autoRunQuery: true}
+      settings: DatasourceSettingsDialog.#dialogPivotSettings()
     });
     
     //let pivotTableUiContextMenu = new ContextMenu(this.#columnsTabPivotTableUi, 'pivotTableContextMenu');
@@ -236,17 +257,14 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
       container: section,
       id: tabId + 'PivotTableUi',
       queryModel: this.#rejectsTabQueryModel,
-      settings: {autoRunQuery: true}
+      settings: DatasourceSettingsDialog.#dialogPivotSettings()
     });
   }
 
   #updateColumnsTabData(){
     const datasource = this.#datasource;
 
-    // first clean up the datasource
-    this.#columnsTabQueryModel.setDatasource( null );
-
-    // now prepare our column datasource
+    // Prepare our column datasource (reuse same instance; setState will clear and repopulate)
     const sql = [
       'SELECT CAST(ROW_NUMBER() OVER () AS USMALLINT) AS "#"',
       ', ds_schema.*',

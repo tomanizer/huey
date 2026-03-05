@@ -1627,9 +1627,23 @@
             checked="true"
           />
           <div role="tabpanel">
-            <!-- https://duckdb.org/docs/data/parquet/overview.html --> 
-            Parquet reader options
-            
+            <form>
+              <fieldset>
+                <legend>Options</legend>
+                <label for="parquetReaderFilename" title="Include a column that specifies which file each row came from.">Filename column</label>
+                <input
+                  id="parquetReaderFilename"
+                  type="checkbox"
+                  title="Include a column that specifies which file each row came from."
+                />
+                <label for="parquetReaderBinaryAsString" title="Handle legacy Parquet files that store binary data without standard type annotations.">Binary as string</label>
+                <input
+                  id="parquetReaderBinaryAsString"
+                  type="checkbox"
+                  title="Handle legacy Parquet files that store binary data without standard type annotations."
+                />
+              </fieldset>
+            </form>
           </div>
         </div>
 
