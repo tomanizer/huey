@@ -52,7 +52,10 @@ export function getArrowDecimalAsString(value, type){
   fractionalPart = fractionalPart.replace(/0+$/, '');
   let integerPart = absValue.slice(0, decimalPlace);
   integerPart = integerPart.replace(/^0+/, '');
-  let str = `${isNegative ? '-' : ''}${integerPart}.${fractionalPart}`;
+  let str = `${isNegative ? '-' : ''}${integerPart || '0'}${fractionalPart ? `.${fractionalPart}` : ''}`;
+  if (str === '-0'){
+    str = '0';
+  }
   if (str === '.'){
     str = '0';
   }
@@ -1317,6 +1320,7 @@ export function getStructTypeDescriptor(structColumnType){
   
   function parseMemberType(){
     const startOfMemberType = index;
+    let endOfMemberType;
     let level = 0;
     _loop: while (index < structColumnType.length){
       const ch = structColumnType.charAt(index);
