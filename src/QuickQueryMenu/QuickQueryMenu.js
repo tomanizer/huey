@@ -174,10 +174,6 @@ export class QuickQueryMenu {
     if (label) {
       label.title = button.title;
     }
-    const label = button.closest('label');
-    if (label) {
-      label.title = button.title;
-    }
   }
 
 }
