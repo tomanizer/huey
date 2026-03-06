@@ -1,19 +1,8 @@
-import { AttributeUi } from '../AttributeUi/AttributeUi.js';
-import { FilterDialog } from '../FilterUi/FilterUi.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
-import { Internationalization } from '../Internationalization/Internationalization.js';
 import { EventEmitter } from '../util/event/EventEmitter.js';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
-import {
-  getDataTypeInfo,
-  fallbackFormatter,
-  normalizeSqlOptions,
-  quoteIdentifierWhenRequired,
-  getQualifiedIdentifier,
-  extrapolateColumnExpression,
-} from '../util/sql/SQLHelper.js';
 
 /**
  * @typedef {Object} QueryFilterConfig
@@ -50,706 +39,12 @@ import {
  * @property {Object.<string, {size?: number, unit?: string}>} [sampling]
  */
 
-export class QueryAxisItem {
+import { QueryAxisItem, _setQueryModelRef } from './QueryAxisItem.js';
+import { QueryAxis } from './QueryAxis.js';
 
-  static createFormatter(axisItem){
-    let dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
-    if (axisItem.aggregator) {
-      const aggregatorInfo = AttributeUi.aggregators[axisItem.aggregator];
-      if (aggregatorInfo.createFormatter){
-        return aggregatorInfo.createFormatter(axisItem);
-      }
-      else
-      if (aggregatorInfo.columnType) {
-        dataType = aggregatorInfo.columnType;
-      }
-      else
-      if (aggregatorInfo.preservesColumnType) {
-        // okay, noop
-      }
-      else {
-        //todo.
-      }
-    }
-    else
-    if (axisItem.derivation){
-      const derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
-      if (derivationInfo.createFormatter) {
-        return derivationInfo.createFormatter(axisItem);
-      }
-      else
-      if (derivationInfo.columnType){
-        dataType = derivationInfo.columnType;
-      }
-    }
-
-    if (dataType) {
-      const dataTypeInfo = getDataTypeInfo(dataType);
-      if (dataTypeInfo) {
-        if (dataTypeInfo.createFormatter){
-          return dataTypeInfo.createFormatter();
-        }
-      }
-      else {
-        console.error(`No data type info found for ${dataType}`);
-      }
-    }
-    else{
-      console.warn(`No data type for axisItem "${QueryAxisItem.getCaptionForQueryAxisItem(axisItem)}".`);
-    }
-
-    console.warn(`Using fallback formatter for axisItem ${QueryAxisItem.getCaptionForQueryAxisItem(axisItem)}`);
-    return fallbackFormatter;
-  }
-  
-  static createParser(axisItem){
-    if (axisItem.derivation){
-      const derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
-      if (derivationInfo.createParser) {
-        return derivationInfo.createParser(axisItem);
-      }
-    }
-  }
-
-  static createLiteralWriter(axisItem){
-    const dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
-    if (!dataType) {
-      // this may happen in case the item has an aggregator like sum() - in these cases we don't know what the datatype of the resulting values will be.
-      // we need to find a better solution for this but for now just bail out - we currently don't need a literalwriter for aggregated values.
-      return null;
-    }
-    const dataTypeInfo = getDataTypeInfo(dataType);
-    let literalWriter;
-    if (typeof dataTypeInfo.createLiteralWriter === 'function') {
-      literalWriter = dataTypeInfo.createLiteralWriter(dataTypeInfo, dataType);
-    }
-    else {
-      return null;
-    }
-    return literalWriter;
-  }
-
-  static getLiteralWriter(axisItem) {
-    let literalWriter = axisItem.literalWriter;
-    if (literalWriter) {
-      return literalWriter;
-    }
-    literalWriter = QueryAxisItem.createLiteralWriter(axisItem);
-    return literalWriter;
-  }
-
-  static getCaptionForQueryAxisItem(axisItem){
-    let caption = axisItem.caption;
-    if (caption){
-      return caption;
-    }
-
-    caption = QueryAxisItem.createCaptionForQueryAxisItem(axisItem);
-
-    if (axisItem.axis === QueryModel.AXIS_FILTERS) {
-      let filterItemCaption = `: No filters set.`;
-      const filter = axisItem.filter;
-      if (filter) {
-        const values = filter.values;
-        if (values) {
-          const valueKeys = Object.keys(values);
-          if (valueKeys.length){
-            const valueLabels = [];
-            const toValues = filter.toValues;
-            const toValueKeys = toValues? Object.keys(toValues) : undefined;
-            for (let i = 0; i < valueKeys.length; i++){
-              const valueKey = valueKeys[i];
-              const valueObject = values[valueKey];
-              let valueLabel = valueObject.label;
-              if (toValueKeys && i < toValueKeys.length){
-                const toValueKey = toValueKeys[i];
-                const toValueObject = toValues[toValueKey];
-                valueLabel += ' - ' + toValueObject.label;
-              }
-              valueLabels.push(valueLabel);
-            }
-            filterItemCaption = ` ${filter.filterType} ${valueLabels.join('\n')}`;
-          }
-        }
-      }
-      
-      caption = `${caption}${filterItemCaption}` 
-    }
-
-    return caption;
-  }
-
-  static createCaptionForQueryAxisItem(axisItem){
-    let caption = axisItem.columnName;
-    if (axisItem.memberExpressionPath) {
-      const path = Object.assign([], axisItem.memberExpressionPath);
-      switch (axisItem.derivation) {
-        case 'elements':
-        case 'element indices':
-          path.pop();
-      }
-      caption = `${caption}.${path.join('.')}`;
-    }
-
-    if (axisItem.derivation) {
-      const translatedDerivation = Internationalization.getText(axisItem.derivation);
-      if (caption) {        
-        caption = Internationalization.getText('{1} of {2}', translatedDerivation, caption);
-      }
-      else {
-        caption = translatedDerivation;
-      }
-    }
-    else 
-    if (axisItem.aggregator) {
-      const translatedAggregator = Internationalization.getText(axisItem.aggregator);
-      if (caption) {
-        caption = Internationalization.getText('{1} of {2}', translatedAggregator, caption);
-      }
-      else {
-        caption = translatedAggregator;
-      }
-    }
-    
-    return caption;
-  }
-
-  static getIdForQueryAxisItem(axisItem){
-    // see issue https://github.com/rpbouman/huey/issues/352
-    // only the sql expression is not enough to identify an Item
-    // some items may have identical SQL, but a different formatter
-    // the caption should be unique but to be on the safe side 
-    // we'll take the combination of sql expression and caption
-    // and we'll stylize it as an aliased SQL expression
-    const sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(axisItem);
-    const caption = QueryAxisItem.getCaptionForQueryAxisItem(axisItem);
-    const alias = quoteIdentifierWhenRequired(caption);
-    const id = `${sqlExpression} AS ${alias}`;
-    return id;
-  }
-
-  static getSqlForColumnExpression(item, alias, sqlOptions) {
-    let sqlExpression = [item.columnName];
-
-    if (alias){
-      sqlExpression.unshift(alias);
-    }
-    sqlExpression = getQualifiedIdentifier(sqlExpression, sqlOptions);
-
-    if (item.memberExpressionPath) {
-      sqlExpression = item.memberExpressionPath.reduce((acc, curr) =>{
-        if ( curr.endsWith('()') ) {
-          acc = `${curr.slice(0, -2)}( ${acc} )`;
-        }
-        else {
-          acc += `['${curr}']`;
-        }
-        return acc;
-      }, sqlExpression);
-    }
-    return sqlExpression;
-  }
-
-  static getSqlForAggregatedQueryAxisItem(item, alias, sqlOptions){
-    let columnExpression = item.columnName;
-
-    if (columnExpression === '*') {
-      if (alias) {
-        columnExpression = `${quoteIdentifierWhenRequired(alias)}.*`;
-      }
-    }
-    else 
-    if (item.derivation){ 
-      columnExpression = QueryAxisItem.getSqlForDerivedQueryAxisItem(item, alias, sqlOptions);
-    }
-    else {
-      columnExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
-    }
-
-    const aggregator = item.aggregator;
-    const aggregatorInfo = AttributeUi.aggregators[aggregator];
-    const expressionTemplate = aggregatorInfo.expressionTemplate;
-    columnExpression = extrapolateColumnExpression(expressionTemplate, columnExpression);
-    return columnExpression;
-  }
-
-  static getSqlForDerivedQueryAxisItem(item, alias, sqlOptions){
-    let columnExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
-
-    const derivation = item.derivation;
-    let derivationInfo;
-    derivationInfo = AttributeUi.getDerivationInfo(derivation);
-    const derivationExpressionTemplate = derivationInfo.expressionTemplate;
-    columnExpression = extrapolateColumnExpression(derivationExpressionTemplate, columnExpression);
-
-    return columnExpression;
-  }
-
-  static getSqlForQueryAxisItem(item, alias, sqlOptions){
-    sqlOptions = normalizeSqlOptions(sqlOptions);
-    let sqlExpression;
-    if (item.aggregator) {
-      sqlExpression = QueryAxisItem.getSqlForAggregatedQueryAxisItem(item, alias, sqlOptions);
-    }
-    else
-    if (item.derivation) {
-      sqlExpression = QueryAxisItem.getSqlForDerivedQueryAxisItem(item, alias, sqlOptions);
-    }
-    else {
-      sqlExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
-    }
-    return sqlExpression;
-  }
-
-  static getQueryAxisItemDataType(queryAxisItem){
-    const columnType = queryAxisItem.columnType;
-    let dataType = columnType;
-
-    /* 
-      see https://github.com/rpbouman/huey/issues/505
-      If items have a member expression path, then we first need to unwrap that and get the type of the path.
-      Once we have that, we can evaluate type hints like hasElementDataType, hasKeyArrayDataType, preservesColumnType
-    */
-    if (queryAxisItem.memberExpressionPath) {
-      const memberExpressionPath = queryAxisItem.memberExpressionPath;
-      dataType = getMemberExpressionType(columnType, memberExpressionPath);
-      if (memberExpressionPath[memberExpressionPath.length - 1].endsWith('()')){
-        return dataType;
-      }
-    }
-
-    let derivationInfo, derivation = queryAxisItem.derivation;
-    if (derivation) {
-      derivationInfo = AttributeUi.getDerivationInfo(derivation);
-      if (derivationInfo.columnType) {
-        dataType = derivationInfo.columnType;
-      }
-      else
-      if (derivationInfo.hasElementDataType){
-        dataType = getArrayElementType(dataType);
-      }
-      else
-      if (derivationInfo.hasKeyDataType || derivationInfo.hasKeyArrayDataType){
-        dataType = getMemberExpressionType(dataType, 'key');
-        if (derivationInfo.hasKeyArrayDataType){
-          dataType = getArrayType(dataType);
-        }
-      }
-      else
-      if (derivationInfo.hasValueDataType || derivationInfo.hasValueArrayDataType){
-        dataType = getArrayElementType(dataType);
-        dataType = getMemberExpressionType(dataType, 'value');
-        if (derivationInfo.hasValueArrayDataType) {
-          dataType = getArrayType(dataType);
-        }
-      }
-      else
-      if (derivationInfo.hasEntryDataType || derivationInfo.hasEntryArrayDataType){
-        dataType = getMapEntryType(dataType);
-        if (derivationInfo.hasEntryArrayDataType) {
-          dataType = getArrayType(dataType);
-        }
-      }
-      else 
-      if (derivation === 'median'){
-        dataType = getArrayElementType(dataType);
-        dataType = getMedianReturnDataTypeForArgumentDataType(dataType);
-      }
-      else
-      if (!derivationInfo.preservesColumnType){
-        console.warn(`Item ${QueryAxisItem.getIdForQueryAxisItem(queryAxisItem)} has derivation "${derivation}" which does not preserve column type and no column type set.`);
-      }
-    }
-
-    let aggregatorInfo, aggregator = queryAxisItem.aggregator;
-    if (aggregator) {
-      aggregatorInfo = AttributeUi.getAggregatorInfo(aggregator);
-      if (aggregatorInfo.columnType) {
-        dataType = aggregatorInfo.columnType;
-      }
-      else 
-      if (aggregatorInfo.preservesColumnType){
-        // noop
-      }
-      else
-      if (aggregatorInfo && typeof aggregatorInfo.getReturnDataTypeForArgumentDataType === 'function'){
-        dataType = aggregatorInfo.getReturnDataTypeForArgumentDataType(dataType);
-      }
-      else {
-        dataType = undefined;
-      }
-    }
-
-    return dataType;
-  }
-
-  // includeDisabledItems: if true then return all values, if not true then exclude values that have enabled===false;
-  static #getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem, includeDisabledItems){
-    let sql;
-    const filter = queryAxisItem.filter;
-
-    const values = filter.values;
-    const toValues = filter.toValues;
-
-    let keys = Object.keys(values);
-    
-    if (includeDisabledItems !== true) {
-      keys = keys.filter((key) =>{
-        const valueObject = values[key];
-        return valueObject.enabled !== false;
-      });
-    }
-    
-    const isRangeFilterType = FilterDialog.isRangeFilterType(filter.filterType);
-    const toValueKeys = isRangeFilterType ? Object.keys(toValues) : undefined;
-    const toValueLiterals = isRangeFilterType ? [] : undefined;
-    const valueLiterals = keys.map((key, index) =>{
-      const entry = values[key];
-      if (isRangeFilterType) {
-        toValueLiterals.push( toValues[toValueKeys[index]].literal );
-      }
-      return entry.literal;
-    });
-    return {
-      valueLiterals: valueLiterals,
-      toValueLiterals: toValueLiterals
-    };
-  }
-
-  static isFilterItemEffective(queryAxisItem){
-    const filter = queryAxisItem.filter;
-    if (!filter) {
-      return undefined;
-    }
-    const literalLists = QueryAxisItem.#getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem);
-    return literalLists.valueLiterals.length !== 0;
-  }
-
-  static getFilterConditionSql(queryAxisItem, alias){
-    if (!QueryAxisItem.isFilterItemEffective(queryAxisItem)) {
-      return undefined;
-    }
-    const filter = queryAxisItem.filter;
-
-    let columnExpression = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem, alias);
-    let dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);          
-    if (dataType === 'VARCHAR' && filter.caseSensitive === false) {
-      columnExpression = `${columnExpression} COLLATE NOCASE`;
-    }
-
-    let operator = '';
-
-    let nullCondition;
-    const literalLists = QueryAxisItem.#getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem);
-    const indexOfNull = literalLists.valueLiterals.findIndex((value) =>{
-      return value === 'NULL' || value.startsWith('NULL::');
-    });
-
-    if (indexOfNull !== -1) {
-      operator = 'IS';
-      if (FilterDialog.isExclusiveFilterType(filter.filterType)){
-        operator += ' NOT';
-      }
-      literalLists.valueLiterals.splice(indexOfNull, 1);
-      if (FilterDialog.isRangeFilterType(filter.filterType)){
-        literalLists.toValueLiterals.splice(indexOfNull, 1);
-      }
-      nullCondition = `${columnExpression} ${operator} NULL`;
-      operator = '';
-    }
-
-    let sql = '', logicalOperator;
-    let needsParentheses = false;
-    if (literalLists.valueLiterals.length > 0) {
-      switch (filter.filterType) {
-
-        // INCLUDE and EXCLUDE logic
-        case FilterDialog.filterTypes.EXCLUDE:
-          // in case of exclude, keep NULL values unless NULL is also in the valuelist.
-          // https://github.com/rpbouman/huey/issues/90
-          // TODO: if the column happens not to contain any nulls, we can omit this condition
-          if (indexOfNull === -1) {
-            sql = `${columnExpression} IS NULL OR `;
-            needsParentheses = true;
-          }
-          operator += literalLists.valueLiterals.length === 1 ? ' !' : ' NOT';
-          logicalOperator = 'AND';
-        case FilterDialog.filterTypes.INCLUDE:
-          operator += literalLists.valueLiterals.length === 1 ? '=' : ' IN';
-          let values = literalLists.valueLiterals.length === 1 ? literalLists.valueLiterals[0] : `( ${literalLists.valueLiterals.join('\n,')} )`;
-          
-          sql += `${columnExpression} ${operator} ${values}`;
-
-          if (indexOfNull !== -1) {
-            if (!logicalOperator) {
-              logicalOperator = 'OR';
-              needsParentheses = true;
-            }
-            sql = `${nullCondition} ${logicalOperator} ${sql}`;
-          }
-          sql = `( ${sql} )`;
-          break;
-
-        // LIKE and NOT LIKE logic
-        case FilterDialog.filterTypes.NOTLIKE:
-          operator = 'NOT ';
-          logicalOperator = 'AND';
-        case FilterDialog.filterTypes.LIKE:
-          let dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);
-          if (dataType !== 'VARCHAR'){
-            columnExpression = `${columnExpression}::VARCHAR`;
-          }
-          operator += 'LIKE';
-          sql = literalLists.valueLiterals.reduce((acc, curr, currIndex) =>{
-            acc += '\n';
-            if (currIndex) {
-              if (!logicalOperator) {
-                logicalOperator = 'OR';
-                needsParentheses = true;
-              }
-              acc += logicalOperator + ' ';
-            }
-            const value = literalLists.valueLiterals[currIndex];
-            acc += `${columnExpression} ${operator} ${value}`;
-            return acc;
-          }, '');
-
-          if (indexOfNull === -1) {
-            // https://github.com/rpbouman/huey/issues/391
-            // This is essentially the same as 
-            // https://github.com/rpbouman/huey/issues/90
-            // but for NOT LIKE
-            if (filter.filterType === FilterDialog.filterTypes.NOTLIKE) {
-              nullCondition = `${columnExpression} IS NULL`;
-              if (literalLists.valueLiterals.length) {
-                sql = `(${sql}) OR ${nullCondition}`;
-                needsParentheses = true;
-              }
-              else {
-                sql = nullCondition;
-              }
-            }
-          }
-          else {
-            if (!logicalOperator) {
-              logicalOperator = 'OR';
-              needsParentheses = true;
-            }
-            sql = `${nullCondition} ${logicalOperator} ${sql}`;
-          }
-          break;
-
-        // BETWEEN and NOT BETWEEN logic
-        case FilterDialog.filterTypes.NOTBETWEEN:
-          operator = 'NOT ';
-          logicalOperator = 'AND';
-        case FilterDialog.filterTypes.BETWEEN:
-          operator += 'BETWEEN';
-          sql = literalLists.valueLiterals.reduce((acc, curr, currIndex) =>{
-            acc += '\n';
-            if (currIndex) {
-              if (!logicalOperator){
-                logicalOperator = 'OR';
-                needsParentheses = true;
-              }
-              acc += logicalOperator + ' ';
-            }
-            const fromValue = literalLists.valueLiterals[currIndex];
-            const toValue = literalLists.toValueLiterals[currIndex];
-            acc += `${columnExpression} ${operator} ${fromValue} AND ${toValue}`;
-            return acc;
-          }, '');
-
-          if (nullCondition) {
-            if (!logicalOperator){
-              logicalOperator = 'OR';
-              needsParentheses = true;
-            }
-            sql = `${nullCondition} ${logicalOperator} ${sql}`
-          }
-          break;        
-        case FilterDialog.filterTypes.NOTHASANY:
-        case FilterDialog.filterTypes.NOTHASALL:
-        case FilterDialog.filterTypes.HASANY:
-        case FilterDialog.filterTypes.HASALL:
-          let arrayFunction;
-          switch (filter.filterType){
-            case FilterDialog.filterTypes.HASANY:
-            case FilterDialog.filterTypes.NOTHASANY:
-              arrayFunction = 'list_has_any';
-              break;
-            case FilterDialog.filterTypes.HASALL:
-            case FilterDialog.filterTypes.NOTHASALL:
-              arrayFunction = 'list_has_all';
-              break;
-          }
-          let valueList = literalLists.valueLiterals.reduce((acc, curr, currIndex) =>{
-            const valueLiteral = literalLists.valueLiterals[currIndex];
-            acc.push(valueLiteral);
-            return acc;
-          }, []);
-          valueList = `[ ${valueList.join(',')} ]`;
-          sql = `${arrayFunction}( ${columnExpression}, ${valueList} )`;
-          if (FilterDialog.isExclusiveFilterType(filter.filterType)){
-            sql = `NOT ${sql}`;
-          }
-          break;
-      }
-    }
-    else {
-      sql = nullCondition;
-    }
-    if (needsParentheses) {
-      sql = `( ${sql} )`;
-    }
-    return sql;
-  }
-}
-
-export class QueryAxis {
-
-  #items = [];
-
-  static getCaptionForQueryAxis(queryAxis){
-    const items = queryAxis.getItems();
-    if (items.length === 0){
-      return '<empty>';
-    }
-    const itemKeys = Object.keys(items);
-    const captions = itemKeys.map((itemKey) =>{
-      const item = items[itemKey];
-      const caption = QueryAxisItem.getCaptionForQueryAxisItem(item);
-      return `"${caption}"`;
-    });
-    return captions.join(', ');
-  }
-
-  getCaption(){
-    return QueryAxis.getCaptionForQueryAxis(this);
-  }
-
-  findItem(config){
-    const columnName = config.columnName || '';
-    const derivation = config.derivation;
-    const aggregator = config.aggregator;
-    let memberExpressionPath = config.memberExpressionPath;
-    if (memberExpressionPath instanceof Array){
-      memberExpressionPath = JSON.stringify(memberExpressionPath);
-    }
-
-    const items = this.#items;
-    const itemIndex = items.findIndex((item) =>{
-      // check column name
-      if ((item.columnName || '') !== columnName){
-        return false;
-      }
-
-      // check member expression path
-      if (memberExpressionPath) {
-        if (!item.memberExpressionPath){
-          return false;
-        }
-        if (memberExpressionPath !== JSON.stringify(item.memberExpressionPath)) {
-          return false;
-        }
-      }
-      else
-      if (item.memberExpressionPath) {
-        return false;
-      }
-
-      // check derivation
-      if (derivation) {
-        if (item.derivation !== derivation) {
-          return false;
-        }
-      }
-      else
-      if (item.derivation){
-        return false;
-      }
-
-      // check aggregator
-      if (aggregator) {
-        if (item.aggregator !== aggregator){
-          return false;
-        }
-      }
-      else
-      if (item.aggregator){
-        return false;
-      }
-
-      // all checks passed
-      return true;
-    });
-
-    if (itemIndex === -1) {
-      return undefined;
-    }
-    const item = items[itemIndex];
-    const copyOfItem = Object.assign({}, item);
-    if (item.filter) {
-      copyOfItem.filter = JSON.parse(JSON.stringify(item.filter));
-    }
-    copyOfItem.index = itemIndex;
-    return copyOfItem;
-  }
-
-  addItem(config){
-    const copyOfConfig = Object.assign({}, config);
-    if (copyOfConfig.index === undefined) {
-      copyOfConfig.index = this.#items.length;
-    }
-    else {
-      if (copyOfConfig.index < 0) {
-        copyOfConfig.index = 0;
-      }
-      else
-      if (copyOfConfig.index > this.#items.length){
-        copyOfConfig.index = this.#items.length;
-      }
-    }
-    delete copyOfConfig['axis'];
-    this.#items.splice(copyOfConfig.index, 0, copyOfConfig);
-    return copyOfConfig;
-  }
-
-  removeItem(config){
-    const item = this.findItem(config);
-    if (!item){
-      return undefined;
-    }
-    this.#items.splice(item.index, 1);
-    return item;
-  }
-
-  clear(){
-    this.#items = [];
-  }
-
-  getItems() {
-    return [].concat(this.#items);
-  }
-  
-  syncItemIndices(){
-    this.#items.forEach((item, index) =>{
-      item.index = index;
-    })
-  }
-
-  getTotalsItems(){
-    const totalsItems = this.#items.filter((axisItem) =>{
-      return axisItem.includeTotals === true;
-    });
-    return totalsItems.length ? totalsItems : undefined;
-  }
-
-  setItems(items) {
-    this.#items = items;
-  }
-
-}
+// Re-export for backward compatibility — consumers can still import from this file
+export { QueryAxisItem } from './QueryAxisItem.js';
+export { QueryAxis } from './QueryAxis.js';
 
 export class QueryModel extends EventEmitter {
 
@@ -792,14 +87,14 @@ export class QueryModel extends EventEmitter {
     if (!sampling){
       return undefined;
     }
-    
+
     if (axisId === undefined){
       return sampling;
     }
-    
+
     return sampling[axisId];
   }
-  
+
   /**
    * @param {string} cellheadersaxis
    * @returns {void}
@@ -915,11 +210,11 @@ export class QueryModel extends EventEmitter {
     if (oldDatasource) {
       this.#datasource.removeEventListener('destroy', this.#destroyDatasourceHandler.bind(this));
     }
-    
+
     if (dontClear !== true) {
       this.#clear();
     }
-    
+
     this.#datasource = datasource;
 
     if (datasource){
@@ -1063,7 +358,7 @@ export class QueryModel extends EventEmitter {
         }
       }
     }
-    
+
     if (!config.parser) {
       if (foundItem && foundItem.parser) {
         config.parser = foundItem.parser;
@@ -1075,11 +370,11 @@ export class QueryModel extends EventEmitter {
         }
       }
     }
-    
+
     if (axis === QueryModel.AXIS_FILTERS && !config.filter && foundItem && foundItem.filter){
       config.filter = foundItem.filter;
     }
-    
+
     const axesChangeInfo = {};
     const eventData = {
       axesChanged: axesChangeInfo
@@ -1087,7 +382,7 @@ export class QueryModel extends EventEmitter {
     axesChangeInfo[config.axis] = {
       added: [config]
     };
-    
+
     if (foundItem){
       let axisChangeInfo = axesChangeInfo[foundItem.axis];
       if (!axisChangeInfo) {
@@ -1137,13 +432,13 @@ export class QueryModel extends EventEmitter {
     const eventData = {
       axesChanged: axesChangeInfo
     };
-    
+
     const oldAxisId = item.axis;
     axesChangeInfo[oldAxisId] = {
       removed: [item]
     };
     this.fireEvent('beforechange', eventData);
-    
+
     const axis = this.getQueryAxis(oldAxisId);
     const removedItem = axis.removeItem(item);
     axis.syncItemIndices();
@@ -1170,7 +465,7 @@ export class QueryModel extends EventEmitter {
     axesChangeInfo[axisId] = {
       changed: itemChangeInfo
     };
-    
+
     return axesChangeInfo;
   }
 
@@ -1192,19 +487,19 @@ export class QueryModel extends EventEmitter {
     const eventData = {
       axesChanged: axesChangeInfo
     };
-    
+
     const axisId = queryModelItem.axis;
     const axis = this.getQueryAxis(axisId);
     const items = axis.getItems();
     const item = items[queryModelItem.index];
-    
+
     const propertyName = 'includeTotals';
     axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
-      item, 
-      propertyName, 
+      item,
+      propertyName,
       value
     );
-    
+
     this.fireEvent('beforechange', eventData);
     item[propertyName] = value;
     this.fireEvent('change', eventData);
@@ -1301,7 +596,7 @@ export class QueryModel extends EventEmitter {
     const eventData = {
       axesChanged: axesChangeInfo
     }
-    
+
     axesChangeInfo[axisId1] = {};
     axesChangeInfo[axisId2] = {};
 
@@ -1338,7 +633,7 @@ export class QueryModel extends EventEmitter {
     if (axisId !== QueryModel.AXIS_FILTERS){
       throw new Error(`Item is not a filter axis item!`);
     }
-    
+
     const queryModelItem = this.findItem(queryAxisItem);
     if (!queryModelItem) {
       throw new Error(`Item is not part of the model!`);
@@ -1357,11 +652,11 @@ export class QueryModel extends EventEmitter {
       filter = undefined;
     }
     const updatedQueryAxisItem = items[queryModelItem.index];
-    
+
     const propertyName = 'filter';
     const axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
-      updatedQueryAxisItem, 
-      propertyName, 
+      updatedQueryAxisItem,
+      propertyName,
       filter
     );
     const eventData = {
@@ -1371,7 +666,7 @@ export class QueryModel extends EventEmitter {
     updatedQueryAxisItem[propertyName] = filter;
     this.fireEvent('change', eventData);
   }
-  
+
   /**
    * @param {QueryAxisItemConfig} queryAxisItem
    * @param {'open'|'closed'} toggleState
@@ -1381,7 +676,7 @@ export class QueryModel extends EventEmitter {
     if (queryAxisItem.axis !== QueryModel.AXIS_FILTERS){
       throw new Error(`Item is not a filter axis item!`);
     }
-    
+
     const queryModelItem = this.findItem(queryAxisItem);
     if (!queryModelItem) {
       throw new Error(`Item is not part of the model!`);
@@ -1393,8 +688,8 @@ export class QueryModel extends EventEmitter {
 
     const propertyName = 'toggleState';
     const axesChangeInfo = QueryModel.#getAxisItemChangeInfo(
-      item, 
-      propertyName, 
+      item,
+      propertyName,
       toggleState
     );
     const eventData = {
@@ -1449,7 +744,7 @@ export class QueryModel extends EventEmitter {
 
     // Sort the items.
     // The implied SQL condition is independent of the order of the items
-    // and by sorting, we make it easy to see if a change in the filter axis 
+    // and by sorting, we make it easy to see if a change in the filter axis
     // could actually affect the result.
     items = items.sort((filterItem1, filterItem2) =>{
       const id1 = QueryAxisItem.getIdForQueryAxisItem(filterItem1);
@@ -1463,13 +758,13 @@ export class QueryModel extends EventEmitter {
       }
       return 0;
     });
-    
+
     // Generate the SQL for each item.
     const conditions = items.map((item) =>{
       const itemCondition = QueryAxisItem.getFilterConditionSql(item, alias);
       return itemCondition;
     });
-    
+
     if (!conditions.length) {
       return undefined;
     }
@@ -1486,7 +781,7 @@ export class QueryModel extends EventEmitter {
   static compareStates(oldState, newState){
     oldState = oldState || {};
     newState = newState || {};
-    
+
     function getPropertyNames(){
       const propertyNames = {};
       for (let i = 0; i < arguments.length; i++){
@@ -1500,7 +795,7 @@ export class QueryModel extends EventEmitter {
       }
       return Object.keys(propertyNames);
     }
-    
+
     function compareObjects(oldState, newState, ignoreProperties){
       const propertiesChanged = {};
       const propertyNames = getPropertyNames(oldState, newState);
@@ -1511,11 +806,11 @@ export class QueryModel extends EventEmitter {
         }
         const oldValue = oldState[propertyName];
         const newValue = newState[propertyName];
-        
+
         if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
           continue;
         }
-        
+
         propertiesChanged[propertyName] = {
           oldValue: oldValue,
           newValue: newValue
@@ -1523,7 +818,7 @@ export class QueryModel extends EventEmitter {
       }
       return Object.keys(propertiesChanged).length ? propertiesChanged : undefined;
     }
-    
+
     function axisAsObject(axis){
       return axis.reduce((acc, curr) =>{
         const id = QueryAxisItem.getIdForQueryAxisItem(curr);
@@ -1531,7 +826,7 @@ export class QueryModel extends EventEmitter {
         return acc;
       }, {});
     }
-    
+
     const axesChanged = {};
     const oldAxes = oldState.axes || {};
     const newAxes = newState.axes || {};
@@ -1566,7 +861,7 @@ export class QueryModel extends EventEmitter {
           axisChange.added.push(newAxisItem);
         }
       }
-      
+
       if (!axisChange.added.length){
         delete axisChange.added;
       }
@@ -1580,7 +875,7 @@ export class QueryModel extends EventEmitter {
         axesChanged[axisId] = axisChange;
       }
     }
-    
+
     const stateChange = {};
     const propertiesChanged = compareObjects(oldState, newState, ['axes']) || {};
     if (Object.keys(propertiesChanged)){
@@ -1734,7 +1029,7 @@ export class QueryModel extends EventEmitter {
           await this.addItem(config);
         }
       }
-      
+
       const sampling = queryModelState.sampling || undefined;
       this.#sampling = sampling;
     }
@@ -1747,7 +1042,7 @@ export class QueryModel extends EventEmitter {
       }
     }
   }
-  
+
   /**
    * @param {QueryModelState} queryModelState
    * @returns {Object.<string, {columnType: string}>|null}
@@ -1774,6 +1069,9 @@ export class QueryModel extends EventEmitter {
   }
 
 }
+
+// Set forward reference so QueryAxisItem can check AXIS_FILTERS
+_setQueryModelRef(QueryModel);
 
 export let queryModel;
 export function initQueryModel(){
