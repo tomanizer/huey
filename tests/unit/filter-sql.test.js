@@ -283,5 +283,13 @@ describe('QueryAxisItem derivation helpers', () => {
     const str = QueryAxisItem.getAvailableDerivations(getDataTypeInfo('VARCHAR'));
     expect(str.uppercase).toBeDefined();
     expect(str['md5 (hex)']).toBeDefined();
+
+    const json = QueryAxisItem.getAvailableDerivations(getDataTypeInfo('JSON'));
+    expect(json.hash).toBeDefined();
+    expect(json['md5 (hex)']).toBeDefined();
+
+    const arr = QueryAxisItem.getAvailableDerivations(getDataTypeInfo('ARRAY'));
+    expect(arr.hash).toBeDefined();
+    expect(arr['md5 (hex)']).toBeUndefined();
   });
 });

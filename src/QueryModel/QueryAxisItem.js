@@ -195,13 +195,28 @@ export class QueryAxisItem {
     if (!dataTypeInfo) {
       return {};
     }
+    const stringType = Boolean(dataTypeInfo.hasTextDerivations) || dataTypeInfo === getDataTypeInfo('JSON');
+    const objectType = (
+      dataTypeInfo === getDataTypeInfo('ARRAY') ||
+      dataTypeInfo === getDataTypeInfo('MAP') ||
+      dataTypeInfo === getDataTypeInfo('STRUCT')
+    );
+    const hashDerivations = Object.assign({}, AttributeUi.hashDerivations);
+    if (objectType) {
+      Object.keys(hashDerivations).forEach((hashDerivationKey) => {
+        const hashDerivation = hashDerivations[hashDerivationKey];
+        if (hashDerivation.forString) {
+          delete hashDerivations[hashDerivationKey];
+        }
+      });
+    }
     return Object.assign(
       {},
       dataTypeInfo.hasDateFields ? AttributeUi.dateFields : undefined,
       dataTypeInfo.hasTimeFields ? AttributeUi.timeFields : undefined,
-      dataTypeInfo.hasTextDerivations ? AttributeUi.textDerivations : undefined,
-      dataTypeInfo.hasTextDerivations ? AttributeUi.hashDerivations : undefined,
-      dataTypeInfo.hasUUIDDerivations ? AttributeUi.uuidDerivations : undefined
+      stringType ? AttributeUi.textDerivations : undefined,
+      dataTypeInfo.hasUUIDDerivations ? AttributeUi.uuidDerivations : undefined,
+      (stringType || objectType) ? hashDerivations : undefined
     );
   }
 
