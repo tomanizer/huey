@@ -212,8 +212,9 @@ export class TupleSet extends DataSetComponent {
   #enforceCacheLimits(){
     var maxEntries = this.#getMaxCacheEntries();
     var maxSizeBytes = this.#getMaxCacheSizeBytes();
+    var currentCacheSize = this.cacheSize;
 
-    while (this.#tupleAccessTimestamps.size > maxEntries || this.cacheSize > maxSizeBytes){
+    while (this.#tupleAccessTimestamps.size > maxEntries || currentCacheSize > maxSizeBytes){
       var oldestIndex;
       var oldestAccess = Infinity;
       this.#tupleAccessTimestamps.forEach((access, index) =>{
@@ -226,6 +227,7 @@ export class TupleSet extends DataSetComponent {
         break;
       }
       this.#removeTuple(oldestIndex);
+      currentCacheSize = this.cacheSize;
     }
   }
 

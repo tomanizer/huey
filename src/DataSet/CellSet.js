@@ -85,8 +85,9 @@ export class CellSet extends DataSetComponent {
   #enforceCacheLimits(){
     var maxEntries = this.#getMaxCacheEntries();
     var maxSizeBytes = this.#getMaxCacheSizeBytes();
+    var currentCacheSize = this.cacheSize;
 
-    while (this.#cellAccessTimestamps.size > maxEntries || this.cacheSize > maxSizeBytes){
+    while (this.#cellAccessTimestamps.size > maxEntries || currentCacheSize > maxSizeBytes){
       var oldestCellIndex;
       var oldestAccess = Infinity;
       this.#cellAccessTimestamps.forEach((access, index) =>{
@@ -99,6 +100,7 @@ export class CellSet extends DataSetComponent {
         break;
       }
       this.#removeCell(oldestCellIndex);
+      currentCacheSize = this.cacheSize;
     }
   }
 
