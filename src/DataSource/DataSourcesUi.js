@@ -5,16 +5,22 @@ import { DuckDbDataSource } from './duckdb/DuckDbDataSource.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { getQuotedIdentifier } from '../util/sql/SQLHelper.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
-import { PromptUi } from '../PromptUi/PromptUi.js';
 import { ExportUi } from '../ExportUi/ExportDialog.js';
 import { uploadUi, afterUploaded } from '../UploadUi/UploadUi.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
 import { datasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
 import { getConnection, getDatabase, getDuckDbModule } from './duckdb/database.js';
+import {
+  datasourceExportMenuId,
+  getDownloadMenuHTML as _getDownloadMenuHTML,
+  promptExportDataFormat as _promptExportDataFormat,
+  getDatasourceExportSettings as _getDatasourceExportSettings,
+  getCaptionForDatasource as _getCaptionForDatasource,
+  sortDatasources as _sortDatasources,
+} from './DataSourceExport.js';
 
 export class DataSourcesUi extends EventEmitter {
 
-  static #datasourceExportMenuId = 'datasourceExportMenu';
 
   #id = undefined;
   #datasources = {};
@@ -228,21 +234,7 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   static getCaptionForDatasource(datasource){
-    const type = datasource.getType();
-    switch (type){
-      case DuckDbDataSource.types.DUCKDB:
-      case DuckDbDataSource.types.SQLITE:
-      case DuckDbDataSource.types.FILE:
-        return datasource.getFileNameWithoutExtension();
-      case DuckDbDataSource.types.TABLE:
-      case DuckDbDataSource.types.TABLEFUNCTION:
-      case DuckDbDataSource.types.VIEW:
-        return datasource.getObjectName();
-      case 'remote':
-        return `${datasource.getBaseUrl()} — ${datasource.getDatasetId()}`;
-      default:
-        return datasource.getId();
-    }
+    return _getCaptionForDatasource(datasource);
   }
 
   #renderDatasourceActionButton(config){
@@ -632,110 +624,15 @@ export class DataSourcesUi extends EventEmitter {
   }
   
   static #getDownloadMenuHTML(fromFileType, includeFromFileType){
-    const fileTypes = Object.keys(DuckDbDataSource.fileTypes)
-    .filter((fileType) =>{
-      if (fromFileType) { 
-        switch (fileType){
-          case fromFileType:
-            return includeFromFileType !== false;
-        }
-      }
-      return true;
-    });
-    const menuItems = fileTypes.sort().map((fileType) =>{
-      const id = `fileType-${fileType}`;
-      return `
-        <li role="menuitem">
-          <input 
-            type="radio" 
-            name="fileTypes" 
-            value="${fileType}" 
-            id="${id}"
-          />
-          <label for="${id}">${fileType}</label>
-        </li>
-      `;
-    });
-    const menu = `
-      <menu class="fileTypes" id="${DataSourcesUi.#datasourceExportMenuId}">
-        ${menuItems.join('\n')}
-      </menu>
-    `;
-    return menu;
+    return _getDownloadMenuHTML(fromFileType, includeFromFileType);
   }
-  
-  static async #promptExportDataFormat(fromFileType, includeFromFileType){
-    const menu = DataSourcesUi.#getDownloadMenuHTML(fromFileType, includeFromFileType);
-    const result = await PromptUi.show({
-      title: 'Export Datasource',
-      contents: menu,
-      allowUnsafeHtml: true
-    });
 
-    if (result !== 'accept'){
-      return undefined;
-    }
-    const selectedItemCss = `menu#${DataSourcesUi.#datasourceExportMenuId} > li > input[type=radio]:checked`;
-    const selected = document.querySelector(selectedItemCss);
-    if (!selected) {
-      return undefined;
-    }
-    const fileType = selected.value;
-    return fileType;
+  static async #promptExportDataFormat(fromFileType, includeFromFileType){
+    return _promptExportDataFormat(fromFileType, includeFromFileType);
   }
-  
+
   static #getDatasourceExportSettings(targetFileType){
-    const fileTypeInfo = DuckDbDataSource.getFileTypeInfo(targetFileType);
-    let exportType = null;
-    let exportDelimited = false;
-    let exportJson = false;
-    let exportParquet = false;
-    let exportSqlite = false;
-    let exportDuckdb = false;
-    let exportXlsx = false;
-    
-    switch (targetFileType) {
-      case 'sqlite':
-        exportType = 'exportSqlite';
-        exportSqlite = true;
-        break;
-      case 'duckdb':
-        exportType = 'exportDuckdb';
-        exportDuckdb = true;
-        break;
-      default:
-        switch (fileTypeInfo.duckdb_reader){
-          case 'read_csv':
-            exportType = 'exportDelimited';
-            exportDelimited = true;
-            break;
-          case 'read_json':
-            exportType = 'exportJson';
-            exportJson = true;
-            break;
-          case 'read_parquet':
-            exportType = 'exportParquet';
-            exportParquet = true;
-            break;
-          case 'read_xlsx':
-            exportType = 'exportXlsx';
-            exportXlsx = true;
-            break;
-        }
-    }
-    const exportSettings = Object.assign(
-      {}, settings.getSettings('exportUi'), {
-      exportDestinationFile: true,
-      exportDestinationClipboard: false,
-      exportType: exportType,
-      exportDelimited: exportDelimited,
-      exportJson: exportJson,
-      exportParquet: exportParquet,
-      exportSqlite: exportSqlite,
-      exportDuckdb: exportDuckdb,
-      exportXlsx: exportXlsx,
-    });
-    return exportSettings;
+    return _getDatasourceExportSettings(targetFileType);
   }
   
   async #downloadDatasourceClicked(event) {
@@ -848,24 +745,7 @@ export class DataSourcesUi extends EventEmitter {
   }
   
   static sortDatasources(datasources){
-    const datasourceKeys = Object.keys(datasources);
-    datasourceKeys
-    .sort((a, b) =>{
-      const datasourceA = DataSourcesUi.getCaptionForDatasource( datasources[a] );
-      const datasourceB = DataSourcesUi.getCaptionForDatasource( datasources[b] );
-      if (datasourceA > datasourceB) {
-        return 1;
-      }
-      else
-      if (datasourceA < datasourceB) {
-        return -1;
-      }
-      return 0;
-    });
-    return datasourceKeys.reduce((sortedDatasources, datasourceKey) =>{
-      sortedDatasources[datasourceKey] = datasources[datasourceKey];
-      return sortedDatasources;
-    }, {});
+    return _sortDatasources(datasources);
   }
 
   #addDatasource(datasource) {

@@ -12,10 +12,18 @@ import { PivotTableUiHighlighting } from './PivotTableUiHighlighting.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { copyToClipboard } from '../util/clipboard/clipboard.js';
 import { getDuckDbLiteralForValue, quoteStringLiteral } from '../util/sql/SQLHelper.js';
+import {
+  pivotTableUiDefaults,
+  getTotalsItemsIndices as _getTotalsItemsIndices,
+  isTotalsMember as _isTotalsMember,
+  getDittoMark as _getDittoMark,
+  getHideRepeatingAxisValues as _getHideRepeatingAxisValues,
+  getMaxCellWidth as _getMaxCellWidth,
+} from './PivotTableUiUtils.js';
 
 export class PivotTableUi extends EventEmitter {
 
-  static #templateId = 'pivotTableUiTemplate';
+  static #templateId = pivotTableUiDefaults.templateId;
 
   #id = undefined;
   #queryModel = undefined;
@@ -34,7 +42,7 @@ export class PivotTableUi extends EventEmitter {
   #columnHeaderResizeTimeoutId = undefined;
 
   // the maximum width in ch units
-  static #maximumCellWidth = 30;
+  static #maximumCellWidth = pivotTableUiDefaults.maximumCellWidth;
 
   #lastMetrics = undefined;
 
@@ -577,39 +585,12 @@ export class PivotTableUi extends EventEmitter {
     };
   }
 
-  // get the indices of all totals items.
-  // this is a helper for #isTotalsMember
   static #getTotalsItemsIndices(queryAxisItems){
-    return queryAxisItems && queryAxisItems.length ? queryAxisItems.reduce((acc, curr, index) =>{
-      if (curr.includeTotals) {
-        acc.unshift(index);
-      }
-      return acc;
-    }, []) : undefined;
+    return _getTotalsItemsIndices(queryAxisItems);
   }
-  // if the tuple has a grouping id,
-  // find the most significant bit of the grouping id
-  // find the totals item that corresponds with the MSB of the grouping id
-  // find the index of that totals item
-  // if the index of the current item is equal to or greater than the index of the totals item, then return true
-  // else return false.
 
   static #isTotalsMember(groupingId, totalsItemsIndices, currentItemIndex){
-    if (
-      !groupingId ||
-      !totalsItemsIndices ||
-      !totalsItemsIndices.length ||
-      currentItemIndex === undefined
-    ){
-      return Infinity;
-    }
-
-    let i = BigInt(totalsItemsIndices.length - 1);
-    while (i >= 0n && !(groupingId & (1n << i)))  {
-      i -= 1n;
-    }
-
-    return  (i < 0n) ? Infinity : totalsItemsIndices[i];
+    return _isTotalsMember(groupingId, totalsItemsIndices, currentItemIndex);
   }
 
   #getTupleGroupingId(tuple){
@@ -1792,51 +1773,15 @@ export class PivotTableUi extends EventEmitter {
   }
 
   #getDittoMark(){
-    let dittoMark;
-    let settings = this.#settings;
-    if (settings && typeof settings.getSettings === 'function') {
-      settings = settings.getSettings('pivotSettings');
-    }
-    if (settings){
-      dittoMark = settings.dittoMark;
-    }
-    if ( dittoMark === undefined) {
-      dittoMark = '〃';
-    }
-    return dittoMark;
+    return _getDittoMark(this.#settings);
   }
-  
+
   #getHideRepeatingAxisValues(){
-    let hideRepeatingAxisValues;
-    let settings = this.#settings;
-    if (settings && typeof settings.getSettings === 'function') {
-      settings = settings.getSettings('pivotSettings');
-    }
-    if (settings){
-      hideRepeatingAxisValues = settings.hideRepeatingAxisValues;
-    }
-    if ( hideRepeatingAxisValues === undefined) {
-      hideRepeatingAxisValues = true;
-    }
-    return hideRepeatingAxisValues;
+    return _getHideRepeatingAxisValues(this.#settings);
   }
 
   #getMaxCellWidth(){
-    let maxCellWidth;
-    let settings = this.#settings;
-    if (settings && typeof settings.getSettings === 'function') {
-      settings = settings.getSettings('pivotSettings');
-    }
-    if (settings){
-      maxCellWidth = settings.maxCellWidth;
-    }
-    if (maxCellWidth){
-      maxCellWidth = parseInt(maxCellWidth, 10);
-    }
-    if ( maxCellWidth === undefined || isNaN(maxCellWidth) || maxCellWidth <= 0 ) {
-      maxCellWidth = 30;
-    }
-    return maxCellWidth;
+    return _getMaxCellWidth(this.#settings);
   }
 
   async updatePivotTableUi(){

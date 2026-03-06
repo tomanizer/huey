@@ -14,98 +14,25 @@ import {
   getComma,
   getIdentifier
 } from '../../util/sql/SQLHelper.js';
+import {
+  datasourceTypes,
+  fileTypeDefinitions,
+  readerArguments,
+  getFileNameParts as _getFileNameParts,
+  getFileTypeInfo as _getFileTypeInfo,
+  getResourceInfoForUrl as _getResourceInfoForUrl,
+  globPathPattern,
+} from './DuckDbDataSourceConfig.js';
 
 export class DuckDbDataSource extends EventEmitter {
   
   static #defaultNumberOfAccessAttempts = 1;
-  static #globPathPattern = /[*?\[\]]/;
+  static #globPathPattern = globPathPattern;
 
-  static types = {
-    "DUCKDB": 'duckdb',
-    "FILE": 'file',
-    "FILES": 'files',
-    "SQLITE": 'sqlite',
-    "SQLQUERY": 'sql',
-    "TABLE": 'table',
-    "TABLEFUNCTION": 'table function',
-    "URL": 'url',
-    "VIEW": 'view'
-  };
-
-  static fileTypes = {
-    "csv": {
-      datasourceType: DuckDbDataSource.types.FILE,
-      duckdb_reader: 'read_csv',
-      duckdb_sniffer: 'sniff_csv',
-      reader_arguments_settings_key: 'csvReader',
-      mimeType: 'text/csv'
-    },
-    "tsv": {
-      datasourceType: DuckDbDataSource.types.FILE,
-      duckdb_reader: 'read_csv',
-      duckdb_sniffer: 'sniff_csv',
-      reader_arguments_settings_key: 'csvReader',
-      mimeType: 'text/tab-separated-values'
-    },
-    "txt": {
-      datasourceType: DuckDbDataSource.types.FILE,
-      duckdb_reader: 'read_csv',
-      duckdb_sniffer: 'sniff_csv',
-      reader_arguments_settings_key: 'csvReader',
-      mimeType: 'text/plain'
-    },
-    "json": {
-      datasourceType: DuckDbDataSource.types.FILE,
-      duckdb_reader: 'read_json_auto',
-      duckdb_extension: 'json',
-      mimeType: 'application/json'
-    },
-    "jsonl": {
-      datasourceType: DuckDbDataSource.types.FILE,
-      duckdb_reader: 'read_json_auto',
-      duckdb_extension: 'json',
-      mimeType: 'application/json'
-    },
-    "parquet": {
-      datasourceType: DuckDbDataSource.types.FILE,
-      duckdb_reader: 'read_parquet',
-      mimeType: 'application/vnd.apache.parquet'
-    },
-    "xlsx": {
-      datasourceType: DuckDbDataSource.types.FILE,
-      duckdb_reader: 'read_xlsx',
-      duckdb_extension: 'excel',
-      //duckdb_extension_repository: 'core_nightly',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    },
-    "duckdb": {
-      datasourceType: DuckDbDataSource.types.DUCKDB,
-      mimeType: 'application/vnd.duckdb'
-    },
-    "sqlite": {
-      datasourceType: DuckDbDataSource.types.SQLITE,
-      duckdb_extension: 'sqlite_scanner',
-      mimeType: 'application/vnd.sqlite3'
-    }
-  };
-
-  static duckdb_reader_arguments = {
-    read_csv: {
-      // https://duckdb.org/docs/data/csv/reading_faulty_csv_files.html#retrieving-faulty-csv-lines
-      //"ignore_errors" : true,
-      "store_rejects" : false
-      //"rejects_scan": 'reject_scans',
-      //"rejects_table": 'reject_errors',
-      //"rejects_limit": 0
-    },
-    sniff_csv: {
-      "sample_size": 20480
-    },
-    read_json_auto: {
-      "ignore_errors": true,
-      "maximum_object_size": 16777216
-    }
-  };
+  // Delegate to shared config (also available via direct import from DuckDbDataSourceConfig.js)
+  static types = datasourceTypes;
+  static fileTypes = fileTypeDefinitions;
+  static duckdb_reader_arguments = readerArguments;
 
   // this is a crutch for reading from url.
   // basically this lets us find out what reader duckdb chose to read the url
@@ -266,90 +193,9 @@ export class DuckDbDataSource extends EventEmitter {
   getCloudUri(){
     return this.#cloudUri;
   }
-  static getFileNameParts(fileName){
-    if (fileName instanceof File) {
-      fileName = fileName.name;
-    }
-
-    const separator = '.';
-    const fileNameParts = fileName.split( separator );
-    if (fileNameParts.length < 2){
-      return undefined;
-    }
-    const extension = fileNameParts.pop();
-    const lowerCaseExtension = extension.toLowerCase();
-    const fileNameWithoutExtension = fileNameParts.join( separator );
-    return {
-      extension: extension,
-      lowerCaseExtension: lowerCaseExtension,
-      fileNameWithoutExtension: fileNameWithoutExtension
-    };
-  }
-
-  static async getResourceInfoForUrl(url, httpMethod, requestHeaders){
-    return new Promise((resolve, reject) =>{
-      try {
-        const xhr = new XMLHttpRequest();
-        xhr.addEventListener("error", (progressEvent) =>{
-          // note: the error event is still an event, not an Error object.
-          // The problem here is that some errors will actually leave some useful information in the status and response,
-          // (e.g, HTTP status in the 400 and 500 ranges)
-          // but there are also errors where the response is useless.
-          // Unfortunately, failure to load doc due to CORS headers is one such case.
-          const status = xhr.status;
-          let message = 'XHR emitted error event.'
-          if (status === 0){
-            message += [
-              '',
-              'The server may not be available, or the request may have failed due to same origin policy / missing CORS header.',
-              'The network tab in your browser\'s development tools may reveal additional information.'
-            ].join(' ')
-            ;
-          }
-          else {
-            message += ` HTTP ${xhr.status} - ${xhr.statusText}`;
-          }
-          const error = new Error(message, {
-            cause: progressEvent
-          });
-          reject(error);
-        });
-
-        xhr.addEventListener("load", () =>{
-          const allResponseHeaders = xhr.getAllResponseHeaders();
-          const headersArray = allResponseHeaders.split('\r\n');
-          const headers = headersArray.reduce((headers, header) =>{
-            const nameValue = header.split(':');
-            let name = nameValue.shift().trim();
-            if (name.length) {
-              name = name.toLowerCase();
-              const value = nameValue.join(':').trim();
-              headers[name] = value;
-            }
-            return headers;
-          }, {});
-          resolve({
-            headers: headers,
-            status: xhr.status,
-            statusText: xhr.statusText,
-            responseType: xhr.responseType,
-            responseText: xhr.responseText
-          });
-        });
-
-        xhr.open(httpMethod || 'GET', url);
-        if (requestHeaders){
-          for (const requestHeader in requestHeaders){
-            xhr.setRequestHeader(requestHeader, requestHeaders[requestHeader]);
-          }
-        }
-        xhr.send();
-      }
-      catch(e){
-        reject(e);
-      }
-    });
-  }
+  // Delegate to extracted utilities (also available via direct import from DuckDbDataSourceConfig.js)
+  static getFileNameParts(fileName){ return _getFileNameParts(fileName); }
+  static async getResourceInfoForUrl(url, httpMethod, requestHeaders){ return _getResourceInfoForUrl(url, httpMethod, requestHeaders); }
 
   // this is a light weight method that should produce the id of a datasource that would be created for the given file.
   // this should not actually instantiate a datasource, merely its identifier.
@@ -358,10 +204,7 @@ export class DuckDbDataSource extends EventEmitter {
     return `${this.types.FILE}:${getQuotedIdentifier(fileName)}`;
   }
 
-  static getFileTypeInfo(fileType){
-    const fileTypeInfo = DuckDbDataSource.fileTypes[fileType];
-    return fileTypeInfo;
-  }
+  static getFileTypeInfo(fileType){ return _getFileTypeInfo(fileType); }
 
   static async createFromUrl(duckdb, instance, url) {
     if (!(typeof url === 'string')){
