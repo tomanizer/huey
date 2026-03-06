@@ -334,4 +334,122 @@ describe('QueryModel', () => {
     expect(events).toHaveLength(1);
     expect(events[0].axesChanged.filters.added[0].filter.filterType).toBe(FilterDialog.filterTypes.EXCLUDE);
   });
+
+  test('setCellHeadersAxis emits change only for actual changes', () => {
+    const model = createModel();
+    const events = [];
+    model.addEventListener('change', (event) => events.push(event.eventData));
+
+    model.setCellHeadersAxis(model.getCellHeadersAxis());
+    model.setCellHeadersAxis(QueryModel.AXIS_ROWS);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].propertiesChanged.cellHeadersAxis.newValue).toBe(QueryModel.AXIS_ROWS);
+  });
+
+  test('addItem infers axis and metadata, and validates missing axis', async () => {
+    const datasource = {
+      getId: () => 'ds-meta',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      getColumnMetadata: async () => ({
+        numRows: 1,
+        get: () => ({ column_name: 'amount', column_type: 'DOUBLE' }),
+      }),
+    };
+    const model = createModel();
+    model.setDatasource(datasource);
+
+    const cellConfig = {
+      columnName: 'amount',
+      aggregator: 'count',
+    };
+    expect(cellConfig.axis).toBeUndefined();
+    const cellItem = await model.addItem(cellConfig);
+    expect(cellItem.axis).toBe(QueryModel.AXIS_CELLS);
+    expect(cellItem.columnType).toBe('DOUBLE');
+    expect(cellConfig.axis).toBe(QueryModel.AXIS_CELLS);
+
+    await expect(model.addItem({ columnName: 'broken' })).rejects.toThrow("Can't add item: No axis specified!");
+  });
+
+  test('toggleTotals, filter mutation APIs and filter SQL work together', async () => {
+    const model = createModel();
+    await model.addItem({
+      columnName: 'city',
+      columnType: 'VARCHAR',
+      axis: QueryModel.AXIS_ROWS,
+    });
+    await model.addItem({
+      columnName: 'city',
+      columnType: 'VARCHAR',
+      axis: QueryModel.AXIS_FILTERS,
+      filter: {
+        filterType: FilterDialog.filterTypes.INCLUDE,
+        values: { ams: { literal: "'Amsterdam'", label: 'Amsterdam', enabled: true } },
+      },
+    });
+
+    const toggleResult = model.toggleTotals({ columnName: 'city', axis: QueryModel.AXIS_ROWS }, true);
+    expect(toggleResult.columnName).toBe('city');
+
+    model.setQueryAxisItemFilter(
+      { columnName: 'city', axis: QueryModel.AXIS_FILTERS, filter: { toggleState: 'open' } },
+      {
+        filterType: FilterDialog.filterTypes.INCLUDE,
+        values: { rtm: { literal: "'Rotterdam'", label: 'Rotterdam', enabled: true } },
+      }
+    );
+
+    model.setQueryAxisItemFilterToggleState(
+      { columnName: 'city', axis: QueryModel.AXIS_FILTERS },
+      'open'
+    );
+
+    const sqlWithoutTupleFilters = model.getFilterConditionSql(true, 'd');
+    const sqlWithTupleFilters = model.getFilterConditionSql(false, 'd');
+    expect(sqlWithoutTupleFilters).toBeUndefined();
+    expect(sqlWithTupleFilters).toContain('Rotterdam');
+  });
+
+  test('clear no-op on empty axis and targeted clear remove items', async () => {
+    const model = createModel();
+    const events = [];
+    model.addEventListener('change', (event) => events.push(event.eventData));
+
+    model.clear(QueryModel.AXIS_ROWS);
+    expect(events).toHaveLength(0);
+
+    await model.addItem({
+      columnName: 'country',
+      columnType: 'VARCHAR',
+      axis: QueryModel.AXIS_ROWS,
+    });
+    model.clear(QueryModel.AXIS_ROWS);
+    expect(model.getRowsAxis().getItems()).toHaveLength(0);
+    expect(events).toHaveLength(2);
+  });
+
+  test('setQueryAxisItemFilter validates axis and membership', async () => {
+    const model = createModel();
+    await model.addItem({
+      columnName: 'segment',
+      columnType: 'VARCHAR',
+      axis: QueryModel.AXIS_ROWS,
+    });
+
+    expect(() => {
+      model.setQueryAxisItemFilter(
+        { columnName: 'segment', axis: QueryModel.AXIS_ROWS },
+        { filterType: FilterDialog.filterTypes.INCLUDE, values: {} }
+      );
+    }).toThrow('Item is not a filter axis item!');
+
+    expect(() => {
+      model.setQueryAxisItemFilterToggleState(
+        { columnName: 'segment', axis: QueryModel.AXIS_FILTERS },
+        'closed'
+      );
+    }).toThrow('Item is not part of the model!');
+  });
 });

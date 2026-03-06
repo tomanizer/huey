@@ -183,7 +183,7 @@ export class QueryAxisItem {
     return caption;
   }
 
-  static getDerivationCaption(derivation){
+  static getDerivationCaption(derivation) {
     const derivationInfo = AttributeUi.getDerivationInfo(derivation);
     if (!derivationInfo) {
       return derivation;
@@ -191,7 +191,7 @@ export class QueryAxisItem {
     return derivationInfo.title || derivation;
   }
 
-  static getAvailableDerivations(dataTypeInfo){
+  static getAvailableDerivations(dataTypeInfo) {
     if (!dataTypeInfo) {
       return {};
     }

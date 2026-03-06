@@ -270,6 +270,8 @@ describe('QueryAxisItem derivation helpers', () => {
   });
 
   test('getAvailableDerivations returns subset by datatype info', () => {
+    expect(QueryAxisItem.getAvailableDerivations()).toEqual({});
+
     const numeric = QueryAxisItem.getAvailableDerivations(getDataTypeInfo('INTEGER'));
     expect(Object.keys(numeric)).toHaveLength(0);
 
