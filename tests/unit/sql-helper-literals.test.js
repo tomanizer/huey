@@ -99,14 +99,16 @@ describe('SQLHelper literal writers', () => {
 
 describe('SQLHelper dataTypes metadata', () => {
   test('defaultAnalyticalRole values are valid', () => {
+    const missingRole = [];
     for (const [name, info] of Object.entries(dataTypes)) {
       if (Object.hasOwn(info, 'defaultAnalyticalRole')) {
         expect(['attribute', 'measure']).toContain(info.defaultAnalyticalRole);
       }
       else {
-        throw new Error(`Missing defaultAnalyticalRole for ${name}`);
+        missingRole.push(name);
       }
     }
+    expect(missingRole).toEqual([]);
   });
 
   test('numeric, integer, unsigned flags and precision alternatives are consistent', () => {
@@ -246,7 +248,7 @@ describe('SQLHelper type descriptor helpers', () => {
     expect(getMemberExpressionType('INTEGER', [])).toBe('INTEGER');
 
     expect(() => getMemberExpressionType('INTEGER', 'key')).toThrow('Expected a MAP type');
-    expect(() => getMemberExpressionType('MAP(VARCHAR, BIGINT)', 'unknown')).toThrow('Don\'t know how to handle memerExpressionPath "unknown"');
+    expect(() => getMemberExpressionType('MAP(VARCHAR, BIGINT)', 'unknown')).toThrow('Don\'t know how to handle memberExpressionPath "unknown"');
     expect(getMemberExpressionType('INTEGER', 123)).toBe('INTEGER');
   });
 });

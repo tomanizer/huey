@@ -1502,11 +1502,11 @@ export function getMemberExpressionType(type, memberExpressionPath){
           case 'value':
             return getMapValueType(type);
           default:
-            throw new Error(`Don't know how to handle memerExpressionPath "${memberExpressionPath}"`);
+            throw new Error(`Don't know how to handle memberExpressionPath "${memberExpressionPath}"`);
         }
         break;
       default:
-        throw new Error(`Don't know how to handle memerExpressionPath of type "${typeOfMemberExpressionPath}"`);
+        throw new Error(`Don't know how to handle memberExpressionPath of type "${typeOfMemberExpressionPath}"`);
     }
   }
   else {
