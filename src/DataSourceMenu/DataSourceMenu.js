@@ -1,7 +1,8 @@
 import { byId, registerTemplates } from '../util/dom/dom.js';
 import { bufferEvents } from '../util/event/EventBuffer.js';
 import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
-import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import { DataSourcesUi, datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import dataSourceMenuTemplatesHtml from './templates.html?raw';
 
 export class DataSourceMenu {
