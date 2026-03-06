@@ -3,7 +3,20 @@ import { TupleSet } from './TupleSet.js';
 import { SqlQueryGenerator } from './SqlQueryGenerator.js';
 import { QueryAxisItem, QueryModel } from '../QueryModel/QueryModel.js';
 import { RemoteQueryAdapter } from '../DataSource/remote/RemoteQueryAdapter.js';
-import { quoteIdentifierWhenRequired, getQualifiedIdentifier } from '../util/sql/SQLHelper.js';
+import { quoteIdentifierWhenRequired, getQualifiedIdentifier, quoteStringLiteral } from '../util/sql/SQLHelper.js';
+
+export function getTupleValueLiteral(queryAxisItem, tupleValue, tupleValueField){
+  if (queryAxisItem.literalWriter) {
+    return queryAxisItem.literalWriter(tupleValue, tupleValueField);
+  }
+  if (tupleValue === null || tupleValue === undefined) {
+    return 'NULL';
+  }
+  if (typeof tupleValue === 'string') {
+    return quoteStringLiteral(tupleValue);
+  }
+  return String(tupleValue);
+}
 
 /**
  * @typedef {[number, number]} TupleRange
@@ -167,7 +180,7 @@ export class CellSet extends DataSetComponent {
             var queryAxisItem = queryAxisItems[k];
             var tupleValue = tupleValues[k];
             var tupleValueField = fields[k];
-            var literal = queryAxisItem.literalWriter ? queryAxisItem.literalWriter(tupleValue, tupleValueField) : String(tupleValue);
+            var literal = getTupleValueLiteral(queryAxisItem, tupleValue, tupleValueField);
             combinationTuple.push(literal);
           }
         }

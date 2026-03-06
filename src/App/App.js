@@ -88,8 +88,24 @@ export function initDuckdbVersion(){
     duckdbVersionLabel.textContent = `DuckDB ${version}, API: ${api}`;
     
     const duckdbAvatar = byId('duckdb-version-specific-avatar');
-    const duckdbVersionParts = /v(\d+)\.(\d+).(\d)/.exec(version);
-    duckdbAvatar.src = `https://duckdb.org/images/release-icons/${duckdbVersionParts[1]}.${duckdbVersionParts[2]}.0.svg`
+    if (duckdbAvatar) {
+      if (window.crossOriginIsolated) {
+        duckdbAvatar.hidden = true;
+      }
+      else {
+        const duckdbVersionParts = /v(\d+)\.(\d+)\.(\d+)/.exec(version);
+        if (duckdbVersionParts) {
+          duckdbAvatar.hidden = false;
+          duckdbAvatar.onerror = () => {
+            duckdbAvatar.hidden = true;
+          };
+          duckdbAvatar.src = `https://duckdb.org/images/release-icons/${duckdbVersionParts[1]}.${duckdbVersionParts[2]}.0.svg`;
+        }
+        else {
+          duckdbAvatar.hidden = true;
+        }
+      }
+    }
   })
   .catch((err) => {
     console.error('Error fetching duckdb version info.', err);
