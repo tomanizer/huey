@@ -426,7 +426,7 @@ export class QueryModel extends EventEmitter {
    * @param {string} targetAxis
    * @returns {Promise<QueryAxisItemConfig>}
    */
-  async moveItem(item, targetAxis){
+  moveItem(item, targetAxis){
     const config = Object.assign({}, item, { axis: targetAxis });
     return this.addItem(config);
   }
