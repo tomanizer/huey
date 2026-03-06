@@ -1,4 +1,5 @@
 import { settings } from '../../SettingsDialog/SettingsDialog.js';
+import { getReservedWords } from '../../DataSource/duckdb/database.js';
 
 /**
  * @typedef {Object} SqlOptions
@@ -1044,7 +1045,7 @@ export function unQuoteIdentifier(str){
  * @returns {boolean}
  */
 export function identifierRequiresQuoting(identifier){
-  return window.hueyDb.reservedWords.includes(identifier.toLowerCase()) || 
+  return getReservedWords().includes(identifier.toLowerCase()) || 
     /^\d|[\s\[\]\{\}\(\)\.\/\+\-\&\*\^\?\\<>'"%=~!:;@#]/.test(identifier)
   ;
 }

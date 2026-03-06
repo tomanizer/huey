@@ -102,9 +102,11 @@ async function runQueryAndWaitForPivot(page) {
   });
 
   await page.evaluate(() => {
-    if (window.pivotTableUi && typeof window.pivotTableUi.updatePivotTableUi === 'function') {
-      window.pivotTableUi.updatePivotTableUi();
-    }
+    return import('/PivotTableUi/PivotTableUi.js').then((module) => {
+      if (module.pivotTableUi && typeof module.pivotTableUi.updatePivotTableUi === 'function') {
+        module.pivotTableUi.updatePivotTableUi();
+      }
+    });
   });
 
   const pivot = page.locator('#pivotTableUi');

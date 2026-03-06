@@ -236,6 +236,5 @@ export const RemoteQueryAdapter = (function () {
     createRemoteCellsQuery: createRemoteCellsQuery,
     createRemotePicklistQuery: createRemotePicklistQuery
   };
-  window.RemoteQueryAdapter = adapter;
   return adapter;
 })();

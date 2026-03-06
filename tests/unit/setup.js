@@ -19,8 +19,3 @@ if (!navigator.languages || !navigator.languages.length) {
     configurable: true,
   });
 }
-
-// Stub window.hueyDb (checked at startup by some modules)
-if (!window.hueyDb) {
-  window.hueyDb = { reservedWords: [] };
-}

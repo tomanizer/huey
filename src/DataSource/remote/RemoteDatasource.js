@@ -250,5 +250,3 @@ export class RemoteDatasource extends EventEmitter {
     this.fireEvent('destroy', {});
   }
 }
-
-window.RemoteDatasource = RemoteDatasource;

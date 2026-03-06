@@ -2,6 +2,8 @@ import { PostMessageProtocol } from './PostMessageProtocol.js';
 import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { getDatabase, getDuckDbModule } from '../DataSource/duckdb/database.js';
+import { registerPostMessageGlobals } from './register-globals.js';
 
 /**
  * @typedef {Object} PostMessageRequestEnvelope
@@ -271,8 +273,8 @@ export class PostMessageInterface {
           throw new Error('Request body is mandatory', {cause: 'body is null or not an object'});
         }
         
-        const duckdb = window.hueyDb.duckdb;
-        const duckDbInstance = window.hueyDb.instance;
+        const duckdb = getDuckDbModule();
+        const duckDbInstance = getDatabase();
         const datasourceConfig = body.datasourceConfig;
         duckDbDataSource = new DuckDbDataSource(duckdb, duckDbInstance, datasourceConfig);
 
@@ -360,8 +362,9 @@ export class PostMessageInterface {
 export let postMessageInterface = undefined;
 export function initPostMessageInterface(skipHostingWindowCheck){
   if (!skipHostingWindowCheck && !PostMessageInterface.getHostingWindow()) {
+    registerPostMessageGlobals();
     return;
   }
   postMessageInterface = new PostMessageInterface();
-  window.postMessageInterface = postMessageInterface;
+  registerPostMessageGlobals();
 }

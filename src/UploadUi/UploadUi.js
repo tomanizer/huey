@@ -11,6 +11,7 @@ import { TabUi } from '../Tabs/Tabs.js';
 import { queryModel } from '../QueryModel/QueryModel.js';
 import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
+import { getDatabase, getDuckDbModule } from '../DataSource/duckdb/database.js';
 import {
   parseS3Uri,
   parseGcsUri,
@@ -99,9 +100,8 @@ export class UploadUi {
 
     const progressBar = uploadItem.getElementsByTagName('progress').item(0);
 
-    const hueyDb = window.hueyDb;
-    const duckdb = hueyDb.duckdb;
-    const instance = hueyDb.instance;
+    const duckdb = getDuckDbModule();
+    const instance = getDatabase();
 
     let duckDbDataSource;
     let destroyDatasource = false;
@@ -662,9 +662,8 @@ async function uploadParquetFilesAsFolderDatasource(files){
     throw new Error('No parquet files found in selected folder.');
   }
 
-  const hueyDb = window.hueyDb;
-  const duckdb = hueyDb.duckdb;
-  const instance = hueyDb.instance;
+  const duckdb = getDuckDbModule();
+  const instance = getDatabase();
 
   const fileNames = parquetFiles
   .map((file) => file.webkitRelativePath || file.name)
@@ -845,8 +844,7 @@ export function initUploadUi(){
     }
 
     if (urls.length > 1 && urls.every((u) => isParquetUrl(u))) {
-      const hueyDb = window.hueyDb;
-      const datasource = new DuckDbDataSource(hueyDb.duckdb, hueyDb.instance, {
+      const datasource = new DuckDbDataSource(getDuckDbModule(), getDatabase(), {
         type: DuckDbDataSource.types.FILES,
         fileNames: urls,
         fileType: 'parquet'
@@ -876,7 +874,8 @@ export function initUploadUi(){
         const secretAccessKey = (byId('loadFromUrlS3SecretKey') && byId('loadFromUrlS3SecretKey').value) || undefined;
         const sessionToken = (byId('loadFromUrlS3SessionToken') && byId('loadFromUrlS3SessionToken').value) || undefined;
         const options = { region, accessKeyId, secretAccessKey, sessionToken };
-        const { duckdb, instance } = window.hueyDb;
+        const duckdb = getDuckDbModule();
+        const instance = getDatabase();
 
         try {
           const ds = await fetchCloudAndCreateDatasource(duckdb, instance, singleUrl, s3Parsed, null, options);
@@ -888,7 +887,8 @@ export function initUploadUi(){
       } else if (gcsParsed) {
         const accessToken = (byId('loadFromUrlGcsToken') && byId('loadFromUrlGcsToken').value) || undefined;
         const options = { accessToken };
-        const { duckdb, instance } = window.hueyDb;
+        const duckdb = getDuckDbModule();
+        const instance = getDatabase();
 
         try {
           const ds = await fetchCloudAndCreateDatasource(duckdb, instance, singleUrl, null, gcsParsed, options);
