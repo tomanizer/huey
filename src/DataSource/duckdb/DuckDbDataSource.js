@@ -41,7 +41,7 @@ export class DuckDbDataSource extends EventEmitter {
     const candidateFileTypes = {};
     
     for (const fileTypeName in fileTypes){
-      let fileType = fileTypes[fileTypeName];
+      const fileType = fileTypes[fileTypeName];
       if (fileType.mimeType === contentType){
         candidateFileTypes[fileTypeName] = fileType;
         continue;
@@ -65,7 +65,7 @@ export class DuckDbDataSource extends EventEmitter {
       fileTypes = candidateFileTypes;
     }
     
-    const readers = Object.keys(fileTypes).reduce((acc, curr, index) =>{
+    const readers = Object.keys(fileTypes).reduce((acc, curr, _index) =>{
       const fileType = fileTypes[curr];
       const reader = fileType.duckdb_reader;
       if (reader !== undefined && acc.indexOf(reader) === -1){
@@ -96,13 +96,13 @@ export class DuckDbDataSource extends EventEmitter {
           try {
             connection.close();
           }
-          catch(e){
+          catch(_e){
           }
         });
         return promise;
       });
 
-      let reader;
+      let _reader;
       const promiseResults = await Promise.allSettled(promises);
       const fulfilled = [];
       promiseResults.forEach((promiseResult, index) =>{
@@ -117,9 +117,9 @@ export class DuckDbDataSource extends EventEmitter {
         default:
           for (let i = 0; i < fulfilled.length; i++){
             const index = fulfilled[i];
-            let reader = readers[index];
+            const reader = readers[index];
             for (const fileTypeKey in fileTypes){
-              let fileType = fileTypes[fileTypeKey];
+              const fileType = fileTypes[fileTypeKey];
               if (fileType.duckdb_reader === reader) {
                 possibleTypes.push( fileTypeKey );
               }
@@ -128,7 +128,7 @@ export class DuckDbDataSource extends EventEmitter {
           break;
       }
     }
-    catch (e){
+    catch (_e){
       return null;
     }
     if (possibleTypes.length){
@@ -233,7 +233,7 @@ export class DuckDbDataSource extends EventEmitter {
       url: url
     };
 
-    let response = await DuckDbDataSource.getResourceInfoForUrl(url, 'HEAD');
+    const response = await DuckDbDataSource.getResourceInfoForUrl(url, 'HEAD');
     let contentType = response.headers['content-type'];
     if (contentType){
       config.contentType = contentType;
@@ -253,11 +253,11 @@ export class DuckDbDataSource extends EventEmitter {
       if (!config.fileType){
         switch (response.headers['accept-ranges']) {
           case 'bytes':
-            let response = await DuckDbDataSource.getResourceInfoForUrl(url, 'GET', {
+            const response = await DuckDbDataSource.getResourceInfoForUrl(url, 'GET', {
               "Accept": contentType,
               "Range": 'bytes=0-16'
             });
-            let responseText = response.responseText;
+            const responseText = response.responseText;
             if (responseText.startsWith('SQLite format 3\0')) {
               config.type = DuckDbDataSource.types.SQLITE;
             }
@@ -417,7 +417,7 @@ export class DuckDbDataSource extends EventEmitter {
         }
         break;
       case DuckDbDataSource.types.FILES:
-        let fileNames = config.fileNames;
+        const fileNames = config.fileNames;
         if (!fileNames) {
           throw new Error(`Invalid config: fileNames Array is mandatory`);
         }
@@ -470,8 +470,8 @@ export class DuckDbDataSource extends EventEmitter {
     let postFix;
     switch (type) {
       case DuckDbDataSource.types.FILE:
-        let fileName = this.getFileName();
-        let id = DuckDbDataSource.getDatasourceIdForFileName(fileName);
+        const fileName = this.getFileName();
+        const id = DuckDbDataSource.getDatasourceIdForFileName(fileName);
         return id;
       case DuckDbDataSource.types.FILES:
         postFix = JSON.stringify(this.#fileNames);
@@ -494,10 +494,10 @@ export class DuckDbDataSource extends EventEmitter {
     if (isQuotedIdentifier(localId)){
       unQuoted = unQuoteIdentifier(localId);
       try {
-        const url = new URL(unQuoted);
+        const _url = new URL(unQuoted);
         isUrl = true;
       }
-      catch(e){
+      catch(_e){
       }
     }
     return {
@@ -519,9 +519,9 @@ export class DuckDbDataSource extends EventEmitter {
 
     const url = this.#url;
     const file = this.#file;
-    let promise;
+    let _promise;
     if (url){
-      let protocol = this.#fileProtocol || this.#duckDb.DuckDBDataProtocol.HTTP;
+      const _protocol = this.#fileProtocol || this.#duckDb.DuckDBDataProtocol.HTTP;
       if (!this.#fileType){
         const connection = await this.getConnection();
         const fileTypes = await DuckDbDataSource.#whatFileType(url, connection, this.#contentType);
@@ -550,7 +550,7 @@ export class DuckDbDataSource extends EventEmitter {
         default:
           throw new Error(`Registerfile is not appropriate for datasources of type ${type}.`);
       }
-      let protocol = this.#fileProtocol || this.#duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
+      const protocol = this.#fileProtocol || this.#duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
       const fileName = (file instanceof File) ? file.name : this.#objectName;
       await this.#duckDbInstance.registerFileHandle(
         fileName,
@@ -616,7 +616,7 @@ export class DuckDbDataSource extends EventEmitter {
       const result = await physicalConnection.query(sql);
       return result;
     }
-    catch (e){
+    catch (_e){
       return undefined;
     }
   }
@@ -639,7 +639,7 @@ export class DuckDbDataSource extends EventEmitter {
 
       this.#rejects_balance = 0n;
     }
-    catch(e){
+    catch(_e){
       //
     }
   }
@@ -718,7 +718,7 @@ export class DuckDbDataSource extends EventEmitter {
         }
       }
       await this.registerFile();
-      const resultSet = await connection.query(sql);
+      const _resultSet = await connection.query(sql);
       result = true;
     }
     catch(error){
@@ -732,7 +732,7 @@ export class DuckDbDataSource extends EventEmitter {
       case undefined:
         maxAttempts = DuckDbDataSource.#defaultNumberOfAccessAttempts;
     }
-    const done = false;
+    const _done = false;
     let success = false;
     let attempts = 0;
     let attempt;
@@ -751,9 +751,9 @@ export class DuckDbDataSource extends EventEmitter {
       switch (datasourceType){
         case DuckDbDataSource.types.FILE:
         case DuckDbDataSource.types.FILES:
-          let fileType = this.getFileType();
-          let fileTypeInfo = DuckDbDataSource.getFileTypeInfo(fileType);
-          let reader = fileTypeInfo.duckdb_reader;
+          const fileType = this.getFileType();
+          const fileTypeInfo = DuckDbDataSource.getFileTypeInfo(fileType);
+          const reader = fileTypeInfo.duckdb_reader;
           switch (reader){
             case 'read_json_auto':
               if (/"maximum_object_size" of \d+ bytes exceeded/.test(message)){
@@ -883,7 +883,7 @@ export class DuckDbDataSource extends EventEmitter {
 
   getRelationExpression(alias, sqlOptions){
     sqlOptions = normalizeSqlOptions(sqlOptions);
-    const comma = getComma(sqlOptions.commaStyle);
+    const _comma = getComma(sqlOptions.commaStyle);
 
     const identifierQuoter = function(identifier){
       return getIdentifier(identifier, sqlOptions.alwaysQuoteIdentifiers);
@@ -1010,21 +1010,21 @@ export class DuckDbDataSource extends EventEmitter {
   }
 
   async #queryExecutionListener(event){
-    const managedConnection = event.currentTarget;
+    const _managedConnection = event.currentTarget;
     const eventData = event.eventData;
     switch (event.type){
       case 'beforequery':
 
         break;
       case 'afterquery':
-        let rejects_count_column = 'rejects_count';
-        let sql = this.#getRejectsCountSql(rejects_count_column);
+        const rejects_count_column = 'rejects_count';
+        const sql = this.#getRejectsCountSql(rejects_count_column);
         if (sql === undefined) {
           return;
         }
-        let physicalConnection = eventData.physicalConnection;
-        let result = await physicalConnection.query(sql);
-        let new_reject_count = result.get(0)[rejects_count_column];
+        const physicalConnection = eventData.physicalConnection;
+        const result = await physicalConnection.query(sql);
+        const new_reject_count = result.get(0)[rejects_count_column];
         if (new_reject_count !== this.#reject_count ) {
           const new_reject_balance = new_reject_count - this.#reject_count;
           this.fireEvent('rejectsdetected', {
@@ -1116,14 +1116,14 @@ export class DuckDbDataSource extends EventEmitter {
   }
 
   #getSqlForDataProfile(sampleSize) {
-    const qualifiedObjectName = this.getQualifiedObjectName();
+    const _qualifiedObjectName = this.getQualifiedObjectName();
     const fromClause = this.getFromClauseSql();
     let sql = `SUMMARIZE SELECT * ${fromClause}`;
     if (sampleSize) {
       let sampleSpecification;
       switch (typeof sampleSize){
         case 'number':
-          let iSampleSize = parseInt(sampleSize, 10);
+          const iSampleSize = parseInt(sampleSize, 10);
           if (iSampleSize === sampleSize){
             sampleSpecification = `${sampleSize} ROWS`;
           }

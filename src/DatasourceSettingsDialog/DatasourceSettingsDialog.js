@@ -1,7 +1,6 @@
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import { SettingsDialogBase } from '../SettingsDialog/SettingsDialogBase.js';
 import { TabUi } from '../Tabs/Tabs.js';
-import { Internationalization } from '../Internationalization/Internationalization.js';
 import { byId } from '../util/dom/dom.js';
 import { QueryModel } from '../QueryModel/QueryModel.js';
 import { PivotTableUi } from '../PivotTableUi/PivotTableUi.js';
@@ -99,7 +98,7 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
     this.#initRejectsTab();
   }
 
-  async #autodetectCsvReaderSettings(event){
+  async #autodetectCsvReaderSettings(_event){
     const datasource = this.#datasource;
     if (datasource.getType() !== DuckDbDataSource.types.FILE){
       throw new Error(`Datasource is not of type ${DuckDbDataSource.types.FILE}`);
@@ -207,7 +206,7 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
      
   }
 
-  async #downloadCsvReaderRejectsHandler(event){
+  async #downloadCsvReaderRejectsHandler(_event){
     const exportUiSettings = settings.getSettings('exportUi');
     exportUiSettings.exportTitleTemplate = '${datasource}';
     exportUiSettings.exportResultShapePivot = true;
@@ -221,7 +220,7 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
     });
   }
 
-  async #clearCsvReaderRejectsHandler(event){
+  async #clearCsvReaderRejectsHandler(_event){
     await this.#datasource.clearRejects();
     this.#updateRejectsTabData();
   }

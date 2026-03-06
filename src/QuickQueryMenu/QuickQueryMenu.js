@@ -1,6 +1,5 @@
 import { byId } from '../util/dom/dom.js';
 import { QueryAxisItem, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
-import { AttributeUi } from '../AttributeUi/AttributeUi.js';
 import { pivotTableUi } from '../PivotTableUi/PivotTableUi.js';
 
 export class QuickQueryMenu {
@@ -53,7 +52,7 @@ export class QuickQueryMenu {
     .addEventListener('click', this.#flipAxesButtonClickHandler.bind(this));
   }
   
-  #flipAxesButtonClickHandler(event){
+  #flipAxesButtonClickHandler(_event){
     const queryModel = this.#queryModel;
     queryModel.flipAxes();
   }
@@ -63,7 +62,7 @@ export class QuickQueryMenu {
     .addEventListener('click', this.#cellHeadersOnColumnsButtonClickHandler.bind(this));
   }
   
-  #cellHeadersOnColumnsButtonClickHandler(event){
+  #cellHeadersOnColumnsButtonClickHandler(_event){
     const queryModel = this.#queryModel;
     queryModel.setCellHeadersAxis(QueryModel.AXIS_COLUMNS);
   }
@@ -73,7 +72,7 @@ export class QuickQueryMenu {
     .addEventListener('click', this.#cellHeadersOnRowsButtonClickHandler.bind(this));
   }
   
-  #cellHeadersOnRowsButtonClickHandler(event){
+  #cellHeadersOnRowsButtonClickHandler(_event){
     const queryModel = this.#queryModel;
     queryModel.setCellHeadersAxis(QueryModel.AXIS_ROWS);
   }
@@ -83,7 +82,7 @@ export class QuickQueryMenu {
     .addEventListener('click', this.#clearAllButtonClickHandler.bind(this));
   }
   
-  async #clearAllButtonClickHandler(event){
+  async #clearAllButtonClickHandler(_event){
     const queryModelState = this.#newQueryModelState();
     const queryModel = this.#queryModel;
     await queryModel.setState(queryModelState);
@@ -95,13 +94,13 @@ export class QuickQueryMenu {
     .addEventListener('click', this.#columnStatisticsButtonClickHandler.bind(this));
   }
   
-  async #columnStatisticsButtonClickHandler(event){
+  async #columnStatisticsButtonClickHandler(_event){
     const queryModelState = this.#newQueryModelState();
     queryModelState.cellsHeaders = QueryModel.AXIS_ROWS;
     const items = queryModelState.axes[QueryModel.AXIS_CELLS] = [];
     const aggregators = ['min', 'max', 'count', 'distinct count'];
     
-    await this.#forEachColumn((columnMetadata,columnIndex) =>{
+    await this.#forEachColumn((columnMetadata, _columnIndex) =>{
       const columnName = columnMetadata.column_name;
       const columnType = columnMetadata.column_type;
       for (let i = 0; i < aggregators.length; i++) {
@@ -125,7 +124,7 @@ export class QuickQueryMenu {
     .addEventListener('click', this.#dataPreviewButtonClickHandler.bind(this));
   }
   
-  async #dataPreviewButtonClickHandler(event){
+  async #dataPreviewButtonClickHandler(_event){
     const queryModelState = this.#newQueryModelState();
     
     const rowsAxisItems = queryModelState.axes[QueryModel.AXIS_ROWS] = [];
@@ -136,7 +135,7 @@ export class QuickQueryMenu {
     
     const cellsAxisItems = queryModelState.axes[QueryModel.AXIS_CELLS] = [];
     
-    await this.#forEachColumn((columnMetadata,columnIndex) =>{
+    await this.#forEachColumn((columnMetadata, _columnIndex) =>{
       const columnName = columnMetadata.column_name;
       const columnType = columnMetadata.column_type;
       const item = {

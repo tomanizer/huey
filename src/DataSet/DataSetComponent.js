@@ -1,5 +1,3 @@
-import { EventEmitter } from '../util/event/EventEmitter.js';
-
 export class DataSetComponent {
 
   #queryModel = undefined;

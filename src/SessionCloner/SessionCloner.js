@@ -69,7 +69,7 @@ export class SessionCloner {
   }
 
   #initCloneHueySession(){
-    byId('cloneHueySession').addEventListener('click', (event) =>{
+    byId('cloneHueySession').addEventListener('click', (_event) =>{
       const location = document.location;
       const url = `${location.protocol}//${location.hostname}${location.pathname}?cloneHueySession=true`;
       
@@ -77,7 +77,7 @@ export class SessionCloner {
         initPostMessageInterface(true);
       }
       
-      const windowProxy = window.open(url);
+      const _windowProxy = window.open(url);
     });
   }
 

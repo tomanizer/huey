@@ -41,8 +41,7 @@ function formatQueryResultAsCsv(result, options) {
 export class ExportUi {
 
   static downloadURL(url, fileName) {
-    let a;
-    a = document.createElement('a');
+    const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
     document.body.appendChild(a);
@@ -52,12 +51,11 @@ export class ExportUi {
   }
 
   static downloadBlob(data, fileName, mimeType, timeout) {
-    let blob, url;
-    blob = new Blob(
+    const blob = new Blob(
       [data]
     , {type: mimeType}
     );
-    url = window.URL.createObjectURL(blob);
+    const url = window.URL.createObjectURL(blob);
     ExportUi.downloadURL(url, fileName);
     timeout = timeout === undefined ? 1000 : timeout;
     setTimeout(() => {
@@ -105,10 +103,10 @@ export class ExportUi {
       const caption = queryModel.getCaptionForQueryAxis(QueryModel.AXIS_FILTERS);
       return caption;
     },
-    'utc-timestamp': function(queryModel){
+    'utc-timestamp': function(_queryModel){
       return (new Date(Date.now())).toISOString().split('.')[0];
     },
-    'timestamp': function(queryModel){
+    'timestamp': function(_queryModel){
       const date = new Date();
 
       function padDigit(digit) {
@@ -233,14 +231,14 @@ export class ExportUi {
   
   static getExportSqlForQueryModel(queryModel, exportSettings, exportType){
     
-    let sql, structure;
+    let sql, _structure;
     if (exportSettings.exportResultShapePivot){
-      structure = 'pivot';
+      _structure = 'pivot';
       sql = ExportUi.getSqlForPivotExport(queryModel, sqlOptions);
     }
     else
     if (exportSettings.exportResultShapeTable){
-      structure = 'table';
+      _structure = 'table';
       sql = ExportUi.getSqlForTabularExport(queryModel, sqlOptions);
     }
 
@@ -310,7 +308,7 @@ export class ExportUi {
       }
       progressCallback('initSettings');
 
-      const title = exportSettings.exportTitle;
+      const _title = exportSettings.exportTitle;
       const exportType = exportSettings.exportType;
 
       let mimeType, compression, includeHeaders,
@@ -602,7 +600,7 @@ export class ExportDialog {
 
   }
 
-  #titleTemplateChangedHandler(event){
+  #titleTemplateChangedHandler(_event){
     const exportTitleTemplate = byId('exportTitleTemplate');
     this.#settings.assignSettings(['exportUi', 'exportTitleTemplate'], exportTitleTemplate.value);
     this.#updateExportTitle();
@@ -701,11 +699,11 @@ export class ExportDialog {
 
       exportSettings.exportType = tabName;
 
-      let mimeType, compression, includeHeaders,
-          dateFormat, timestampFormat, nullValueString,
-          columnDelimiter, quote, escape, rowDelimiter
+      let _mimeType, _compression, _includeHeaders,
+          _dateFormat, _timestampFormat, _nullValueString,
+          _columnDelimiter, _quote, _escape, _rowDelimiter
       ;
-      let fileExtension, data, copyStatementOptions, sqlOptions;
+      let _fileExtension, _data, _copyStatementOptions, _sqlOptions;
       switch (tabName) {
         case 'exportDelimited':
           copyUiSetting([
@@ -777,7 +775,7 @@ export function initExportDialog(){
 
   const exportButton = byId('exportButton');
 
-  exportButton.addEventListener('click', (event) =>{
+  exportButton.addEventListener('click', (_event) =>{
     exportDialog.open({
       queryModel: queryModel,
       settings: settings
@@ -785,7 +783,7 @@ export function initExportDialog(){
   });
 
   const exportTitleTemplate = byId('exportTitleTemplate');
-  function titleTemplateChanged(){
+  function _titleTemplateChanged(){
     settings.assignSettings(['exportUi', 'exportTitleTemplate'], exportTitleTemplate.value);
     updateExportTitle();
   }

@@ -246,8 +246,7 @@ export class QueryAxisItem {
     let columnExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
 
     const derivation = item.derivation;
-    let derivationInfo;
-    derivationInfo = AttributeUi.getDerivationInfo(derivation);
+    const derivationInfo = AttributeUi.getDerivationInfo(derivation);
     const derivationExpressionTemplate = derivationInfo.expressionTemplate;
     columnExpression = extrapolateColumnExpression(derivationExpressionTemplate, columnExpression);
 
@@ -287,7 +286,8 @@ export class QueryAxisItem {
       }
     }
 
-    let derivationInfo, derivation = queryAxisItem.derivation;
+    let derivationInfo;
+    const derivation = queryAxisItem.derivation;
     if (derivation) {
       derivationInfo = AttributeUi.getDerivationInfo(derivation);
       if (derivationInfo.columnType) {
@@ -330,7 +330,8 @@ export class QueryAxisItem {
       }
     }
 
-    let aggregatorInfo, aggregator = queryAxisItem.aggregator;
+    let aggregatorInfo;
+    const aggregator = queryAxisItem.aggregator;
     if (aggregator) {
       aggregatorInfo = AttributeUi.getAggregatorInfo(aggregator);
       if (aggregatorInfo.columnType) {
@@ -354,7 +355,7 @@ export class QueryAxisItem {
 
   // includeDisabledItems: if true then return all values, if not true then exclude values that have enabled===false;
   static #getFilterAxisItemValuesListAsSqlLiterals(queryAxisItem, includeDisabledItems){
-    let sql;
+    let _sql;
     const filter = queryAxisItem.filter;
 
     const values = filter.values;
@@ -401,7 +402,7 @@ export class QueryAxisItem {
     const filter = queryAxisItem.filter;
 
     let columnExpression = QueryAxisItem.getSqlForQueryAxisItem(queryAxisItem, alias);
-    let dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);
+    const dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);
     if (dataType === 'VARCHAR' && filter.caseSensitive === false) {
       columnExpression = `${columnExpression} COLLATE NOCASE`;
     }
@@ -445,7 +446,7 @@ export class QueryAxisItem {
           logicalOperator = 'AND';
         case FilterDialog.filterTypes.INCLUDE:
           operator += literalLists.valueLiterals.length === 1 ? '=' : ' IN';
-          let values = literalLists.valueLiterals.length === 1 ? literalLists.valueLiterals[0] : `( ${literalLists.valueLiterals.join('\n,')} )`;
+          const values = literalLists.valueLiterals.length === 1 ? literalLists.valueLiterals[0] : `( ${literalLists.valueLiterals.join('\n,')} )`;
 
           sql += `${columnExpression} ${operator} ${values}`;
 
@@ -464,7 +465,7 @@ export class QueryAxisItem {
           operator = 'NOT ';
           logicalOperator = 'AND';
         case FilterDialog.filterTypes.LIKE:
-          let dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);
+          const dataType = QueryAxisItem.getQueryAxisItemDataType(queryAxisItem);
           if (dataType !== 'VARCHAR'){
             columnExpression = `${columnExpression}::VARCHAR`;
           }

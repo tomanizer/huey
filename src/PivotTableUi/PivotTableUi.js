@@ -90,7 +90,7 @@ export class PivotTableUi extends EventEmitter {
     container.appendChild(dom);
   }
 
-  #getTotalsString(axisItem){
+  #getTotalsString(_axisItem){
     const generalSettings = this.#settings.getSettings('pivotSettings');
     const totalsString = generalSettings.totalsString;
     return totalsString;
@@ -108,7 +108,7 @@ export class PivotTableUi extends EventEmitter {
     );
   }
 
-  async #cancelQueryButtonClicked(event){
+  async #cancelQueryButtonClicked(_event){
     await Promise.all([
       this.#columnsTupleSet.cancelPendingQuery(),
       this.#rowsTupleSet.cancelPendingQuery(),
@@ -236,7 +236,7 @@ export class PivotTableUi extends EventEmitter {
 
     const physicalColumnsAxisTupleIndex = physicalTupleIndices.physicalColumnsAxisTupleIndex;
     const axisId = QueryModel.AXIS_COLUMNS;
-    const tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalColumnsAxisTupleIndex);
+    const _tupleIndexInfo = this.#getTupleIndexForPhysicalIndex(axisId, physicalColumnsAxisTupleIndex);
 
     const columnsAxisSizeInfo = physicalTupleIndices.columnsAxisSizeInfo;
     const headerCount = columnsAxisSizeInfo.headers.columnCount;
@@ -266,7 +266,7 @@ export class PivotTableUi extends EventEmitter {
       const width = target.style.width;
       if (width.endsWith('px')) {
         // user changed column width - this is where we should store the width in the corresponding column tuple.
-        const info = this.#getColumnHeaderTupleAndCellAxisInfo(target);
+        const _info = this.#getColumnHeaderTupleAndCellAxisInfo(target);
       }
       clearTimeout(this.#columnHeaderResizeTimeoutId);
       this.#columnHeaderResizeTimeoutId = undefined;
@@ -633,7 +633,7 @@ export class PivotTableUi extends EventEmitter {
     let tupleIndex = 0;
 
     const cellHeadersAxis = queryModel.getCellHeadersAxis();
-    let cellsAxisItems, numCellsAxisItems;
+    let cellsAxisItems, _numCellsAxisItems;
     let doCellHeaders = (cellHeadersAxis === axisId);
     if (doCellHeaders) {
       const cellsAxis = queryModel.getCellsAxis();
@@ -994,9 +994,9 @@ export class PivotTableUi extends EventEmitter {
       return;
     }
 
-    if (!tupleValueField?.type || tupleValueField.type.typeId == null) {
+    if (!tupleValueField?.type || tupleValueField.type.typeId === null) {
       // Remote tuple sets may provide fields without type (e.g. { name } only); set a safe literal and type.
-      const safeLiteral = tupleValue == null ? 'NULL' : (typeof tupleValue === 'string' ? quoteStringLiteral(tupleValue) : String(tupleValue));
+      const safeLiteral = tupleValue === null ? 'NULL' : (typeof tupleValue === 'string' ? quoteStringLiteral(tupleValue) : String(tupleValue));
       cellElement.setAttribute('data-value-literal', safeLiteral);
       cellElement.setAttribute('data-value-type', queryAxisItem.columnType || 'VARCHAR');
       cellElement.setAttribute('data-axis', queryAxisItem.axis);
@@ -1094,7 +1094,7 @@ export class PivotTableUi extends EventEmitter {
     const columnsAxisItems = columnsAxis.getItems();
     const cellsAxis = queryModel.getCellsAxis();
     const cellsAxisItems = cellsAxis.getItems();
-    let itemId;
+    let _itemId;
 
     const columnTupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_COLUMNS, physicalColumnsAxisTupleIndex);
     const columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
@@ -1102,7 +1102,7 @@ export class PivotTableUi extends EventEmitter {
 
     const rowTupleIndexInfo = this.#getTupleIndexForPhysicalIndex(QueryModel.AXIS_ROWS, physicalRowsAxisTupleIndex);
 
-    const rowCount = tableBodyRows.length - 1;
+    const _rowCount = tableBodyRows.length - 1;
     const columnCount = firstTableHeaderRowCells.length - headerColumnCount - 1;
 
     let columnsAxisTupleIndex = columnTupleIndexInfo.tupleIndex;
@@ -1144,7 +1144,7 @@ export class PivotTableUi extends EventEmitter {
     const cellsSet = this.#cellsSet;
     const cells = await cellsSet.getCells([rowsTupleRange, columnsTupleRange]);
 
-    let cellIndex;
+    let _cellIndex;
 
     for (let i = 0; i < tableBodyRows.length - 1; i++){
       const tableRow = tableBodyRows.item(i);
@@ -1360,14 +1360,14 @@ export class PivotTableUi extends EventEmitter {
     }
 
     firstTableHeaderRow = tableHeaderDom.childNodes.item(0);
-    let stufferCell, stufferRow;
+    let stufferCell;
     stufferCell = createEl('div', {
       "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell",
       "role": "presentation"
     });
     firstTableHeaderRow.appendChild(stufferCell);
 
-    stufferRow = createEl('div', {
+    const stufferRow = createEl('div', {
       "class": "pivotTableUiRow",
       "role": "row"
     });
@@ -1384,7 +1384,7 @@ export class PivotTableUi extends EventEmitter {
     const containerDom = this.#getInnerContainerDom();
     const innerContainerWidth = containerDom.clientWidth;
     const tableDom = this.#getTableDom();
-    let physicalColumnsAdded = 0;
+    let _physicalColumnsAdded = 0;
 
     const queryModel = this.getQueryModel();
     const queryAxis = queryModel.getColumnsAxis();
@@ -1522,7 +1522,7 @@ export class PivotTableUi extends EventEmitter {
           }
         }
 
-        physicalColumnsAdded += 1;
+        _physicalColumnsAdded += 1;
         //check if the table overshoots the allowable width
         if (tableDom.clientWidth > innerContainerWidth) {
           return;
@@ -1568,7 +1568,7 @@ export class PivotTableUi extends EventEmitter {
 
   #removeExcessRows(){
     const tableHeaderDom = this.#getTableHeaderDom();
-    const headerRows = tableHeaderDom.childNodes;
+    const _headerRows = tableHeaderDom.childNodes;
 
     const containerDom = this.#getInnerContainerDom();
     const innerContainerHeight = containerDom.clientHeight;
@@ -1591,16 +1591,16 @@ export class PivotTableUi extends EventEmitter {
     const containerDom = this.#getInnerContainerDom();
     const innerContainerHeight = containerDom.clientHeight;
     const tableDom = this.#getTableDom();
-    let physicalRowsAdded = 0;
+    let _physicalRowsAdded = 0;
 
     const queryModel = this.getQueryModel();
     const columnsAxis = queryModel.getColumnsAxis();
-    const columnAxisItems = columnsAxis.getItems();
+    const _columnAxisItems = columnsAxis.getItems();
 
     const rowsAxis = queryModel.getRowsAxis();
     const rowAxisItems = rowsAxis.getItems();
     let numColumns = rowAxisItems.length;
-    let itemId;
+    let _itemId;
 
     const tupleValueFields = this.#rowsTupleSet.getTupleValueFields();
 
@@ -1720,7 +1720,7 @@ export class PivotTableUi extends EventEmitter {
           }
         }
 
-        physicalRowsAdded += 1;
+        _physicalRowsAdded += 1;
         // check if the table overshoots its heigh.
         const newTableDomHeight = tableDom.clientHeight;
         if (newTableDomHeight > innerContainerHeight) {
@@ -1735,7 +1735,7 @@ export class PivotTableUi extends EventEmitter {
   }
 
   #renderCells(){
-    const tableHeaderDom = this.#getTableHeaderDom();
+    const _tableHeaderDom = this.#getTableHeaderDom();
 
     const columnAxisSizeInfo = this.#getColumnsAxisSizeInfo();
     if (!columnAxisSizeInfo) {
@@ -1960,7 +1960,7 @@ export class PivotTableUi extends EventEmitter {
     const rowsAxisItems = rowsAxis.getItems();
 
     const columnsAxis = queryModel.getQueryAxis(QueryModel.AXIS_COLUMNS);
-    const columnsAxisItems = columnsAxis.getItems();
+    const _columnsAxisItems = columnsAxis.getItems();
 
     const cellsAxis = queryModel.getQueryAxis(QueryModel.AXIS_CELLS);
     const cellsAxisItems = cellsAxis.getItems();
@@ -2094,7 +2094,7 @@ export class PivotTableUi extends EventEmitter {
   }
 
   #contextMenuContext = null;
-  beforeShowContextMenu(event, contextMenu){
+  beforeShowContextMenu(event, _contextMenu){
     const target = event.target;
     let cell = target;
     const dom = this.getDom();
@@ -2162,7 +2162,8 @@ export class PivotTableUi extends EventEmitter {
     const literal = contextMenuContext.getAttribute('data-value-literal');
 
     queryModelItem.axis = QueryModel.AXIS_FILTERS;
-    let newFilter, newFilterValues = {};
+    let newFilter;
+    const newFilterValues = {};
     const newFilterValueListValue = {
       value: filterValue, 
       label: filterValue, 
@@ -2333,8 +2334,8 @@ export class PivotTableUi extends EventEmitter {
     const tableHeaderDom = this.#getTableHeaderDom();
     const tableHeaderRows = tableHeaderDom.childNodes;
     const tableBodyDom = this.#getTableBodyDom();
-    const tableBodyRows = tableBodyDom.childNodes;
-    let tableHeaderRow, tableBodyRow, cells;
+    const _tableBodyRows = tableBodyDom.childNodes;
+    let tableHeaderRow, _tableBodyRow, cells;
 
     // calculate the number of row headers
     let numRowHeaders = rowsAxisItems ? rowsAxisItems.length : 0;
@@ -2550,7 +2551,7 @@ export function initPivotTableUi(){
     settings: settings
   });
 
-  const pivotTableUiContextMenu = new ContextMenu(pivotTableUi, 'pivotTableContextMenu');
+  const _pivotTableUiContextMenu = new ContextMenu(pivotTableUi, 'pivotTableContextMenu');
   
   pivotTableUiHighlighting = new PivotTableUiHighlighting(pivotTableUi);
   

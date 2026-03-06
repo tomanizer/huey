@@ -42,7 +42,7 @@ export class PostMessageInterface {
     try {
       return new URL(origin).origin;
     }
-    catch (error) {
+    catch (_error) {
       return undefined;
     }
   }
@@ -53,7 +53,7 @@ export class PostMessageInterface {
     }
     return value
       .split(',')
-      .map(function(origin){
+      .map((origin) =>{
         return origin.trim();
       })
       .filter(Boolean)
@@ -62,14 +62,14 @@ export class PostMessageInterface {
   }
 
   static #getHostingWindowOriginFromReferrer(){
-    var referrer = document.referrer;
+    const referrer = document.referrer;
     if (!referrer) {
       return undefined;
     }
     try {
       return new URL(referrer).origin;
     }
-    catch (error) {
+    catch (_error) {
       return undefined;
     }
   }
@@ -79,18 +79,18 @@ export class PostMessageInterface {
       return PostMessageInterface.#trustedOrigins;
     }
 
-    var trustedOrigins = [window.location.origin];
-    var params = new URLSearchParams(window.location.search);
+    let trustedOrigins = [window.location.origin];
+    const params = new URLSearchParams(window.location.search);
 
-    var configured = PostMessageInterface.#parseOriginsParam(params.get('postMessageOrigins'));
+    const configured = PostMessageInterface.#parseOriginsParam(params.get('postMessageOrigins'));
     trustedOrigins = trustedOrigins.concat(configured);
 
-    var singleOrigin = PostMessageInterface.#normalizeOrigin(params.get('postMessageOrigin'));
+    const singleOrigin = PostMessageInterface.#normalizeOrigin(params.get('postMessageOrigin'));
     if (singleOrigin) {
       trustedOrigins.push(singleOrigin);
     }
 
-    var hostingWindowOrigin = PostMessageInterface.#getHostingWindowOriginFromReferrer();
+    const hostingWindowOrigin = PostMessageInterface.#getHostingWindowOriginFromReferrer();
     if (hostingWindowOrigin) {
       trustedOrigins.push(hostingWindowOrigin);
     }
@@ -101,7 +101,7 @@ export class PostMessageInterface {
   }
 
   static isTrustedOrigin(origin){
-    var normalizedOrigin = PostMessageInterface.#normalizeOrigin(origin);
+    const normalizedOrigin = PostMessageInterface.#normalizeOrigin(origin);
     if (!normalizedOrigin) {
       return false;
     }
@@ -109,14 +109,14 @@ export class PostMessageInterface {
   }
 
   static getTargetOriginForHostingWindow(){
-    var trustedOrigins = PostMessageInterface.getTrustedOrigins();
-    var referrerOrigin = PostMessageInterface.#getHostingWindowOriginFromReferrer();
+    const trustedOrigins = PostMessageInterface.getTrustedOrigins();
+    const referrerOrigin = PostMessageInterface.#getHostingWindowOriginFromReferrer();
     if (referrerOrigin && trustedOrigins.indexOf(referrerOrigin) !== -1) {
       return referrerOrigin;
     }
 
-    for (var i = 0; i < trustedOrigins.length; i++){
-      var origin = trustedOrigins[i];
+    for (let i = 0; i < trustedOrigins.length; i++){
+      const origin = trustedOrigins[i];
       if (origin !== window.location.origin) {
         return origin;
       }

@@ -12,7 +12,7 @@ export class Routing {
             
       return state;
     }
-    catch(error){
+    catch(_error){
       return null;
     }
   }

@@ -112,7 +112,7 @@ export class PivotTableUiHighlighting {
     dom.addEventListener('mouseleave', this.#mouseLeaveHandler.bind(this));
   }
   
-  #mouseLeaveHandler(event){
+  #mouseLeaveHandler(_event){
     this.#updateStylesheet('');
   }
 

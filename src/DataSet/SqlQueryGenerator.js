@@ -90,7 +90,7 @@ export class SqlQueryGenerator {
     // analyze the filter items and store them in a dict: 
     // - filter items that require unnesting are stored by memberExpressionPath
     const topLevelFilterAxisItems = [];
-    const unnestingFunctions = SqlQueryGenerator.#getUnnestingFunctions();
+    const _unnestingFunctions = SqlQueryGenerator.#getUnnestingFunctions();
     for (let i = 0; i < filterAxisItems.length; i++){
       const filterAxisItem = filterAxisItems[i];
       const memberExpressionPathString = SqlQueryGenerator.#getMemberExpressionPathStringForPathWithUnnestingOperation(filterAxisItem);
@@ -156,8 +156,8 @@ export class SqlQueryGenerator {
   static #transformFilterItems(
     filterAxisItemsByNestingStage, 
     unnestingItemMemberExpressionPathPrefixString, 
-    unnestingOperationItem, 
-    cte
+    unnestingOperationItem,
+    _cte
   ){
     const unnestingFunctions = SqlQueryGenerator.#getUnnestingFunctions();
     const unnestingFunctionNames = Object.keys(unnestingFunctions);
@@ -305,7 +305,7 @@ export class SqlQueryGenerator {
       let unnestingItemMemberExpressionPathIndex = undefined;
       let unnestingItemMemberExpressionPathPrefix = undefined;
       let unnestingItemMemberExpressionPathPrefixString = undefined;
-      const unnestingItemMemberExpression = undefined;
+      const _unnestingItemMemberExpression = undefined;
       let unnestingItemMemberExpressionType = undefined;
       newItems = [];
       let filters;
@@ -493,7 +493,6 @@ export class SqlQueryGenerator {
     const orderByExpressions = [];
     
     const columnIds = Object.keys(columnExpressions);
-    let queryAxisItem;
     for (let i = 0; i < columnIds.length; i++) {
       const columnId = columnIds[i];
       const columnExpression = columnExpressions[columnId];

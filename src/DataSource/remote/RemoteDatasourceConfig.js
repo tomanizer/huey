@@ -30,7 +30,7 @@ export const RemoteDatasourceConfig = (function () {
     if (opts && typeof opts.apiKey === 'string' && opts.apiKey.trim()) {
       config.apiKey = opts.apiKey.trim();
     }
-    if (id != null && String(id).trim()) {
+    if (id !== null && id !== undefined && String(id).trim()) {
       config.id = String(id).trim();
     }
     return config;

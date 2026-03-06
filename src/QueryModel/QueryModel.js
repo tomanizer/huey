@@ -236,9 +236,9 @@ export class QueryModel extends EventEmitter {
    * @returns {QueryAxisItemConfig|undefined}
    */
   findItem(config){
-    const columnName = config.columnName;
+    const _columnName = config.columnName;
     const memberExpressionPath = config.memberExpressionPath;
-    const derivation = config.derivation;
+    const _derivation = config.derivation;
     const aggregator = config.aggregator;
 
     let axisIds, axisId = config.axis;
@@ -516,7 +516,7 @@ export class QueryModel extends EventEmitter {
       axisIds = Object.keys(this.#axes);
     }
     for (let i = 0; i < axisIds.length; i++) {
-      let axisId = axisIds[i];
+      const axisId = axisIds[i];
       const axis = this.getQueryAxis(axisId);
       axis.clear();
     }
@@ -1054,7 +1054,7 @@ export class QueryModel extends EventEmitter {
     const axes = queryModelState.axes;
     const referencedColumns = Object.keys(axes).reduce((acc, curr) =>{
       const items = axes[curr];
-      items.forEach((item, index) =>{
+      items.forEach((item, _index) =>{
         const columnName = item.column || item.columnName;
         if (columnName === undefined || columnName === '*'){
           return;
