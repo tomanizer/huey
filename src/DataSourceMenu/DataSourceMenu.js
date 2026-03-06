@@ -1,16 +1,18 @@
-import { byId } from '../util/dom/dom.js';
+import { byId, registerTemplates } from '../util/dom/dom.js';
 import { bufferEvents } from '../util/event/EventBuffer.js';
 import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
+import dataSourceMenuTemplatesHtml from './templates.html?raw';
 
 export class DataSourceMenu {
- 
+
   #id = undefined;
   #queryModel = undefined;
   #datasourcesUi = undefined;
   #queryModelStateBeforeChange;
- 
+
   constructor(id, queryModel, datasourcesUi){
+    registerTemplates(dataSourceMenuTemplatesHtml);
     this.#id = id;
     this.#queryModel = queryModel;
     this.#datasourcesUi = datasourcesUi;

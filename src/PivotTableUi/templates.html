@@ -1,0 +1,30 @@
+<template id="pivotTableUiTemplate">
+  <!-- pivotTableUi: outmost container of the pivot table-->
+  <div
+    id=""
+    class="pivotTableUiContainer"
+    style="
+      flex-grow: 1;
+      width: 100%;
+      height: 100%;
+      border-width: 1px;
+      border-color: var( --huey-dark-border-color );
+      border-top-style: solid;
+    "
+    aria-busy="false"
+    data-needs-update="false"
+  >
+    <div class="pivotTableUiInnerContainer">
+      <!-- pivotTableColumnsSizer: sizer to generate the horizontal scrollbar -->
+      <div class="pivotTableUiSizer pivotTableUiHorizontalSizer"></div>
+      <!-- pivotTableColumnsSizer: sizer to generate the vertical scrollbar -->
+      <div class="pivotTableUiSizer pivotTableUiVerticalSizer"></div>
+
+      <!-- the actual table structure -->
+      <div class="pivotTableUiTable" role="grid">
+        <div class="pivotTableUiTableHeader" role="rowgroup"></div>
+        <div class="pivotTableUiTableBody" role="rowgroup"></div>
+      </div>
+    </div>
+  </div>
+</template>

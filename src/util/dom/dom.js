@@ -234,6 +234,24 @@ export function getChildWithClassName(dom, className){
   //throw new Error(`Couldn't find element with classname ${className}`);
 }
 
+/**
+ * Parse an HTML string containing <template> elements and append them to
+ * the document body so they can be found by instantiateTemplate / byId.
+ * Skips templates whose id already exists in the DOM (idempotent).
+ * @param {string} html - Raw HTML string with one or more <template> elements
+ */
+export function registerTemplates(html) {
+  const container = document.createElement('div');
+  // Trusted application markup — these are bundled template strings, not user input.
+  container.innerHTML = html;
+  const templates = container.querySelectorAll('template');
+  for (const tpl of templates) {
+    if (!document.getElementById(tpl.id)) {
+      document.body.appendChild(tpl);
+    }
+  }
+}
+
 export function escapeHtmlText(text){
   return text.replace(/[&<>]/g, (match) =>{
     switch(match) {

@@ -1,4 +1,5 @@
-import { byId, instantiateTemplate } from '../util/dom/dom.js';
+import { byId, instantiateTemplate, registerTemplates } from '../util/dom/dom.js';
+import queryUiTemplatesHtml from './templates.html?raw';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { QueryModel, QueryAxisItem, queryModel } from '../QueryModel/QueryModel.js';
 import { DragAndDropHelper } from '../DragAndDrop/DragAndDropHelper.js';
@@ -18,6 +19,7 @@ export class QueryUi {
   #filterDialog = filterDialog;
 
   constructor(config){
+    registerTemplates(queryUiTemplatesHtml);
     this.#container = config.container
     this.#id = config.id || 'queryUi';
 
