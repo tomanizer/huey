@@ -93,6 +93,48 @@ describe('DataSet cache limits', () => {
     expect(tupleSet.cacheSize).toBe(2);
   });
 
+  test('TupleSet cache sizing handles BigInt tuple values without crashing', async () => {
+    const connection = {
+      fetchTuples(dateRange, query) {
+        const paging = query.paging || {};
+        const limit = paging.limit || 1;
+        const offset = paging.offset || 0;
+        const items = Array.from({ length: limit }, (_value, i) => ({ values: [BigInt(offset + i + 1)] }));
+        return { items, total_count: 2 };
+      },
+      getState() {
+        return 'open';
+      }
+    };
+    const datasource = {
+      getType() {
+        return 'remote';
+      },
+      getManagedConnection() {
+        return connection;
+      }
+    };
+    const axisItems = [{ columnName: 'hugeint_field', columnType: 'HUGEINT' }];
+    const queryModel = {
+      getDatasource() {
+        return datasource;
+      },
+      getQueryAxis() {
+        return { getItems: () => axisItems };
+      },
+      getFiltersAxis() {
+        return { getItems: () => [] };
+      }
+    };
+
+    const tupleSet = new TupleSet(queryModel, 'rows', createSettings({ tupleSetMaxCacheEntries: 10, tupleSetMaxCacheSizeMb: 50 }));
+    tupleSet.setPageSize(2);
+
+    await tupleSet.getTuples(2, 0);
+    expect(tupleSet.getTupleSync(0)).toBeDefined();
+    expect(tupleSet.cacheSize).toBeGreaterThan(2);
+  });
+
   test('CellSet evicts least-recently-used cells when entry limit is exceeded', async () => {
     let fetchCellsCallCount = 0;
     const connection = {
