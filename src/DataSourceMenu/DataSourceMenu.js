@@ -33,6 +33,7 @@ export class DataSourceMenu {
     );
     
     datasourcesUi.addEventListener('change', this.#datasourcesChangedHandler.bind(this));
+    this.#initMenuTriggerState();
   }
   
   getDom(){
@@ -41,6 +42,17 @@ export class DataSourceMenu {
 
   #datasourcesChangedHandler(_event) {
     this.#update();
+  }
+
+  #initMenuTriggerState(){
+    const dom = this.getDom();
+    const triggerButton = byId('currentDatasourceMenuButton');
+    if (!triggerButton) {
+      return;
+    }
+    dom.addEventListener('beforetoggle', (event) =>{
+      triggerButton.setAttribute('aria-expanded', String(event.newState === 'open'));
+    });
   }
 
   #queryModelBeforeChangeHandler(event, count){
@@ -124,6 +136,7 @@ export class DataSourceMenu {
     
     const radio = item.getElementsByTagName('INPUT').item(0);
     const button = item.getElementsByTagName('BUTTON').item(0);
+    button.setAttribute('aria-label', `Switch to datasource ${config.labelText}`);
     if (typeof config.clickHandler === 'function'){
       radio.removeAttribute('id')
       button.setAttribute('id', id);

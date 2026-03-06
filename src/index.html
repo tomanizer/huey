@@ -192,7 +192,7 @@
       draggable="true"
       popover="auto"
       aria-modal="true"
-      aria-labelledby="uploadUiTitle"
+      aria-labelledby="exportDialogTitle"
       aria-busy="false"
     >
       <header>
@@ -285,6 +285,7 @@
             name="exportFormat"
             type="radio"
             checked="true"
+            aria-label="Export format delimited text"
           />
           <div role="tabpanel">
             <form id="exportDelimitedSettings">
@@ -450,6 +451,7 @@
             id="exportJson"
             name="exportFormat"
             type="radio"
+            aria-label="Export format JSON"
           />
           <div role="tabpanel">
             <form id="exportJsonSettings">
@@ -518,6 +520,7 @@
             id="exportParquet"
             name="exportFormat"
             type="radio"
+            aria-label="Export format Parquet"
           />
           <div role="tabpanel">
             <form id="exportParquetSettings">
@@ -668,6 +671,7 @@
             id="exportSqlite"
             name="exportFormat"
             type="radio"
+            aria-label="Export format SQLite"
           />
           <div role="tabpanel">
             <form id="exportSqliteSettings">
@@ -694,6 +698,7 @@
             id="exportDuckdb"
             name="exportFormat"
             type="radio"
+            aria-label="Export format DuckDB"
           />
           <div role="tabpanel">
             <form id="exportDuckdbSettings">
@@ -1841,6 +1846,9 @@
           <button
             id="copySubmenuActivate"
             popovertarget="copySubmenu"
+            aria-label="Open copy submenu"
+            aria-haspopup="menu"
+            aria-expanded="false"
           >
           </button>
         </label>
@@ -1854,6 +1862,9 @@
           <button
             id="filterSubmenuActivate"
             popovertarget="filterSubmenu"
+            aria-label="Open filter submenu"
+            aria-haspopup="menu"
+            aria-expanded="false"
           >
           </button>
         </label>
@@ -1887,6 +1898,7 @@
     <main
       id="layout"
       class="layout"
+      data-testid="app-layout"
     >
       <menu role="toolbar" aria-live="polite">
         <label for="uploader" title="Register local data files to explore their contents with Huey">
@@ -2060,6 +2072,8 @@
             id="currentDatasourceMenuButton" 
             aria-label="Open datasource menu"
             popovertarget="dataSourceMenu"
+            aria-haspopup="menu"
+            aria-expanded="false"
           ></button>
           <menu
             id="dataSourceMenu"
@@ -2116,6 +2130,7 @@
         role="tablist"
         id="sidebar"
         class="resizeHorizontal"
+        data-testid="sidebar"
       >
         <!-- Datasources tab -->
         <div>
@@ -2176,12 +2191,13 @@
               class="attributeUi"
               style="flex-grow: 1;"
               role="tree"
+              data-testid="attribute-list"
             ></div>
           </div>
         </div>
       </nav>
 
-      <div id="workarea" class="workarea"></div>
+      <div id="workarea" class="workarea" data-testid="workarea"></div>
       
     </main>
 

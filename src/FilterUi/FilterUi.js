@@ -228,6 +228,8 @@ export class FilterDialog {
 
     this.#initSearchQueryHandler();
     this.#initAddFilterValueButton();
+    this.#getValuePicklist().addEventListener('change', this.#updateAllListAriaSelected.bind(this));
+    this.#updateAllListAriaSelected();
   }
 
   #clearHighlightedValues(){
@@ -253,6 +255,20 @@ export class FilterDialog {
       const target = event.target;
       this.#getFilterValuesList().scrollTop = target.scrollTop;
     });
+  }
+
+  #updateListAriaSelected(selectControl){
+    const options = selectControl.options;
+    for (let i = 0; i < options.length; i++) {
+      const option = options[i];
+      option.setAttribute('aria-selected', String(option.selected));
+    }
+  }
+
+  #updateAllListAriaSelected(){
+    this.#updateListAriaSelected(this.#getValuePicklist());
+    this.#updateListAriaSelected(this.#getFilterValuesList());
+    this.#updateListAriaSelected(this.#getToFilterValuesList());
   }
 
   #handleFilterValuesListKeyDown(event){
@@ -440,12 +456,14 @@ export class FilterDialog {
       this.#getValuePicklist().selectedIndex = -1;
       this.#getToFilterValuesList().selectedIndex = -1;
     }
+    this.#updateAllListAriaSelected();
   }
-  #handleToFilterValuesListChange(){
+  #handleToFilterValuesListChange(event){
     if (event.target.selectedOptions.length){
       this.#getValuePicklist().selectedIndex = -1;
       this.#getFilterValuesList().selectedIndex = -1;
     }
+    this.#updateAllListAriaSelected();
   }
 
   #getNullsSortOrder(){
@@ -559,7 +577,8 @@ export class FilterDialog {
       value: valueObject.value,
       label: valueObject.label,
       "data-sql-literal": valueObject.literal,
-      "role": "option"
+      "role": "option",
+      "aria-selected": "false"
     });
     if (valueObject.isSqlNull){
       optionElement.setAttribute('data-sql-null', true);
@@ -585,6 +604,7 @@ export class FilterDialog {
       const optionElement = this.#createOptionElementFromValues(valueObject);
       selectList.appendChild(optionElement);
     }
+    this.#updateListAriaSelected(selectList);
   }
   
   #compareValues(value1, value2){
@@ -765,6 +785,7 @@ export class FilterDialog {
 
     //no need to restore a selection
     if (restoreSelectionInValueList === undefined) {
+      this.#updateAllListAriaSelected();
       return ;
     }
 
@@ -777,6 +798,7 @@ export class FilterDialog {
       filterValuesListOptions.selectedIndex = i;
       break;
     }
+    this.#updateAllListAriaSelected();
 
     // the end.
   }
@@ -811,6 +833,7 @@ export class FilterDialog {
     this.#renderOptionsToSelectList(currentToValues, toValuesList);
 
     this.#getValuePicklist().selectedIndex = -1;
+    this.#updateAllListAriaSelected();
   }
 
   #getDialogButtons(){
@@ -1005,6 +1028,7 @@ export class FilterDialog {
       // noop
     }
     this.#updateValueSelectionStatusText();
+    this.#updateAllListAriaSelected();
   }
 
   #getDialogState(){
@@ -1029,6 +1053,7 @@ export class FilterDialog {
     }
     const result = await this.#getPicklistValues(offset, limit);
     this.#populatePickList(result, offset, limit);
+    this.#updateAllListAriaSelected();
   }
 
   #getOtherFilterAxisItems(withFilterValues){
@@ -1310,13 +1335,16 @@ export class FilterDialog {
       option = createEl('option', {
         value: value,
         label: label,
-        "data-sql-literal": literal
+        "data-sql-literal": literal,
+        "role": "option",
+        "aria-selected": "false"
       });
       if (value === null){
         option.setAttribute('data-sql-null', true);
       }
       optionsContainer.appendChild(option);
     }
+    this.#updateListAriaSelected(listOfValues);
 
     this.#setBusy(false);
 
@@ -1333,7 +1361,9 @@ export class FilterDialog {
       label: `Click to load the next ${limit} values...`,
       "data-next-page-loader": true,
       "data-offset": offset + limit,
-      "data-limit": limit
+      "data-limit": limit,
+      "role": "option",
+      "aria-selected": "false"
     });
     optionGroup.appendChild(option);
     //Fix https://github.com/rpbouman/huey/issues/566
@@ -1342,6 +1372,7 @@ export class FilterDialog {
         listOfValues.appendChild(optionGroup);
       //}, 100
     //);
+    this.#updateListAriaSelected(listOfValues);
   }
 
   getDom(){

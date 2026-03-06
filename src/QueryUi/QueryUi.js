@@ -411,6 +411,7 @@ export class QueryUi {
     if (filter.toggleState === 'open') {
       detailsElement.setAttribute('open', String(true) );
     }
+    detailsElement.setAttribute('aria-expanded', String(detailsElement.open));
     setTimeout(() =>{
       detailsElement.addEventListener('toggle', this.#filterItemToggleHandler.bind(this));
     }, 1000)
@@ -478,6 +479,7 @@ export class QueryUi {
   
   #filterItemToggleHandler(event){
     const target = event.target;
+    target.setAttribute('aria-expanded', String(target.open));
     const queryModelItem = this.#getQueryModelItem(target.parentNode);
     const toggleState = event.newState;
     this.#queryModel.setQueryAxisItemFilterToggleState(queryModelItem, toggleState);
@@ -915,6 +917,20 @@ export class QueryUi {
     const cellsAxisPrimaryActionTitle = `Move the cell headers to the ${targetAxis} axis`;
     return cellsAxisPrimaryActionTitle;
   }
+
+  #getAxisPrimaryActionAriaLabel(axisId){
+    switch (axisId) {
+      case QueryModel.AXIS_COLUMNS:
+      case QueryModel.AXIS_ROWS:
+        return 'Flip rows and columns axes';
+      case QueryModel.AXIS_CELLS:
+        return this.#getCellsAxisPrimaryActionTitle();
+      case QueryModel.AXIS_FILTERS:
+        return 'Filter axis primary action';
+      default:
+        return 'Axis primary action';
+    }
+  }
   
   static #findQueryUiElements(event){
     const queryUi = event.currentTarget;
@@ -974,9 +990,16 @@ export class QueryUi {
     Internationalization.setAttributes(labels.item(1), 'title', removeTitle);
 
     axis.setAttribute('data-axis', axisId);
+    axis.setAttribute('role', 'region');
     const heading = axis.getElementsByTagName('h1').item(0);
     const caption = config.caption || (axisId.charAt(0).toUpperCase() + axisId.slice(1));
     Internationalization.setTextContent(heading, caption);
+    axis.setAttribute('aria-label', `${caption} axis`);
+    axis.setAttribute('data-testid', `${axisId}-axis`);
+    const primaryActionButton = axis.querySelector('button[id$="-axis-primary-action"]');
+    if (primaryActionButton) {
+      primaryActionButton.setAttribute('aria-label', this.#getAxisPrimaryActionAriaLabel(axisId));
+    }
     this.getDom().appendChild(axis);
   }
 
