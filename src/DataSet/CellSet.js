@@ -587,7 +587,6 @@ export class CellSet extends DataSetComponent {
         if (!tuple) {
           // this shouldn't happen!
           // if we arrive here it means we messed up while calculating the tuple ranges.
-          //console.error(`Couldn't find tuple ${tupleIndex} in tupleset for query axis ${tupleSet.getQueryAxisId()}`);
           continue;
         }
         tuplesForCell[j] = tuple;

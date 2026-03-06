@@ -66,11 +66,7 @@ export class Routing {
 
   static updateRouteFromQueryModel(queryModel){
     const newRoute = Routing.getRouteForQueryModel(queryModel);
-    //if (currentRoute === newRoute && Boolean(newRoute)) {
-    //  return;
-   // }
     const hash = newRoute ? `#${newRoute}` : '';
-    //document.location.hash = hash;
     if (history.state === newRoute && Routing.getCurrentRoute() === newRoute){
       return;
     }
