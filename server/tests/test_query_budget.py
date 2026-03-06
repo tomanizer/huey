@@ -83,15 +83,19 @@ def test_queue_depth_rejects_overflow(
     }
 
     def first_request():
-        return client.post("/query/cells", json=request_body)
+        # Separate clients avoid TestClient internal request serialization,
+        # which can make this concurrency test nondeterministic.
+        with TestClient(client.app) as first_client:
+            return first_client.post("/query/cells", json=request_body)
 
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        first = pool.submit(first_request)
-        # Wait until the first request has definitely acquired the budget slot
-        # before sending the second, so the queue overflow is guaranteed.
-        assert in_execute.wait(timeout=5)
-        second_result = client.post("/query/cells", json=request_body)
-        first_result = first.result(timeout=10)
+    with TestClient(client.app) as second_client:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            first = pool.submit(first_request)
+            # Wait until the first request has definitely acquired the budget slot
+            # before sending the second, so the queue overflow is guaranteed.
+            assert in_execute.wait(timeout=5)
+            second_result = second_client.post("/query/cells", json=request_body)
+            first_result = first.result(timeout=10)
 
     assert first_result.status_code in (200, 504)
     assert second_result.status_code == 429
