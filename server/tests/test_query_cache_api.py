@@ -207,3 +207,35 @@ def test_picklist_dim_version_token_cache_miss_on_token_change(monkeypatch, clie
     r2 = client.post("/query/picklist", json=body)
     assert r2.status_code == 200
     assert call_count["n"] == 2  # DB called again due to key change
+
+
+def test_dim_version_token_change_does_not_invalidate_fact_cache(monkeypatch, client: TestClient) -> None:
+    """Dimension token bumps should not invalidate tuples/cells fact cache keys."""
+    _enable_cache(monkeypatch)
+
+    call_count = {"n": 0}
+    original = db_manager.execute_sql_async
+
+    async def counted(*args, **kwargs):
+        call_count["n"] += 1
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", counted)
+
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+    }
+
+    monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "dim-v1")
+    get_settings.cache_clear()
+    r1 = client.post("/query/tuples", json=body)
+    assert r1.status_code == 200
+    assert call_count["n"] == 1
+
+    monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "dim-v2")
+    get_settings.cache_clear()
+    r2 = client.post("/query/tuples", json=body)
+    assert r2.status_code == 200
+    assert call_count["n"] == 1

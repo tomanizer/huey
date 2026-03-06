@@ -136,12 +136,56 @@ def test_cache_key_differs_by_data_token() -> None:
     """Different data_token values produce different cache keys (dim_version_token behaviour)."""
     date_range = {"type": "single", "date": "2026-03-01"}
     query = {"field": "symbol"}
-    key_v1 = build_cache_key("picklist", "ds1", date_range, query, data_token="abc123")
-    key_v2 = build_cache_key("picklist", "ds1", date_range, query, data_token="def456")
+    key_v1 = build_cache_key("picklist", "ds1", date_range, query, dim_version_token="abc123")
+    key_v2 = build_cache_key("picklist", "ds1", date_range, query, dim_version_token="def456")
     assert key_v1 != key_v2
     # Same token must produce the same key every time.
-    key_v1b = build_cache_key("picklist", "ds1", date_range, query, data_token="abc123")
+    key_v1b = build_cache_key("picklist", "ds1", date_range, query, dim_version_token="abc123")
     assert key_v1 == key_v1b
+
+
+def test_cache_key_legacy_and_canonical_tokens_match() -> None:
+    """Legacy token parameter names remain compatible with canonical token names."""
+    date_range = {"type": "single", "date": "2026-03-01"}
+    query = {"field": "symbol"}
+    legacy = build_cache_key(
+        "picklist",
+        "ds1",
+        date_range,
+        query,
+        data_version_token="fact-v1",
+        data_token="dim-v1",
+    )
+    canonical = build_cache_key(
+        "picklist",
+        "ds1",
+        date_range,
+        query,
+        fact_version_token="fact-v1",
+        dim_version_token="dim-v1",
+    )
+    assert legacy == canonical
+
+
+def test_cache_key_differs_by_config_token() -> None:
+    """Config identity changes must alter cache keys for schema/config invalidation."""
+    date_range = {"type": "single", "date": "2026-03-01"}
+    query = {"field": "symbol"}
+    key_v1 = build_cache_key(
+        "picklist",
+        "ds1",
+        date_range,
+        query,
+        config_token={"path": "/cfg/datasets.yaml", "mtime": 100.0},
+    )
+    key_v2 = build_cache_key(
+        "picklist",
+        "ds1",
+        date_range,
+        query,
+        config_token={"path": "/cfg/datasets.yaml", "mtime": 101.0},
+    )
+    assert key_v1 != key_v2
 
 
 def test_stale_while_revalidate_returns_stale_immediately() -> None:

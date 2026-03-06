@@ -176,6 +176,29 @@ def test_data_version_token_changes_on_partition_metadata_change(monkeypatch) ->
     assert token_a != token_b
 
 
+def test_data_version_token_ignores_non_intersecting_cobdate_updates(monkeypatch) -> None:
+    monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=1))
+    datasets.reset_cache()
+    datasets.set_partition_metadata(
+        "ds",
+        {"partitions": [{"date": "2026-03-01", "files": [{"path": "a.parquet", "size": 1, "etag": "e1"}]}]},
+    )
+    token_before = datasets.get_data_version_token("ds", {"type": "single", "date": "2026-03-01"})
+
+    # New COBDATE is published outside the requested date scope.
+    datasets.set_partition_metadata(
+        "ds",
+        {
+            "partitions": [
+                {"date": "2026-03-01", "files": [{"path": "a.parquet", "size": 1, "etag": "e1"}]},
+                {"date": "2026-03-02", "files": [{"path": "b.parquet", "size": 3, "etag": "e2"}]},
+            ]
+        },
+    )
+    token_after = datasets.get_data_version_token("ds", {"type": "single", "date": "2026-03-01"})
+    assert token_before == token_after
+
+
 def test_schema_cache_concurrent_reads_consistent(monkeypatch) -> None:
     calls = {"count": 0}
 
