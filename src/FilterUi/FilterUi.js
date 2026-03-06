@@ -1192,7 +1192,7 @@ export class FilterDialog {
         console.time(timeMessage);
         const apiResponse = await connection.fetchPicklist(dateRange, query);
         console.timeEnd(timeMessage);
-        const totalCount = apiResponse.total_count !== null ? apiResponse.total_count : (apiResponse.values || []).length;
+        const totalCount = apiResponse.total_count != null ? apiResponse.total_count : (apiResponse.values || []).length; // eslint-disable-line eqeqeq -- intentional: catch both null and undefined
         const values = apiResponse.values || [];
         const fields = (offset === 0 ? [{ name: FilterDialog.#numRowsColumnName }] : []).concat([{ name: 'value', type: { typeId: 0 } }, { name: 'label', type: { typeId: 0 } }]);
         const resultSet = {
