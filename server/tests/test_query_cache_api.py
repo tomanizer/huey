@@ -232,6 +232,7 @@ def test_dim_version_token_change_does_not_invalidate_fact_cache(monkeypatch, cl
     get_settings.cache_clear()
     r1 = client.post("/query/tuples", json=body)
     assert r1.status_code == 200
+    assert r1.json().get("items")
     assert call_count["n"] == 1
 
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "dim-v2")

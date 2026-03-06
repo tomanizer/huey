@@ -139,6 +139,7 @@ on a fresh computation.
 - **New COBDATE published**
   - Fact cache entries whose `date_range` intersects the updated partitions receive a new `fact_version_token` and miss.
   - Closed historical-range entries outside the changed scope keep their existing token and remain hot.
+  - If an already-finalized historical partition is intentionally corrected/reprocessed, treat it as a fact update event: refresh partition metadata so intersecting keys get a new `fact_version_token`.
 - **Dimension/reference update**
   - Bump `dim_version_token` (usually via config change or `QUERYSERVICE_DIM_VERSION_TOKEN` override).
   - Picklist/filter dictionary entries invalidate.

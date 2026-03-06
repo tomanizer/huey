@@ -176,7 +176,7 @@ def test_data_version_token_changes_on_partition_metadata_change(monkeypatch) ->
     assert token_a != token_b
 
 
-def test_data_version_token_ignores_non_intersecting_cobdate_updates(monkeypatch) -> None:
+def test_fact_version_token_ignores_non_intersecting_cobdate_updates(monkeypatch) -> None:
     monkeypatch.setattr(datasets, "get_settings", lambda: _settings(None, ttl=1))
     datasets.reset_cache()
     datasets.set_partition_metadata(
