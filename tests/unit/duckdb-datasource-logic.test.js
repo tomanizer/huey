@@ -198,7 +198,9 @@ describe('DuckDbDataSource logic coverage', () => {
       expect(fileDs.getSqlForTableSchema()).toContain("read_csv( 'source.csv'");
 
       expect(tableDs.getRelationExpression()).toBe('memory.main.orders');
-      expect(tableDs.getFromClauseSql(undefined, { keywordLetterCase: 'upper' })).toContain('memory.main.orders');
+      const fromClause = tableDs.getFromClauseSql(undefined, { keywordLetterCase: 'upperCase' });
+      expect(fromClause).toContain('memory.main.orders');
+      expect(fromClause.trim()).toMatch(/^FROM\b/);
 
       expect(sqlDs.getRelationExpression()).toBe('( select 1 as one )');
     });
