@@ -502,7 +502,8 @@ export class CellSet extends DataSetComponent {
     const colCount = columnCount || 1;
     const items = cellsAxisItemsToFetch || [];
     const aliases = measureAliases || [];
-    const offset = measureValueOffset !== null ? measureValueOffset : 0;
+    // eslint-disable-next-line eqeqeq
+    const offset = measureValueOffset != null ? measureValueOffset : 0;
     // Backend returns cell.values keyed by column index: row dims, then column dims, then measures.
     const fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map((item) => {
       const typeId = CellSet.#measureColumnTypeToArrowTypeId(item.columnType);

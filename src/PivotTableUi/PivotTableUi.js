@@ -994,9 +994,11 @@ export class PivotTableUi extends EventEmitter {
       return;
     }
 
-    if (!tupleValueField?.type || tupleValueField.type.typeId === null) {
+    // eslint-disable-next-line eqeqeq
+    if (!tupleValueField?.type || tupleValueField.type.typeId == null) {
       // Remote tuple sets may provide fields without type (e.g. { name } only); set a safe literal and type.
-      const safeLiteral = tupleValue === null ? 'NULL' : (typeof tupleValue === 'string' ? quoteStringLiteral(tupleValue) : String(tupleValue));
+      // eslint-disable-next-line eqeqeq
+      const safeLiteral = tupleValue == null ? 'NULL' : (typeof tupleValue === 'string' ? quoteStringLiteral(tupleValue) : String(tupleValue));
       cellElement.setAttribute('data-value-literal', safeLiteral);
       cellElement.setAttribute('data-value-type', queryAxisItem.columnType || 'VARCHAR');
       cellElement.setAttribute('data-axis', queryAxisItem.axis);

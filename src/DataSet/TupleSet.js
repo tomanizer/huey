@@ -394,7 +394,8 @@ export class TupleSet extends DataSetComponent {
         const row = {};
         const item = items[i];
         if (!item) return row;
-        if (hasGroupingId) row[TupleSet.groupingIdAlias] = item.grouping_id !== null ? item.grouping_id : 0;
+        // eslint-disable-next-line eqeqeq
+        if (hasGroupingId) row[TupleSet.groupingIdAlias] = item.grouping_id != null ? item.grouping_id : 0;
         const vals = item.values || [];
         for (let j = 0; j < fieldNames.length; j++) {
           row[fieldNames[j]] = vals[j];

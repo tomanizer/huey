@@ -628,7 +628,7 @@ export class FilterDialog {
     const isRangeFilterType = FilterDialog.isRangeFilterType(filterType);
 
     const filterValuesList = this.#getFilterValuesList();
-    const _toFilterValuesListOptions = filterValuesList.options;
+    let filterValuesListOptions = filterValuesList.options;
     const currentValues = this.#extractOptionsFromSelectList(filterValuesList);
 
     let toFilterValuesList, currentToValues;
@@ -1200,7 +1200,8 @@ export class FilterDialog {
           schema: { fields: fields },
           get: function(i) {
             const v = values[i];
-            const row = { value: v ? v.value : null, label: v ? (v.label !== null ? v.label : v.value) : null };
+            // eslint-disable-next-line eqeqeq
+            const row = { value: v ? v.value : null, label: v ? (v.label != null ? v.label : v.value) : null };
             if (offset === 0 && i === 0) row[FilterDialog.#numRowsColumnName] = totalCount;
             return row;
           }
