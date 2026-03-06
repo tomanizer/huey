@@ -15,6 +15,41 @@ import {
   extrapolateColumnExpression,
 } from '../util/sql/SQLHelper.js';
 
+/**
+ * @typedef {Object} QueryFilterConfig
+ * @property {string} filterType
+ * @property {Object.<string, {literal: string, label: string, enabled?: boolean}>} values
+ * @property {Object.<string, {literal: string, label: string, enabled?: boolean}>} [toValues]
+ * @property {boolean} [caseSensitive]
+ * @property {string} [toggleState]
+ */
+
+/**
+ * @typedef {Object} QueryAxisItemConfig
+ * @property {string} columnName
+ * @property {string} [columnType]
+ * @property {string} [axis]
+ * @property {string} [caption]
+ * @property {string} [derivation]
+ * @property {string} [aggregator]
+ * @property {string[]} [memberExpressionPath]
+ * @property {boolean} [includeTotals]
+ * @property {Function} [formatter]
+ * @property {Function} [literalWriter]
+ * @property {Function} [parser]
+ * @property {QueryFilterConfig} [filter]
+ * @property {number} [index]
+ */
+
+/**
+ * @typedef {Object} QueryModelState
+ * @property {string} [datasourceId]
+ * @property {import('../DataSource/duckdb/DuckDbDataSource.js').DuckDbDataSource} [datasource]
+ * @property {string} [cellsHeaders]
+ * @property {Object.<string, QueryAxisItemConfig[]>} [axes]
+ * @property {Object.<string, {size?: number, unit?: string}>} [sampling]
+ */
+
 export class QueryAxisItem {
 
   static createFormatter(axisItem){
@@ -737,6 +772,9 @@ export class QueryModel extends EventEmitter {
   #datasource = undefined;
   #sampling = undefined;
 
+  /**
+   * @param {{settings?: Object}} [config]
+   */
   constructor(config){
     super(['change', 'beforechange']);
     const resolvedConfig = Object.assign({}, QueryModel.#defaultConfig, config);
@@ -745,6 +783,10 @@ export class QueryModel extends EventEmitter {
     }
   }
 
+  /**
+   * @param {string} [axisId]
+   * @returns {Object|undefined}
+   */
   getSampling(axisId){
     const sampling = this.#sampling;
     if (!sampling){
@@ -758,6 +800,10 @@ export class QueryModel extends EventEmitter {
     return sampling[axisId];
   }
   
+  /**
+   * @param {string} cellheadersaxis
+   * @returns {void}
+   */
   setCellHeadersAxis(cellheadersaxis) {
     const oldCellHeadersAxis = this.#cellheadersaxis;
     if (cellheadersaxis === oldCellHeadersAxis) {
@@ -777,36 +823,62 @@ export class QueryModel extends EventEmitter {
     this.fireEvent('change', eventData);
   }
 
+  /**
+   * @returns {string[]}
+   */
   getAxisIds(){
     return Object.keys(this.#axes);
   }
 
+  /**
+   * @returns {string}
+   */
   getCellHeadersAxis(){
     return this.#cellheadersaxis;
   }
 
+  /**
+   * @param {string} axisId
+   * @returns {QueryAxis}
+   */
   getQueryAxis(axisId){
     return this.#axes[axisId];
   }
 
+  /**
+   * @param {string} axisId
+   * @returns {string}
+   */
   getCaptionForQueryAxis(axisId){
-    let queryAxis = this.getQueryAxis(axisId);
-    const caption = queryAxis = queryAxis.getCaption();
+    const queryAxis = this.getQueryAxis(axisId);
+    const caption = queryAxis.getCaption();
     return caption;
   }
 
+  /**
+   * @returns {QueryAxis}
+   */
   getFiltersAxis(){
     return this.getQueryAxis(QueryModel.AXIS_FILTERS);
   }
 
+  /**
+   * @returns {QueryAxis}
+   */
   getColumnsAxis(){
     return this.getQueryAxis(QueryModel.AXIS_COLUMNS);
   }
 
+  /**
+   * @returns {QueryAxis}
+   */
   getRowsAxis(){
     return this.getQueryAxis(QueryModel.AXIS_ROWS);
   }
 
+  /**
+   * @returns {QueryAxis}
+   */
   getCellsAxis(){
     return this.getQueryAxis(QueryModel.AXIS_CELLS);
   }
@@ -818,6 +890,11 @@ export class QueryModel extends EventEmitter {
     this.setDatasource(undefined);
   }
 
+  /**
+   * @param {import('../DataSource/duckdb/DuckDbDataSource.js').DuckDbDataSource} datasource
+   * @param {boolean} [dontClear]
+   * @returns {void}
+   */
   setDatasource(datasource, dontClear){
     const oldDatasource = this.#datasource;
     if (datasource === oldDatasource) {
@@ -852,10 +929,17 @@ export class QueryModel extends EventEmitter {
     this.fireEvent('change', eventData);
   }
 
+  /**
+   * @returns {import('../DataSource/duckdb/DuckDbDataSource.js').DuckDbDataSource|undefined}
+   */
   getDatasource(){
     return this.#datasource;
   }
 
+  /**
+   * @param {QueryAxisItemConfig} config
+   * @returns {QueryAxisItemConfig|undefined}
+   */
   findItem(config){
     const columnName = config.columnName;
     const memberExpressionPath = config.memberExpressionPath;
@@ -911,6 +995,13 @@ export class QueryModel extends EventEmitter {
     return removedItem;
   }
 
+  /**
+   * Add an item to one of the query axes.
+   * @param {QueryAxisItemConfig} config
+   * @returns {Promise<QueryAxisItemConfig>}
+   * @fires QueryModel#beforechange
+   * @fires QueryModel#change
+   */
   async addItem(config){
     let axis = config.axis;
 
@@ -1025,6 +1116,10 @@ export class QueryModel extends EventEmitter {
     return addedItem;
   }
 
+  /**
+   * @param {QueryAxisItemConfig} config
+   * @returns {QueryAxisItemConfig|undefined}
+   */
   removeItem(config){
     const copyOfConfig = Object.assign({}, config);
 
@@ -1079,6 +1174,11 @@ export class QueryModel extends EventEmitter {
     return axesChangeInfo;
   }
 
+  /**
+   * @param {QueryAxisItemConfig} queryItemConfig
+   * @param {boolean} value
+   * @returns {QueryAxisItemConfig|undefined}
+   */
   toggleTotals(queryItemConfig, value){
     if (Boolean(value) !== value) {
       return;
@@ -1127,6 +1227,10 @@ export class QueryModel extends EventEmitter {
     }
   }
 
+  /**
+   * @param {string} [axisId]
+   * @returns {void}
+   */
   clear(axisId) {
     const axesChangeInfo = {};
     const eventData = {
@@ -1163,6 +1267,11 @@ export class QueryModel extends EventEmitter {
     this.fireEvent('change', eventData);
   }
 
+  /**
+   * @param {string} [axisId1]
+   * @param {string} [axisId2]
+   * @returns {void}
+   */
   flipAxes(axisId1, axisId2) {
     if (axisId2 === undefined){
       switch (axisId1) {
@@ -1219,6 +1328,11 @@ export class QueryModel extends EventEmitter {
     this.fireEvent('change', eventData);
   }
 
+  /**
+   * @param {QueryAxisItemConfig} queryAxisItem
+   * @param {QueryFilterConfig} filter
+   * @returns {void}
+   */
   setQueryAxisItemFilter(queryAxisItem, filter){
     const axisId = queryAxisItem.axis;
     if (axisId !== QueryModel.AXIS_FILTERS){
@@ -1258,6 +1372,11 @@ export class QueryModel extends EventEmitter {
     this.fireEvent('change', eventData);
   }
   
+  /**
+   * @param {QueryAxisItemConfig} queryAxisItem
+   * @param {'open'|'closed'} toggleState
+   * @returns {void}
+   */
   setQueryAxisItemFilterToggleState(queryAxisItem, toggleState){
     if (queryAxisItem.axis !== QueryModel.AXIS_FILTERS){
       throw new Error(`Item is not a filter axis item!`);
@@ -1296,6 +1415,11 @@ export class QueryModel extends EventEmitter {
   * NOTE: we probabably shoudl remove the excludeTupleItems option as it can almost never be applied
   * for example, if there are subtotals required, it will result in wrong results.
   */
+  /**
+   * @param {boolean} [excludeTupleItems]
+   * @param {string} [alias]
+   * @returns {string|undefined}
+   */
   getFilterConditionSql(excludeTupleItems, alias){
     const queryAxis = this.getFiltersAxis();
     let items = queryAxis.getItems();
@@ -1354,6 +1478,11 @@ export class QueryModel extends EventEmitter {
     return condition;
   }
 
+  /**
+   * @param {QueryModelState} [oldState]
+   * @param {QueryModelState} [newState]
+   * @returns {{propertiesChanged?: Object, axesChanged?: Object}}
+   */
   static compareStates(oldState, newState){
     oldState = oldState || {};
     newState = newState || {};
@@ -1463,6 +1592,10 @@ export class QueryModel extends EventEmitter {
     return stateChange;
   }
 
+  /**
+   * @param {{includeItemIndices?: boolean}} [options]
+   * @returns {QueryModelState|null}
+   */
   getState(options){
     const datasource = this.getDatasource();
     if (!datasource) {
@@ -1534,6 +1667,10 @@ export class QueryModel extends EventEmitter {
     return autoUpdate;
   }
 
+  /**
+   * @param {QueryModelState} queryModelState
+   * @returns {Promise<void>}
+   */
   async setState(queryModelState){
 
     const autoRunQuery = this.#autoUpdate;
@@ -1611,6 +1748,10 @@ export class QueryModel extends EventEmitter {
     }
   }
   
+  /**
+   * @param {QueryModelState} queryModelState
+   * @returns {Object.<string, {columnType: string}>|null}
+   */
   static getReferencedColumns(queryModelState){
     if (!queryModelState){
       return null;

@@ -5,6 +5,10 @@ import { QueryAxisItem, QueryModel } from '../QueryModel/QueryModel.js';
 import { RemoteQueryAdapter } from '../DataSource/remote/RemoteQueryAdapter.js';
 import { quoteIdentifierWhenRequired, getQualifiedIdentifier } from '../util/sql/SQLHelper.js';
 
+/**
+ * @typedef {[number, number]} TupleRange
+ */
+
 export class CellSet extends DataSetComponent {
 
   // Cells is an array indexed by columntupleIndex * rowTupleIndex
@@ -30,13 +34,22 @@ export class CellSet extends DataSetComponent {
     this.#cellValueFields = {};
   }
 
+  /**
+   * @returns {Object.<string, Object>}
+   */
   getCellValueFields(){
     return this.#cellValueFields;
   }
 
-  // variable argument list,
-  // each argument should be a tuple index
-  // tuple indexes should by in order of tupleSets
+  /**
+   * Convert tuple coordinates to a single linear cell index.
+   *
+   * This uses row-major style indexing where each coordinate is multiplied by
+   * the product of tuple counts in downstream tuple sets.
+   *
+   * @param {...number} tupleIndices tuple indexes in the same order as `#tupleSets`
+   * @returns {number}
+   */
   getCellIndex(){
     var cellIndex = 0;
     var tupleSets = this.#tupleSets;
@@ -70,8 +83,17 @@ export class CellSet extends DataSetComponent {
     return cell;
   }
 
-  // based on the passed ranges, this returns an array of groups of tupleindices that together identify each tuple in each tupleset in the range.
-  // typically, callers should only call this with the first argument
+  /**
+   * Expand tuple index ranges to concrete tuple index combinations.
+   *
+   * Each range corresponds to a tuple set and recursion generates the Cartesian
+   * product of those ranges.
+   *
+   * @param {TupleRange[]} ranges
+   * @param {number[]} [previousTupleIndices]
+   * @param {number[][]} [allRanges]
+   * @returns {number[][]}
+   */
   getTupleRanges(ranges, previousTupleIndices, allRanges){
     if (!previousTupleIndices){
       allRanges = [];

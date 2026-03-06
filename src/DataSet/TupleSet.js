@@ -8,6 +8,12 @@ export class TupleSet extends DataSetComponent {
   static groupingIdAlias = '__huey_grouping_id';
 
   //
+  /**
+   * @param {import('../QueryModel/QueryModel.js').QueryModel} queryModel
+   * @param {string} axisId
+   * @param {boolean} includeCountAll
+   * @returns {Object<string, string>|undefined}
+   */
   static getSqlSelectExpressions(queryModel, axisId, includeCountAll){
     var queryAxis = queryModel.getQueryAxis(axisId);
     var queryAxisItems = queryAxis.getItems();
@@ -30,6 +36,14 @@ export class TupleSet extends DataSetComponent {
     return selectListExpressions;
   }
 
+  /**
+   * @param {import('../QueryModel/QueryModel.js').QueryModel} queryModel
+   * @param {string} axisId
+   * @param {boolean} includeCountAll
+   * @param {'FIRST'|'LAST'} nullsSortOrder
+   * @param {'AFTER'|'BEFORE'} totalsPosition
+   * @returns {string}
+   */
   static getSqlSelectStatement(queryModel, axisId, includeCountAll, nullsSortOrder, totalsPosition){
     var datasource = queryModel.getDatasource();
 
@@ -110,22 +124,38 @@ export class TupleSet extends DataSetComponent {
     return totalsPosition;
   }
 
+  /**
+   * @returns {Object[]}
+   */
   getTupleValueFields(){
     return this.#tupleValueFields;
   }
 
+  /**
+   * @returns {number}
+   */
   getPageSize(){
     return this.#pageSize;
   }
 
+  /**
+   * @param {number} pageSize
+   * @returns {void}
+   */
   setPageSize(pageSize){
     this.#pageSize = pageSize;
   }
 
+  /**
+   * @returns {string}
+   */
   getQueryAxisId(){
     return this.#queryAxisId;
   }
 
+  /**
+   * @returns {Object[]}
+   */
   getQueryAxisItems(){
     var queryModel = this.getQueryModel();
     var axisId = this.#queryAxisId;
@@ -157,18 +187,34 @@ export class TupleSet extends DataSetComponent {
     this.#tupleCount = undefined;
   }
 
+  /**
+   * @returns {number|undefined}
+   */
   getTupleCountSync() {
     return this.#tupleCount;
   }
 
+  /**
+   * Return a range of tuples for the current page window.
+   * @param {number} from inclusive start index
+   * @param {number} to exclusive end index
+   * @returns {Object[]}
+   */
   getTuplesSync(from, to){
     return this.#tuples.slice(from, to);
   }
 
+  /**
+   * @param {number} index
+   * @returns {Object|undefined}
+   */
   getTupleSync(index){
     return this.#tuples[index];
   }
 
+  /**
+   * @returns {Promise<number|undefined>}
+   */
   async getTupleCount(){
     return new Promise(function(resolve, reject){
       resolve(this.#tupleCount);
