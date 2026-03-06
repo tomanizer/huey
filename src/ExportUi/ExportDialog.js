@@ -8,7 +8,7 @@ import { copyToClipboard } from '../util/clipboard/clipboard.js';
 import { ensureDuckDbExtensionLoadedAndInstalled, getCopyToStatement, getQuotedIdentifier, quoteStringLiteral, unQuote } from '../util/sql/SQLHelper.js';
 
 /** Format a DuckDB query result as CSV (browser fallback when COPY TO cannot write). */
-function formatQueryResultAsCsv(result, options) {
+export function formatQueryResultAsCsv(result, options) {
   const { delimiter, nullString, header, quoteChar, escapeChar } = options;
   const numRows = result.numRows ?? 0;
   if (numRows === 0) {
