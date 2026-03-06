@@ -54,6 +54,14 @@ Example: `QUERYSERVICE_PORT=8000` maps to `port` setting.
 | `QUERYSERVICE_RATE_LIMIT_ENABLED` | `false` | bool | Enable slowapi rate limiting |
 | `QUERYSERVICE_RATE_LIMIT_QUERY` | `100/minute` | string | Query endpoint limit policy |
 | `QUERYSERVICE_RATE_LIMIT_EXPORT` | `10/minute` | string | Export submission limit policy |
+| `QUERYSERVICE_RATE_LIMIT_BY_API_KEY` | `true` | bool | When auth is enabled, key limits by a valid `X-API-Key`; otherwise falls back to client IP |
+| `QUERYSERVICE_TRUSTED_PROXY_COUNT` | `0` | int | Number of trusted reverse-proxy hops used when deriving client IP from forwarding headers |
+
+Rate-limit identity resolution:
+
+- When `QUERYSERVICE_AUTH_ENABLED=true` and `QUERYSERVICE_RATE_LIMIT_BY_API_KEY=true`, requests with a valid configured `X-API-Key` use per-key rate-limit buckets.
+- Otherwise (including missing/invalid `X-API-Key`), rate limits key on client IP, using forwarding headers only when `QUERYSERVICE_TRUSTED_PROXY_COUNT > 0`.
+- `X-Forwarded-For` is interpreted from the right using the trusted proxy depth; keep `QUERYSERVICE_TRUSTED_PROXY_COUNT=0` when QueryService is directly internet-facing so client-supplied forwarding headers are ignored.
 
 ## Export Pipeline
 

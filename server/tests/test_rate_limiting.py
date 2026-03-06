@@ -1,9 +1,12 @@
+import hashlib
+
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from server.config import get_settings
 from server.main import app
-from server.rate_limit import limiter
+from server.rate_limit import get_rate_limit_key, get_real_ip, limiter
 
 
 @pytest.fixture
@@ -106,3 +109,76 @@ def test_rate_limiting_disabled(monkeypatch) -> None:
     finally:
         get_settings.cache_clear()
         limiter.enabled = get_settings().rate_limit_enabled
+
+
+def _create_test_request(headers: dict[str, str], client_host: str = "198.51.100.99") -> Request:
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/",
+        "raw_path": b"/",
+        "query_string": b"",
+        "headers": [(k.lower().encode("latin-1"), v.encode("latin-1")) for k, v in headers.items()],
+        "client": (client_host, 44321),
+        "server": ("testserver", 80),
+    }
+    return Request(scope)
+
+
+def test_rate_limit_key_prefers_api_key_when_auth_enabled(monkeypatch) -> None:
+    monkeypatch.setenv("QUERYSERVICE_AUTH_ENABLED", "true")
+    monkeypatch.setenv("QUERYSERVICE_RATE_LIMIT_BY_API_KEY", "true")
+    monkeypatch.setenv("QUERYSERVICE_API_KEYS", "client-a,client-b")
+    get_settings.cache_clear()
+    try:
+        request = _create_test_request({"X-API-Key": "client-a", "X-Forwarded-For": "1.2.3.4"})
+        expected_digest = hashlib.sha256("client-a".encode("utf-8")).hexdigest()[:16]
+        key = get_rate_limit_key(request)
+        assert key == f"key:{expected_digest}"
+        assert "client-a" not in key
+    finally:
+        get_settings.cache_clear()
+
+
+def test_get_real_ip_uses_trusted_proxy_depth(monkeypatch) -> None:
+    monkeypatch.setenv("QUERYSERVICE_TRUSTED_PROXY_COUNT", "1")
+    get_settings.cache_clear()
+    try:
+        request = _create_test_request({"X-Forwarded-For": "1.1.1.1, 203.0.113.50"})
+        assert get_real_ip(request) == "203.0.113.50"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_get_real_ip_ignores_forwarding_headers_when_no_trusted_proxy(monkeypatch) -> None:
+    monkeypatch.setenv("QUERYSERVICE_TRUSTED_PROXY_COUNT", "0")
+    get_settings.cache_clear()
+    try:
+        request = _create_test_request({"X-Forwarded-For": "1.1.1.1", "X-Real-IP": "2.2.2.2"})
+        assert get_real_ip(request) == "198.51.100.99"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_rate_limit_key_invalid_api_key_falls_back_to_ip(monkeypatch) -> None:
+    monkeypatch.setenv("QUERYSERVICE_AUTH_ENABLED", "true")
+    monkeypatch.setenv("QUERYSERVICE_RATE_LIMIT_BY_API_KEY", "true")
+    monkeypatch.setenv("QUERYSERVICE_API_KEYS", "client-a")
+    get_settings.cache_clear()
+    try:
+        request = _create_test_request({"X-API-Key": "unknown-key"})
+        assert get_rate_limit_key(request) == "ip:198.51.100.99"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_get_real_ip_ignores_invalid_forwarded_values(monkeypatch) -> None:
+    monkeypatch.setenv("QUERYSERVICE_TRUSTED_PROXY_COUNT", "1")
+    get_settings.cache_clear()
+    try:
+        request = _create_test_request({"X-Forwarded-For": "bad-ip, 203.0.113.50"})
+        assert get_real_ip(request) == "203.0.113.50"
+    finally:
+        get_settings.cache_clear()

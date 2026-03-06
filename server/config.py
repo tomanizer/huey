@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     rate_limit_query: str = "100/minute"
     rate_limit_export: str = "10/minute"
     rate_limit_enabled: bool = False
+    rate_limit_by_api_key: bool = True
+    trusted_proxy_count: int = Field(default=0, ge=0)
     # Query result cache
     cache_enabled: bool = False
     cache_ttl_seconds: int = 120
