@@ -6,8 +6,16 @@ import { RemoteQueryAdapter } from '../DataSource/remote/RemoteQueryAdapter.js';
 export class TupleSet extends DataSetComponent {
 
   static groupingIdAlias = '__huey_grouping_id';
+  static #defaultMaxCacheEntries = 10000;
+  static #defaultMaxCacheSizeMb = 50;
 
   //
+  /**
+   * @param {import('../QueryModel/QueryModel.js').QueryModel} queryModel
+   * @param {string} axisId
+   * @param {boolean} includeCountAll
+   * @returns {Object<string, string>|undefined}
+   */
   static getSqlSelectExpressions(queryModel, axisId, includeCountAll){
     var queryAxis = queryModel.getQueryAxis(axisId);
     var queryAxisItems = queryAxis.getItems();
@@ -30,6 +38,14 @@ export class TupleSet extends DataSetComponent {
     return selectListExpressions;
   }
 
+  /**
+   * @param {import('../QueryModel/QueryModel.js').QueryModel} queryModel
+   * @param {string} axisId
+   * @param {boolean} includeCountAll
+   * @param {'FIRST'|'LAST'} nullsSortOrder
+   * @param {'AFTER'|'BEFORE'} totalsPosition
+   * @returns {string}
+   */
   static getSqlSelectStatement(queryModel, axisId, includeCountAll, nullsSortOrder, totalsPosition){
     var datasource = queryModel.getDatasource();
 
@@ -64,6 +80,8 @@ export class TupleSet extends DataSetComponent {
 
   #tupleCount = undefined;
   #pageSize = 50;
+  #tupleAccessTimestamps = new Map();
+  #accessCounter = 0;
 
   constructor(queryModel, axisId, settings){
     super(queryModel, settings);
@@ -110,22 +128,38 @@ export class TupleSet extends DataSetComponent {
     return totalsPosition;
   }
 
+  /**
+   * @returns {Object[]}
+   */
   getTupleValueFields(){
     return this.#tupleValueFields;
   }
 
+  /**
+   * @returns {number}
+   */
   getPageSize(){
     return this.#pageSize;
   }
 
+  /**
+   * @param {number} pageSize
+   * @returns {void}
+   */
   setPageSize(pageSize){
     this.#pageSize = pageSize;
   }
 
+  /**
+   * @returns {string}
+   */
   getQueryAxisId(){
     return this.#queryAxisId;
   }
 
+  /**
+   * @returns {Object[]}
+   */
   getQueryAxisItems(){
     var queryModel = this.getQueryModel();
     var axisId = this.#queryAxisId;
@@ -155,20 +189,116 @@ export class TupleSet extends DataSetComponent {
   clear(){
     this.#tuples = [];
     this.#tupleCount = undefined;
+    this.#tupleAccessTimestamps.clear();
+    this.#accessCounter = 0;
   }
 
+  clearCache(){
+    this.clear();
+  }
+
+  #touchTuple(index){
+    this.#accessCounter += 1;
+    this.#tupleAccessTimestamps.set(index, this.#accessCounter);
+  }
+
+  #removeTuple(index){
+    this.#tuples[index] = undefined;
+    this.#tupleAccessTimestamps.delete(index);
+  }
+
+  #getMaxCacheEntries(){
+    var settings = this.getSettings();
+    var maxCacheEntries;
+    if (settings && typeof settings.getSettings === 'function'){
+      maxCacheEntries = Number(settings.getSettings(['querySettings', 'tupleSetMaxCacheEntries']));
+    }
+    if (!Number.isFinite(maxCacheEntries) || maxCacheEntries < 0) {
+      maxCacheEntries = TupleSet.#defaultMaxCacheEntries;
+    }
+    return maxCacheEntries;
+  }
+
+  #getMaxCacheSizeBytes(){
+    var settings = this.getSettings();
+    var maxCacheSizeMb;
+    if (settings && typeof settings.getSettings === 'function'){
+      maxCacheSizeMb = Number(settings.getSettings(['querySettings', 'tupleSetMaxCacheSizeMb']));
+    }
+    if (!Number.isFinite(maxCacheSizeMb) || maxCacheSizeMb < 0) {
+      maxCacheSizeMb = TupleSet.#defaultMaxCacheSizeMb;
+    }
+    return maxCacheSizeMb * 1024 * 1024;
+  }
+
+  get cacheSize(){
+    var tuples = {};
+    this.#tupleAccessTimestamps.forEach((value, index) => {
+      tuples[index] = this.#tuples[index];
+    });
+    return JSON.stringify(tuples).length;
+  }
+
+  #enforceCacheLimits(){
+    var maxEntries = this.#getMaxCacheEntries();
+    var maxSizeBytes = this.#getMaxCacheSizeBytes();
+    var currentCacheSize = this.cacheSize;
+
+    while (this.#tupleAccessTimestamps.size > maxEntries || currentCacheSize > maxSizeBytes){
+      var oldestIndex;
+      var oldestAccess = Infinity;
+      this.#tupleAccessTimestamps.forEach((access, index) =>{
+        if (access < oldestAccess) {
+          oldestAccess = access;
+          oldestIndex = index;
+        }
+      });
+      if (oldestIndex === undefined){
+        break;
+      }
+      this.#removeTuple(oldestIndex);
+      currentCacheSize = this.cacheSize;
+    }
+  }
+
+  /**
+   * @returns {number|undefined}
+   */
   getTupleCountSync() {
     return this.#tupleCount;
   }
 
+  /**
+   * Return a range of tuples for the current page window.
+   * @param {number} from inclusive start index
+   * @param {number} to exclusive end index
+   * @returns {Object[]}
+   */
   getTuplesSync(from, to){
-    return this.#tuples.slice(from, to);
+    var tuples = this.#tuples.slice(from, to);
+    for (var i = 0; i < tuples.length; i++){
+      if (tuples[i] !== undefined) {
+        this.#touchTuple(from + i);
+      }
+    }
+    return tuples;
   }
 
+  /**
+   * @param {number} index
+   * @returns {Object|undefined}
+   */
   getTupleSync(index){
-    return this.#tuples[index];
+    var tuple = this.#tuples[index];
+    if (tuple !== undefined) {
+      this.#touchTuple(index);
+    }
+    return tuple;
   }
 
+  /**
+   * @returns {Promise<number|undefined>}
+   */
   async getTupleCount(){
     return new Promise(function(resolve, reject){
       resolve(this.#tupleCount);
@@ -225,7 +355,9 @@ export class TupleSet extends DataSetComponent {
       }
 
       tuples[offset + i] = tuple;
+      this.#touchTuple(offset + i);
     }
+    this.#enforceCacheLimits();
   }
 
   #buildRemoteTuplesQuery(limit, offset){

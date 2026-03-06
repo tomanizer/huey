@@ -1,21 +1,44 @@
 import { settings } from '../../SettingsDialog/SettingsDialog.js';
+import { getReservedWords } from '../../DataSource/duckdb/database.js';
 
+/**
+ * @typedef {Object} SqlOptions
+ * @property {boolean} [alwaysQuoteIdentifiers]
+ * @property {'upperCase'|'lowerCase'|'initialCapital'} [keywordLetterCase]
+ * @property {'spaceAfter'|'newlineAfter'|'newlineBefore'} [commaStyle]
+ */
+
+/**
+ * @param {string} columnType
+ * @returns {string}
+ */
 export function getDataTypeNameFromColumnType(columnType){
   return /^[^\(]+/.exec(columnType)[0];
 }
 
+/**
+ * @returns {string}
+ */
 export function getNullString(){
   const generalSettings = settings.getSettings('localeSettings');
   const nullString = generalSettings.nullString;
   return nullString;
 }
 
+/**
+ * @returns {string|string[]}
+ */
 export function getLocales(){
   const localeSettings = settings.getSettings('localeSettings');
   const locales = localeSettings.locale;
   return locales;
 }
 
+/**
+ * @param {number|string|null} value
+ * @param {{scale: number}} type
+ * @returns {string}
+ */
 export function getArrowDecimalAsString(value, type){
   if (value === null) {
     return 'NULL';
@@ -36,6 +59,10 @@ export function getArrowDecimalAsString(value, type){
   return str;
 }
 
+/**
+ * @param {boolean} fractionDigits
+ * @returns {{format: (value: *, field?: Object) => string}}
+ */
 export function createNumberFormatter(fractionDigits){
   const localeSettings = settings.getSettings('localeSettings');
   let options = {
@@ -106,6 +133,10 @@ export function createNumberFormatter(fractionDigits){
   };
 }
 
+/**
+ * @param {boolean} [withTimeZone]
+ * @returns {(value: *, field?: Object) => string}
+ */
 export function createTimestampFormatter(withTimeZone){
   // we will receive the value as a javascript Number, representing the milliseconds since Epoch,
   // allowing us to use the value directly as argumnet to the Date constructor.
@@ -145,6 +176,10 @@ export function createTimestampFormatter(withTimeZone){
   };
 }
 
+/**
+ * @param {string} [timezoneDatatypeName]
+ * @returns {(value: *, field?: Object) => string}
+ */
 export function createTimestampLiteralWriter(timezoneDatatypeName){
   if (timezoneDatatypeName === undefined){
     timezoneDatatypeName = 'TIMESTAMP';
@@ -154,6 +189,10 @@ export function createTimestampLiteralWriter(timezoneDatatypeName){
   };
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
 export function fallbackFormatter(value){
   if (value === null || value === undefined){
     return getNullString();
@@ -896,6 +935,10 @@ export const dataTypes = {
   }
 };
 
+/**
+ * @param {string} columnType
+ * @returns {Object|undefined}
+ */
 export function getDataTypeInfo(columnType){
   if (isArrayType(columnType)) {
     return dataTypes['ARRAY'];
@@ -930,10 +973,20 @@ export function getDataTypeInfo(columnType){
   return dataTypes[typeName];
 }
 
+/**
+ * @param {string} str
+ * @returns {string}
+ */
 export function quoteStringLiteral(str){
   return typeof str === 'string'  ? `'${str.replace(/'/g, "''")}'` : str; 
 }
 
+/**
+ * @param {string} str
+ * @param {string} startQuote
+ * @param {string} [endQuote]
+ * @returns {boolean}
+ */
 export function isQuoted(str, startQuote, endQuote){
   if (!str.startsWith(startQuote)){
     return false;
@@ -944,10 +997,20 @@ export function isQuoted(str, startQuote, endQuote){
   return str.endsWith(endQuote);
 }
 
+/**
+ * @param {string} str
+ * @returns {boolean}
+ */
 export function isQuotedIdentifier(str){
   return isQuoted(str, '"');
 }
 
+/**
+ * @param {string} str
+ * @param {string} startQuote
+ * @param {string} [endQuote]
+ * @returns {string}
+ */
 export function unQuote(str, startQuote, endQuote){
   if (!endQuote) {
     endQuote = startQuote;
@@ -961,20 +1024,36 @@ export function unQuote(str, startQuote, endQuote){
   return str.slice(startQuote.length, -endQuote.length);
 }
 
+/**
+ * @param {string} str
+ * @returns {string}
+ */
 export function unQuoteStringLiteral(str){
   return unQuote(str, '\'');
 }
 
+/**
+ * @param {string} str
+ * @returns {string}
+ */
 export function unQuoteIdentifier(str){
   return unQuote(str, '"');
 }
 
+/**
+ * @param {string} identifier
+ * @returns {boolean}
+ */
 export function identifierRequiresQuoting(identifier){
-  return window.hueyDb.reservedWords.includes(identifier.toLowerCase()) || 
+  return getReservedWords().includes(identifier.toLowerCase()) || 
     /^\d|[\s\[\]\{\}\(\)\.\/\+\-\&\*\^\?\\<>'"%=~!:;@#]/.test(identifier)
   ;
 }
 
+/**
+ * @param {string} identifier
+ * @returns {string}
+ */
 export function quoteIdentifierWhenRequired(identifier){
   if (identifier.startsWith('"') && identifier.endsWith('"')) {
     return identifier;
@@ -986,6 +1065,10 @@ export function quoteIdentifierWhenRequired(identifier){
   return identifier;
 }
 
+/**
+ * @param {string} identifier
+ * @returns {string}
+ */
 export function getQuotedIdentifier(identifier){
   if (typeof identifier !== 'string'){
     identifier = String(identifier);
@@ -993,6 +1076,11 @@ export function getQuotedIdentifier(identifier){
   return `"${identifier.replace(/"/g, '""')}"`;
 }
 
+/**
+ * @param {string} identifier
+ * @param {boolean} quoteAlways
+ * @returns {string}
+ */
 export function getIdentifier(identifier, quoteAlways){
   if (quoteAlways || identifierRequiresQuoting(identifier)){
     return getQuotedIdentifier(identifier);
@@ -1000,6 +1088,11 @@ export function getIdentifier(identifier, quoteAlways){
   return identifier;
 }
 
+/**
+ * @param {string} keyword
+ * @param {'initialCapital'|'lowerCase'|'upperCase'} letterCase
+ * @returns {string|undefined}
+ */
 export function formatKeyword(keyword, letterCase){
   switch(letterCase){
     case 'initialCapital':
@@ -1011,6 +1104,15 @@ export function formatKeyword(keyword, letterCase){
   }
 }
 
+/**
+ * Build a dot-qualified SQL identifier using quoting options.
+ *
+ * Accepts one or more string identifier parts, an array of identifier parts,
+ * and an optional final SqlOptions argument.
+ *
+ * @param {...(*|SqlOptions)} args
+ * @returns {string}
+ */
 export function getQualifiedIdentifier(){
   let sqlOptions;
   switch (arguments.length) {
@@ -1103,6 +1205,12 @@ export async function ensureDuckDbExtensionLoadedAndInstalled(extensionName, rep
   return true;
 }
 
+/**
+ * @param {string} selectStatement
+ * @param {string} fileName
+ * @param {Object.<string, string|number|boolean>} options
+ * @returns {string}
+ */
 export function getCopyToStatement(selectStatement, fileName, options){
   const optionsString = Object
   .keys(options)
@@ -1120,6 +1228,9 @@ export function getCopyToStatement(selectStatement, fileName, options){
   return copyStatement.join('\n');
 }
 
+/**
+ * @returns {string}
+ */
 export function getSqlHeader(){
   return [
     `/*********************************`,
@@ -1130,6 +1241,10 @@ export function getSqlHeader(){
   ].join('\n');
 }
 
+/**
+ * @param {'spaceAfter'|'newlineAfter'|'newlineBefore'} commaStyle
+ * @returns {string}
+ */
 export function getComma(commaStyle) {
   let prefix = '', postfix = ''
   switch(commaStyle){
@@ -1146,11 +1261,21 @@ export function getComma(commaStyle) {
   return `${prefix},${postfix}`;
 }
 
+/**
+ * @param {SqlOptions} [sqlOptions]
+ * @returns {SqlOptions}
+ */
 export function normalizeSqlOptions(sqlOptions){
   const defaultSqlSettings = settings.getSettings('sqlSettings');
   return Object.assign({}, defaultSqlSettings, sqlOptions);
 }
 
+/**
+ * @param {string[]} valueLiterals
+ * @param {string} [tableAlias]
+ * @param {string} [columnAlias]
+ * @returns {string}
+ */
 export function getSqlValuesClause(valueLiterals, tableAlias, columnAlias){
   let valuesClause = `(VALUES (${valueLiterals.join('),(')}) )`;
   if (tableAlias){

@@ -25,9 +25,9 @@ test.describe('Accessibility', () => {
   test('interactive dialogs expose required aria relationships', async ({ page }) => {
     await waitForAppReady(page);
 
-    await page.evaluate(() => {
-      // @ts-ignore
-      window.showErrorDialog(new Error('Accessibility check'));
+    await page.evaluate(async () => {
+      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
+      showErrorDialog(new Error('Accessibility check'));
     });
 
     const dialog = page.locator('#errorDialog');

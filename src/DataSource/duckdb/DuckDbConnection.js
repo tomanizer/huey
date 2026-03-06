@@ -1,4 +1,5 @@
 import { EventEmitter } from '../../util/event/EventEmitter.js';
+import { getDuckDbModule } from './database.js';
 
 export class DuckDbConnection extends EventEmitter {
   
@@ -85,7 +86,7 @@ export class DuckDbConnection extends EventEmitter {
     if (! (file instanceof File)){
       throw new Error(`Invalid argument! Need instance of File.`);
     }
-    const dataProtocol = protocol || window.hueyDb.duckDb.DuckDBDataProtocol.BROWSER_FILEREADER;
+    const dataProtocol = protocol || getDuckDbModule().DuckDBDataProtocol.BROWSER_FILEREADER;
     return this.#duckDbInstance.registerFileHandle(
       file.name, 
       file, 

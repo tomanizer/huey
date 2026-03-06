@@ -283,7 +283,6 @@ export class Internationalization {
   static getText(key){
     const text = Internationalization.getCurrentLanguage() === Internationalization.#hueyNativeLanguage ? key : Internationalization.#texts[key];
     if (text === undefined){
-      //console.warn(`Translation for content "${key}" not found`);
       return undefined;
     }
     const args = arguments;

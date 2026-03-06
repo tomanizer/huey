@@ -10,6 +10,7 @@ import { ExportUi } from '../ExportUi/ExportDialog.js';
 import { uploadUi, afterUploaded } from '../UploadUi/UploadUi.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
 import { datasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
+import { getConnection, getDatabase, getDuckDbModule } from './duckdb/database.js';
 
 export class DataSourcesUi extends EventEmitter {
 
@@ -31,31 +32,9 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   #dragEnterHandler(event) {
-    let valid = true;
-
     const dataTransfer = event.dataTransfer;
     dataTransfer.dropEffect = 'copy';
-    return;
-
-    // unfortunately, we see that the files list is always emtpy.
-    // instead, when dragging files, we see a list of items of type file, but for some reason we do not see the names of the files.
-    // so this is pretty much useless, we cannot figure out in advance if the dragged items could be successfully loaded.
-
-    const files = dataTransfer.files;
-    valid = Boolean(files.length);
-    const fileTypes = DuckDbDataSource.fileTypes;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileName = file.name;
-      const fileNameParts = DuckDbDataSource.getFileNameParts(fileName);
-      const fileExtension = fileNameParts.lowerCaseExtension;
-      const fileType = fileTypes[fileExtension];
-      valid = Boolean(fileType);
-      if (!valid){
-        break;
-      }
-    }
-    this.getDom().setAttribute('data-drop-allowed', valid);
+    this.getDom().setAttribute('data-drop-allowed', true);
     event.stopPropagation();
     event.preventDefault();
   }
@@ -362,7 +341,7 @@ export class DataSourcesUi extends EventEmitter {
 
   async #loadDatabaseDatasource(databaseDatasource){
     const catalogName = databaseDatasource.getFileNameWithoutExtension();
-    const connection = window.hueyDb.connection;
+    const connection = getConnection();
     const sql = `
       SELECT table_schema, table_name, table_type
       FROM information_schema.tables
@@ -408,8 +387,7 @@ export class DataSourcesUi extends EventEmitter {
       const tableDatasourceId = `${datasourceId}:${getQuotedIdentifier(schemaName)}:${getQuotedIdentifier(tableName)}`;
       let datasource = this.getDatasource(tableDatasourceId);
       if (!datasource) {
-        const hueyDb = window.hueyDb;
-        datasource = new DuckDbDataSource(hueyDb.duckdb, hueyDb.instance, {
+        datasource = new DuckDbDataSource(getDuckDbModule(), getDatabase(), {
           type: datasourcetype,
           catalogName: catalogName,
           schemaName: schemaName,
@@ -572,9 +550,8 @@ export class DataSourcesUi extends EventEmitter {
     const node = this.#getTreeNodeFromClickEvent(event);
     const nodeType = node.getAttribute('data-nodetype');
 
-    const hueyDb = window.hueyDb;
-    const duckdb = hueyDb.duckdb;
-    const instance = hueyDb.instance;
+    const duckdb = getDuckDbModule();
+    const instance = getDatabase();
 
     let datasource;
     switch (nodeType) {

@@ -2,6 +2,7 @@ import { EventEmitter } from '../../util/event/EventEmitter.js';
 import { DuckDbConnection } from './DuckDbConnection.js';
 import { showErrorDialog } from '../../ErrorDialog/ErrorDialog.js';
 import { DatasourceSettings } from '../../DatasourceSettingsDialog/DatasourceSettings.js';
+import { getDatabase } from './database.js';
 import {
   quoteStringLiteral,
   isQuotedIdentifier,
@@ -162,7 +163,7 @@ export class DuckDbDataSource extends EventEmitter {
         // see: issue https://github.com/rpbouman/huey/issues/536.
         // if we hit the xlsx reader and that runs into issues, the connection is borked and we get uncaught errors.
         // this does not appear to happen when we create a new connection.
-        const connection = await window.hueyDb.instance.connect();
+        const connection = await getDatabase().connect();
         const promise = connection.query(sql);
         promise.finally(() =>{
           try {
@@ -1214,6 +1215,10 @@ export class DuckDbDataSource extends EventEmitter {
     return Boolean(reader_arguments.store_rejects);
   }
 
+  /**
+   * Get normalized file type/extension used to pick DuckDB reader options.
+   * @returns {string|undefined}
+   */
   getFileType(){
     return this.#fileType;
   }
@@ -1226,6 +1231,10 @@ export class DuckDbDataSource extends EventEmitter {
     return fileSize;
   }
 
+  /**
+   * Export file statistics from DuckDB for an already-registered file datasource.
+   * @returns {Promise<Object>}
+   */
   async getFileStatistics(){
     const type = this.getType();
     const expectedType = DuckDbDataSource.types.FILE;
@@ -1307,6 +1316,10 @@ export class DuckDbDataSource extends EventEmitter {
     return sql;
   }
 
+  /**
+   * Describe columns for this datasource and cache the result.
+   * @returns {Promise<Object>}
+   */
   async getColumnMetadata(){
     if (this.#columnMetadata) {
       return this.#columnMetadata;

@@ -2,6 +2,23 @@ import { PostMessageProtocol } from './PostMessageProtocol.js';
 import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { getDatabase, getDuckDbModule } from '../DataSource/duckdb/database.js';
+import { registerPostMessageGlobals } from './register-globals.js';
+
+/**
+ * @typedef {Object} PostMessageRequestEnvelope
+ * @property {string} messageType
+ * @property {string} [requestId]
+ * @property {Object} [body]
+ */
+
+/**
+ * @typedef {Object} PostMessageResponseEnvelope
+ * @property {string} messageType
+ * @property {{messageType: string, requestId?: string, received: number}} [request]
+ * @property {{code: string, message: string, sent: number}} status
+ * @property {Object} [body]
+ */
 
 export class PostMessageInterface {
 
@@ -112,6 +129,10 @@ export class PostMessageInterface {
     PostMessageInterface.#trustedOrigins = undefined;
   }
 
+  /**
+   * @param {PostMessageRequestEnvelope} request
+   * @returns {boolean}
+   */
   #isValidRequestEnvelope(request){
     if (!request || typeof request !== 'object') {
       return false;
@@ -122,6 +143,11 @@ export class PostMessageInterface {
     return true;
   }
   
+  /**
+   * Handle inbound postMessage requests and send typed response envelopes.
+   * @param {MessageEvent<PostMessageRequestEnvelope>} event
+   * @returns {Promise<PostMessageResponseEnvelope|undefined>}
+   */
   async #messageHandler(event){
     const request = event.data;
 
@@ -247,8 +273,8 @@ export class PostMessageInterface {
           throw new Error('Request body is mandatory', {cause: 'body is null or not an object'});
         }
         
-        const duckdb = window.hueyDb.duckdb;
-        const duckDbInstance = window.hueyDb.instance;
+        const duckdb = getDuckDbModule();
+        const duckDbInstance = getDatabase();
         const datasourceConfig = body.datasourceConfig;
         duckDbDataSource = new DuckDbDataSource(duckdb, duckDbInstance, datasourceConfig);
 
@@ -336,8 +362,9 @@ export class PostMessageInterface {
 export let postMessageInterface = undefined;
 export function initPostMessageInterface(skipHostingWindowCheck){
   if (!skipHostingWindowCheck && !PostMessageInterface.getHostingWindow()) {
+    registerPostMessageGlobals();
     return;
   }
   postMessageInterface = new PostMessageInterface();
-  window.postMessageInterface = postMessageInterface;
+  registerPostMessageGlobals();
 }

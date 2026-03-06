@@ -9,16 +9,14 @@ import { SettingsBase } from '../SettingsDialog/SettingsBase.js';
 import { DatasourceSettings } from './DatasourceSettings.js';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { DataSourcesUi } from '../DataSource/DataSourcesUi.js';
+import { getDatabase, getDuckDbModule } from '../DataSource/duckdb/database.js';
 
 export class RejectsDatasource extends DuckDbDataSource {
 
   #delegateDatasource = undefined;
 
   constructor(){
-    const hueyDb = window.hueyDb;
-    const duckdb = hueyDb.duckdb;
-    const instance = hueyDb.instance;
-    super(duckdb, instance, {
+    super(getDuckDbModule(), getDatabase(), {
       type: DuckDbDataSource.types.SQLQUERY,
       sql: 'SELECT 1'
     });
@@ -185,12 +183,9 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
   }
 
   #initColumnsTab(){
-    const hueyDb = window.hueyDb;
-    const duckdb = hueyDb.duckdb;
-    const instance = hueyDb.instance;
     this.#columnsTabDatasource = DuckDbDataSource.createFromSql(
-      duckdb,
-      instance,
+      getDuckDbModule(),
+      getDatabase(),
       'DESCRIBE SELECT 1'
     );
 

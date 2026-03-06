@@ -57,6 +57,8 @@ def build_cache_key(
     dataset_id: str,
     date_range: dict[str, Any],
     query_payload: dict[str, Any],
+    fact_version_token: Any | None = None,
+    dim_version_token: Any | None = None,
     data_version_token: Any | None = None,
     data_token: Any | None = None,
     config_token: dict[str, Any] | None = None,
@@ -64,17 +66,22 @@ def build_cache_key(
     """
     Build a deterministic cache key for a query.
 
-    Includes endpoint, dataset, normalized date range/query, config token, and optional data tokens.
-    data_version_token: used for tuples/cells; data_token: used for picklist (dim_version_token).
+    Includes endpoint, dataset, normalized date range/query, config token, and version tokens.
+
+    ``fact_version_token`` and ``dim_version_token`` are the canonical token names.
+    ``data_version_token`` and ``data_token`` are legacy aliases retained for
+    backwards compatibility.
     """
+    resolved_fact_token = fact_version_token if fact_version_token is not None else data_version_token
+    resolved_dim_token = dim_version_token if dim_version_token is not None else data_token
     payload = {
         "endpoint": endpoint,
         "dataset_id": dataset_id,
         "date_range": _canonicalize(date_range),
         "query": _canonicalize(query_payload),
         "config_token": config_token or _config_identity(),
-        "data_version_token": data_version_token,
-        "data_token": data_token,
+        "fact_version_token": resolved_fact_token,
+        "dim_version_token": resolved_dim_token,
     }
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
