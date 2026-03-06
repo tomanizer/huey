@@ -4,7 +4,16 @@ vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
 
 vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
   settings: {
-    getSettings() { return {}; },
+    getSettings(path) {
+      if (path === 'sqlSettings') {
+        return {
+          keywordLetterCase: 'upperCase',
+          commaStyle: 'spaceAfter',
+          alwaysQuoteIdentifiers: false
+        };
+      }
+      return {};
+    },
     assignSettings() {},
     addEventListener() {},
     removeEventListener() {},
