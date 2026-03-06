@@ -3,6 +3,21 @@ import { pageStateManager } from '../PageStateManager/PageStateManager.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 
+/**
+ * @typedef {Object} PostMessageRequestEnvelope
+ * @property {string} messageType
+ * @property {string} [requestId]
+ * @property {Object} [body]
+ */
+
+/**
+ * @typedef {Object} PostMessageResponseEnvelope
+ * @property {string} messageType
+ * @property {{messageType: string, requestId?: string, received: number}} [request]
+ * @property {{code: string, message: string, sent: number}} status
+ * @property {Object} [body]
+ */
+
 export class PostMessageInterface {
 
   static #trustedOrigins = undefined;
@@ -112,6 +127,10 @@ export class PostMessageInterface {
     PostMessageInterface.#trustedOrigins = undefined;
   }
 
+  /**
+   * @param {PostMessageRequestEnvelope} request
+   * @returns {boolean}
+   */
   #isValidRequestEnvelope(request){
     if (!request || typeof request !== 'object') {
       return false;
@@ -122,6 +141,11 @@ export class PostMessageInterface {
     return true;
   }
   
+  /**
+   * Handle inbound postMessage requests and send typed response envelopes.
+   * @param {MessageEvent<PostMessageRequestEnvelope>} event
+   * @returns {Promise<PostMessageResponseEnvelope|undefined>}
+   */
   async #messageHandler(event){
     const request = event.data;
 
