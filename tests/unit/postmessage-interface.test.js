@@ -120,4 +120,10 @@ describe('PostMessageInterface security hardening', () => {
     expect(options.targetOrigin).toBe('http://trusted.test');
     expect(options.targetOrigin).not.toBe('*');
   });
+
+  test('registers postMessage globals explicitly for external API integration', () => {
+    expect(window.RemoteDatasource).toBeTypeOf('function');
+    expect(window.RemoteQueryAdapter).toBeTypeOf('object');
+    expect(window.postMessageInterface).toBeDefined();
+  });
 });
