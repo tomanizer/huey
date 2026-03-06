@@ -99,12 +99,11 @@ export class PivotTableUi extends EventEmitter {
   }
 
   async #cancelQueryButtonClicked(event){
-    const cancelResults = await Promise.all([
+    await Promise.all([
       this.#columnsTupleSet.cancelPendingQuery(),
       this.#rowsTupleSet.cancelPendingQuery(),
       this.#cellsSet.cancelPendingQuery()
     ]);
-    console.log(`Results: `, cancelResults);
     this.#setNeedsUpdate(true);
   }
 
@@ -258,7 +257,6 @@ export class PivotTableUi extends EventEmitter {
       if (width.endsWith('px')) {
         // user changed column width - this is where we should store the width in the corresponding column tuple.
         const info = this.#getColumnHeaderTupleAndCellAxisInfo(target);
-        //debugger;
       }
       clearTimeout(this.#columnHeaderResizeTimeoutId);
       this.#columnHeaderResizeTimeoutId = undefined;
@@ -1298,14 +1296,16 @@ export class PivotTableUi extends EventEmitter {
     let firstTableHeaderRow, firstTableHeaderRowCells;
     for (let i = 0; i < numColumnAxisRows; i++){
       const tableRow = createEl('div', {
-        "class": "pivotTableUiRow"
+        "class": "pivotTableUiRow",
+        "role": "row"
       });
       tableHeaderDom.appendChild(tableRow);
 
     let tableCell, labelText, label, columnWidth;
       for (let j = 0; j < numRowAxisColumns; j++) {
         tableCell = createEl('div', {
-          "class": 'pivotTableUiCell pivotTableUiHeaderCell'
+          "class": 'pivotTableUiCell pivotTableUiHeaderCell',
+          "role": "columnheader"
         });
         tableRow.appendChild(tableCell);
 
@@ -1379,16 +1379,19 @@ export class PivotTableUi extends EventEmitter {
     firstTableHeaderRow = tableHeaderDom.childNodes.item(0);
     let stufferCell, stufferRow;
     stufferCell = createEl('div', {
-      "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell"
+      "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell",
+      "role": "presentation"
     });
     firstTableHeaderRow.appendChild(stufferCell);
 
     stufferRow = createEl('div', {
-      "class": "pivotTableUiRow"
+      "class": "pivotTableUiRow",
+      "role": "row"
     });
     tableBodyDom.appendChild(stufferRow);
     stufferCell = createEl('div', {
-      "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell"
+      "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell",
+      "role": "presentation"
     });
     stufferRow.appendChild(stufferCell);
   }
@@ -1466,6 +1469,7 @@ export class PivotTableUi extends EventEmitter {
 
           const cell = createEl('div', {
             "class": "pivotTableUiCell pivotTableUiHeaderCell",
+            "role": "columnheader",
             "data-totals": groupingId > 0
           });
           this.#setCellItemId(cell, queryAxisItem, j);
@@ -1671,6 +1675,7 @@ export class PivotTableUi extends EventEmitter {
       for (let k = 0; k < numCellHeaders; k++){
         const bodyRow = createEl('div', {
           "class": "pivotTableUiRow",
+          "role": "row",
           "data-totals": groupingId > 0
         });
 
@@ -1678,7 +1683,8 @@ export class PivotTableUi extends EventEmitter {
 
         for (let j = 0; j < numColumns; j++){
           const cell = createEl('div', {
-            "class": "pivotTableUiCell pivotTableUiHeaderCell"
+            "class": "pivotTableUiCell pivotTableUiHeaderCell",
+            "role": "rowheader"
           });
 
           const headerCell = firstTableHeaderRowCells[bodyRow.childNodes.length];
@@ -1765,6 +1771,7 @@ export class PivotTableUi extends EventEmitter {
 
         const cell = createEl('div', {
           "class": "pivotTableUiCell pivotTableUiValueCell",
+          "role": "gridcell",
           "data-axis": QueryModel.AXIS_CELLS
         });
         bodyRow.appendChild(cell);
@@ -1932,9 +1939,9 @@ export class PivotTableUi extends EventEmitter {
   clear(){
     this.#toggleObserveColumnsResizing(false);
     const tableHeaderDom = this.#getTableHeaderDom();
-    tableHeaderDom.innerHTML = '';
+    tableHeaderDom.replaceChildren();
     const tableBodyDom = this.#getTableBodyDom();
-    tableBodyDom.innerHTML = '';
+    tableBodyDom.replaceChildren();
     this.#setHorizontalSize(0);
     this.#setVerticalSize(0);
     this.#fireUpdatedSuccess();

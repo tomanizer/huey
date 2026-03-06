@@ -157,6 +157,7 @@
     <dialog
       id="uploadUi"
       popover="manual"
+      aria-modal="true"
       aria-labelledby="uploadUiTitle"
       aria-describedby="uploadUiDescription"
       draggable="true"
@@ -180,6 +181,9 @@
             <progress 
               max="100"
               value="0"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
             />
           </summary>
           <p></p>
@@ -204,6 +208,7 @@
       id="exportDialog"
       draggable="true"
       popover="auto"
+      aria-modal="true"
       aria-labelledby="uploadUiTitle"
       aria-busy="false"
     >
@@ -757,7 +762,7 @@
           popovertargetaction="hide"
         >Close</button>
       </footer>
-      <dialog role="progressbar">
+      <dialog role="progressbar" aria-modal="true">
         <header>
           <h3 role="status"></h3>
         </header>
@@ -780,6 +785,7 @@
     <dialog
       id="filterDialog"
       draggable="true"
+      aria-modal="true"
       aria-busy="false"
       popover="manual"
     >
@@ -854,6 +860,7 @@
               />
               <button
                 id="addFilterValueButton"
+                aria-label="Add filter value"
                 tabindex="0"
                 title="Click to add the entered value to the list of applied filter values."
               />
@@ -861,6 +868,7 @@
             <section>
               <select
                 id="filterPicklist"
+                role="listbox"
                 multiple="true"
                 size="4"
                 title="Click values in the picklist to add them to the Filter values list. (Hold ctrl-key to select multiple items, hold shift-key to select a range.)"
@@ -876,6 +884,7 @@
             <label for="filterValueList">Applied filter values:</label>
             <select
               id="filterValueList"
+              role="listbox"
               multiple="true"
               size="4"
               title="Values in this list will be used to filter the results. Add items to the list by choosing from the picklist above; click items in the list to remove them."
@@ -886,6 +895,7 @@
             <label for="toFilterValueList">To Values:</label>
             <select
               id="toFilterValueList"
+              role="listbox"
               multiple="true"
               size="7"
               title="Values in this list will be used to filter the results. Add items to the list by choosing from the picklist above; click items in the list to remove them."
@@ -938,6 +948,7 @@
     <dialog
       id="errorDialog"
       draggable="true"
+      aria-modal="true"
       popover="auto"
       aria-labelledby="errorDialogTitle"
       aria-describedby="errorDialogDescription"
@@ -964,6 +975,7 @@
     <dialog
       id="settingsDialog"
       draggable="true"
+      aria-modal="true"
       aria-labelledby="settingsDialogTitle"
       popover="auto"
     >
@@ -1070,8 +1082,8 @@
                   id="locale"
                   type="text"
                   pattern="^(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?)(\s*,\s*(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?))*$"
-                  data-value-getter="new Function('control','settings','return control.value.split(String.fromCharCode(44));')"
-                  data-value-setter="new Function('control','value','settings','control.value = value.join();')"
+                  data-value-getter="splitCommaSeparatedValue"
+                  data-value-setter="joinCommaSeparatedValue"
                 />
               </fieldset>
 
@@ -1305,8 +1317,8 @@
               <select
                 id="themes"
                 onchange="Theme.applyTheme(this.selectedIndex)"
-                data-value-getter="new Function('control', 'settings', 'return JSON.parse(control.value);')"
-                data-value-setter="new Function('control', 'value', 'settings', 'control.value = JSON.stringify(value);')"
+                data-value-getter="parseJsonValue"
+                data-value-setter="stringifyJsonValue"
               >
               </select>
             </form>
@@ -1334,6 +1346,7 @@
     <dialog
       id="promptUi"
       draggable="true"
+      aria-modal="true"
       aria-labelledby="promptDialogTitle"
       popover="manual"
     >
@@ -1364,6 +1377,7 @@
     <dialog
       id="aboutDialog"
       draggable="true"
+      aria-modal="true"
       aria-labelledby="aboutDialogTitle"
       popover="auto"
     >
@@ -1428,6 +1442,7 @@
     <dialog
       id="datasourceSettingsDialog"
       draggable="true"      
+      aria-modal="true"
       aria-labelledby="datasourceSettingsDialogTitle"
       popover="auto"
     >
@@ -1771,7 +1786,7 @@
       </footer>
     </dialog>
 
-    <dialog id="visualizationProgressDialog" role="progressbar">
+    <dialog id="visualizationProgressDialog" role="progressbar" aria-modal="true">
       <header>
         <div class="loader loader-medium">Loading...</div>
         <div class="timer">
@@ -1929,9 +1944,9 @@
           <div class="pivotTableUiSizer pivotTableUiVerticalSizer"></div>
 
           <!-- the actual table structure -->
-          <div class="pivotTableUiTable">
-            <div class="pivotTableUiTableHeader"></div>
-            <div class="pivotTableUiTableBody"></div>
+          <div class="pivotTableUiTable" role="grid">
+            <div class="pivotTableUiTableHeader" role="rowgroup"></div>
+            <div class="pivotTableUiTableBody" role="rowgroup"></div>
           </div>
         </div>
       </div>
@@ -1949,7 +1964,7 @@
     <template id="queryUiAxis">
       <section>
         <header>
-          <label><button id="-axis-primary-action"></button></label>
+          <label><button id="-axis-primary-action" aria-label="Axis primary action"></button></label>
           <h1></h1>
         </header>
         <ol>
@@ -2034,7 +2049,7 @@
       id="layout"
       class="layout"
     >
-      <menu role="toolbar">
+      <menu role="toolbar" aria-live="polite">
         <label for="uploader" title="Register local data files to explore their contents with Huey">
           <input
             id="uploader"
@@ -2204,6 +2219,7 @@
         >
           <button 
             id="currentDatasourceMenuButton" 
+            aria-label="Open datasource menu"
             popovertarget="dataSourceMenu"
           ></button>
           <menu
@@ -2286,7 +2302,7 @@
                 for="${id}"
                 title="${title}"
               >
-                <button id="${id}"></button>
+                <button id="${id}" aria-label="${title}"></button>
               </label>
             </template>
             

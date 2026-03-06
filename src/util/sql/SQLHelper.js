@@ -88,17 +88,16 @@ export function createNumberFormatter(fractionDigits){
           return formatter.format(value);
       }
 
-      let strValue;
-      if (field?.type != null && field.type.typeId != null) {
+      const fieldTypeId = field?.type?.typeId;
+      if (fieldTypeId != null) {
         const fieldType = field.type;
-        const fieldTypeId = fieldType.typeId;
         switch (fieldTypeId){
           case 7: // arrow decimal
             return formatArrowDecimal(value, fieldType);
           default:
         }
       }
-      strValue = String(value);
+      const strValue = String(value);
 
       // fallback (e.g. remote cell value fields without type, or non-numeric string)
       console.warn(`Using fallback formatter for number "${strValue}" (${typeof value}; ${field?.type?.typeId ?? 'no type'}).`);

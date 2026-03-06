@@ -164,7 +164,8 @@ export class PageStateManager {
 
       const choice = PromptUi.show({
         title: Internationalization.getText(title),
-        contents: message
+        contents: message,
+        allowUnsafeHtml: true
       });
 
       choice

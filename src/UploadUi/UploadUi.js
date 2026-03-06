@@ -55,6 +55,16 @@ export class UploadUi {
     this.#cancelPendingUploads = true;
   }
 
+  #setProgressValue(progressBar, value){
+    const max = parseFloat(progressBar.max) || 100;
+    let nextValue = Number.isFinite(value) ? value : 0;
+    nextValue = Math.max(0, Math.min(max, nextValue));
+    progressBar.value = nextValue;
+    progressBar.setAttribute('aria-valuemin', '0');
+    progressBar.setAttribute('aria-valuemax', String(max));
+    progressBar.setAttribute('aria-valuenow', String(nextValue));
+  }
+
   static #handleHueyFileContents(contents, extension){
     let queryModelState;
     switch (extension) {
@@ -109,14 +119,14 @@ export class UploadUi {
           const gcsParsed = !s3Parsed && parseGcsUri(file);
           if (s3Parsed || gcsParsed) {
             duckDbDataSource = await fetchCloudAndCreateDatasource(duckdb, instance, file, s3Parsed, gcsParsed);
-            progressBar.value = parseInt(progressBar.value, 10) + 60;
+            this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 60);
           }
           else {
             duckDbDataSource = await DuckDbDataSource.createFromUrl(duckdb, instance, file);
-            progressBar.value = parseInt(progressBar.value, 10) + 20;
+            this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 20);
 
             await duckDbDataSource.registerFile();
-            progressBar.value = parseInt(progressBar.value, 10) + 40;
+            this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 40);
           }
         }
       }
@@ -128,10 +138,10 @@ export class UploadUi {
         }
         else {
           duckDbDataSource = DuckDbDataSource.createFromFile(duckdb, instance, file);
-          progressBar.value = parseInt(progressBar.value, 10) + 20;
+          this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 20);
 
           await duckDbDataSource.registerFile();
-          progressBar.value = parseInt(progressBar.value, 10) + 40;
+          this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 40);
         }
       }
 
@@ -144,7 +154,7 @@ export class UploadUi {
       if (hueyQueryState){
         isAccessible = true;
       }
-      progressBar.value = parseInt(progressBar.value, 10) + 30;
+      this.#setProgressValue(progressBar, parseInt(progressBar.value, 10) + 30);
 
       if (isAccessible !== true) {
         destroyDatasource = true;
@@ -172,7 +182,7 @@ export class UploadUi {
       return error;
     }
     finally {
-      progressBar.value = 100;
+      this.#setProgressValue(progressBar, 100);
       if (destroyDatasource && (duckDbDataSource instanceof DuckDbDataSource)){
         duckDbDataSource.destroy();
       }
@@ -182,6 +192,8 @@ export class UploadUi {
   #createLoadExtensionItem(extensionId){
     const loadExtensionItem = instantiateTemplate(UploadUi.#uploadItemTemplateId, extensionId);
     loadExtensionItem.getElementsByTagName('p').item(0).setAttribute('id', extensionId + '_message');
+    const progressBar = loadExtensionItem.getElementsByTagName('progress').item(0);
+    this.#setProgressValue(progressBar, parseInt(progressBar.value, 10));
     return loadExtensionItem;
   }
 
@@ -210,6 +222,8 @@ export class UploadUi {
     if (fileSize){
       labelSpan.setAttribute('data-file-size', fileSize);
     }
+    const progressBar = uploadItem.getElementsByTagName('progress').item(0);
+    this.#setProgressValue(progressBar, parseInt(progressBar.value, 10));
     
     return uploadItem;
   }
@@ -278,69 +292,79 @@ export class UploadUi {
     const body = this.#getBody();
     const installExtensionItem = this.#createInstallExtensionItem(extensionName);
     body.appendChild(installExtensionItem);
+    const message = installExtensionItem.getElementsByTagName('p').item(0);
+    const appendMessageLine = function(text){
+      const messageLine = document.createElement('span');
+      messageLine.textContent = text;
+      message.appendChild(messageLine);
+      message.appendChild(document.createElement('br'));
+    };
 
     try {
 
       const progressbar = installExtensionItem.getElementsByTagName('progress').item(0);
-      const message = installExtensionItem.getElementsByTagName('p').item(0);
 
       const connection = hueyDb.connection;
 
-      message.innerHTML += Internationalization.getText('Preparing extension check') + '<br/>';
+      appendMessageLine(Internationalization.getText('Preparing extension check'));
       const sql = `SELECT * FROM duckdb_extensions() WHERE extension_name = ?`;
       const statement = await connection.prepare(sql);
-      progressbar.value = parseInt(progressbar.value, 10) + 20;
+      this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
 
-      message.innerHTML += Internationalization.getText('Checking extension {1}', extensionName) + '<br/>';
+      appendMessageLine(Internationalization.getText('Checking extension {1}', extensionName));
       const result = await statement.query(extensionName);
       statement.close();
-      progressbar.value = parseInt(progressbar.value, 10) + 20;
+      this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
 
       if (result.numRows === 0) {
-        message.innerHTML += Internationalization.getText('Extension {1} not found', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not found', extensionName));
         throw new Error(`Extension not found`);
       }
       else {
-        message.innerHTML += Internationalization.getText('Extension {1} exists', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} exists', extensionName));
       }
 
       const row = result.get(0);
       if (row['installed']){
-        message.innerHTML += Internationalization.getText('Extension {1} already installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} already installed', extensionName));
       }
       else {
-        message.innerHTML += Internationalization.getText('Extension {1} not installed', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not installed', extensionName));
 
         let installSql = `INSTALL ${extensionName}`;
         if (extensionRepository){
-          message.innerHTML += Internationalization.getText('Extension {1} comes from non-standard location {2}', extensionName, extensionRepository) + '<br/>';          
+          appendMessageLine(Internationalization.getText('Extension {1} comes from non-standard location {2}', extensionName, extensionRepository));
           installSql += ` FROM ${extensionRepository}`;
         }
-        message.innerHTML += Internationalization.getText('Installing extension {1}', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Installing extension {1}', extensionName));
         const result = await connection.query(installSql);
-        message.innerHTML += Internationalization.getText('Extension {1} is now installed', extensionName) + '<br/>';
-        progressbar.value = parseInt(progressbar.value, 10) + 20;
+        appendMessageLine(Internationalization.getText('Extension {1} is now installed', extensionName));
+        this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
       }
 
       if (!row['loaded']){
-        message.innerHTML += Internationalization.getText('Extension {1} not loaded', extensionName) + '<br/>';
-        message.innerHTML += Internationalization.getText('Loading extension {1}', extensionName) + '<br/>';
+        appendMessageLine(Internationalization.getText('Extension {1} not loaded', extensionName));
+        appendMessageLine(Internationalization.getText('Loading extension {1}', extensionName));
         await connection.query(`LOAD ${extensionName}`);
       }
       
-      message.innerHTML += Internationalization.getText('Extension {1} is loaded', extensionName) + '<br/>';
-      progressbar.value = parseInt(progressbar.value, 10) + 20;
+      appendMessageLine(Internationalization.getText('Extension {1} is loaded', extensionName));
+      this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
       invalid = false;
       if (invalid === false) {
-        progressbar.value = 100;
+        this.#setProgressValue(progressbar, 100);
       }
       return !invalid;
     }
     catch (e){
-      message.innerHTML += e.message + '<br/>';
-      message.innerHTML += e.stack.split('\n').map((stackItem) =>{
-        return `<pre>${stackItem}</pre>`
-      }).join('\n');
+      appendMessageLine(e.message);
+      if (e.stack) {
+        e.stack.split('\n').forEach((stackItem) =>{
+          const stackElement = document.createElement('pre');
+          stackElement.textContent = stackItem;
+          message.appendChild(stackElement);
+        });
+      }
       installExtensionItem.setAttribute('open', true);
       return e;
     }
@@ -435,7 +459,7 @@ export class UploadUi {
     Internationalization.setTextContent(descriptionElement, 'Upload in progress. This will take a few moments...');
 
     const body = this.#getBody();
-    body.innerHTML = '';
+    body.replaceChildren();
 
     dom.showModal();
 
@@ -525,6 +549,7 @@ export class UploadUi {
     }
 
     this.#getHeader().textContent = message;
+    // description markup is constructed from fixed UI templates and i18n strings only.
     this.#getDescription().innerHTML = description;
     
     return {
@@ -784,12 +809,13 @@ export function initUploadUi(){
 
     const showPromise = PromptUi.show({
       title: 'Load from URL or cloud storage',
-      contents: formHtml
+      contents: formHtml,
+      allowUnsafeHtml: true
     });
 
     // Attach a live input listener so the S3/GCS credential sections appear as
     // soon as the user types a matching URI scheme.  PromptUi.show() sets the
-    // section.innerHTML synchronously in its Promise executor, so the elements
+    // section content synchronously in its Promise executor, so the elements
     // are already in the DOM when we reach this point.
     const urlInput = byId('loadFromUrlInput');
     if (urlInput) {
@@ -894,7 +920,8 @@ export function initUploadUi(){
     ].join('');
     const result = await PromptUi.show({
       title: 'Add remote dataset',
-      contents: formHtml
+      contents: formHtml,
+      allowUnsafeHtml: true
     });
     if (result !== 'accept') {
       return;

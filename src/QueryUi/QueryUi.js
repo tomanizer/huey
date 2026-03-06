@@ -483,7 +483,7 @@ export class QueryUi {
   
   #updateQueryAxisUi(axisUi, queryModelAxis) {
     const axisItemsUi = axisUi.getElementsByTagName('ol').item(0);
-    axisItemsUi.innerHTML = '';
+    axisItemsUi.replaceChildren();
     const items = queryModelAxis.getItems();
     const n = items.length;
     let separator, item, queryAxisItemUi;

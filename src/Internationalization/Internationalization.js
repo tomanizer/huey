@@ -43,7 +43,6 @@ export class Internationalization {
   }
 
   static #languageChanged(event){
-    console.log('Language change occurred, re-initializing Internationalization.');
     Internationalization.#languageIndex = undefined;
     Internationalization.#texts = {};
     Internationalization.#init();
@@ -51,7 +50,7 @@ export class Internationalization {
   
   static #getScriptElement(){
     const elementName = 'script';
-    const elementId = 'InterationalizationTexts';
+    const elementId = 'InternationalizationTexts';
     let scripElement = document.querySelector(`${elementName}#${elementId}`);
     if (!scripElement){
       scripElement = document.createElement(elementName);
@@ -59,7 +58,6 @@ export class Internationalization {
       document.body.appendChild(scripElement);
       scripElement.addEventListener('load', Internationalization.textsLoaded);
       scripElement.addEventListener('error', () => {
-        console.log(`Attempt to load Internationalization texts from "${scripElement.src}" failed.`);
         Internationalization.#loadTexts();
       });
     }
@@ -72,7 +70,6 @@ export class Internationalization {
     }
     const languages = navigator.languages;
     if (Internationalization.#languageIndex >= languages.length){
-      console.log(`Internationalization: No more languages to attempt.`);
     }
     const language = languages[ Internationalization.#languageIndex++ ];
     if (language === Internationalization.#hueyNativeLanguage || language.startsWith('en')){
@@ -82,16 +79,13 @@ export class Internationalization {
     }
     
     const url = `Internationalization/i18n/${language}.js`;
-    console.log(`Attempt to load Internationalization texts from "${url}"`);
     const scriptElement = Internationalization.#getScriptElement();
     scriptElement.src = url;
   }
   
   static textsLoaded(event){
     const scriptElement = event.target;
-    const message = `Attempt to load Internationalization texts from "${scriptElement.src}"`;
     if (Internationalization.#texts === undefined){
-      console.log(message + ' failed.');
       Internationalization.#loadTexts();
     }
     else {
@@ -101,13 +95,11 @@ export class Internationalization {
       parts = resource.split('.');
       const language = parts[0];
       Internationalization.#setCurrentLocale(language);
-      console.log(message + ' succeeded.');
       Internationalization.#applyTexts();
     }
   }
   
   static setTexts(texts){
-    console.log('setTexts');
     let textObject;
     switch (typeof(texts)){
       case 'object':

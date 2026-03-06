@@ -4,7 +4,6 @@ import asyncio
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
 
 import pytest
 from starlette.testclient import TestClient
@@ -70,10 +69,10 @@ def test_queue_depth_rejects_overflow(
     # the budget semaphore is already acquired and held.
     in_execute = threading.Event()
 
-    async def slow_execute(sql, params=None, *, dataset_id=None):
+    async def slow_execute(sql, params=None, *, dataset_id=None, cancel_handle=None):
         in_execute.set()  # budget is held at this point
         await asyncio.sleep(1)
-        return await original_execute(sql, params, dataset_id=dataset_id)
+        return await original_execute(sql, params, dataset_id=dataset_id, cancel_handle=cancel_handle)
 
     monkeypatch.setattr(db_manager, "execute_sql_async", slow_execute)
 
@@ -86,18 +85,37 @@ def test_queue_depth_rejects_overflow(
     def first_request():
         return client.post("/query/cells", json=request_body)
 
-    def second_request():
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        first = pool.submit(first_request)
         # Wait until the first request has definitely acquired the budget slot
         # before sending the second, so the queue overflow is guaranteed.
-        in_execute.wait(timeout=5)
-        return client.post("/query/cells", json=request_body)
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(first_request)
-        second = pool.submit(second_request)
+        assert in_execute.wait(timeout=5)
+        second_result = client.post("/query/cells", json=request_body)
         first_result = first.result(timeout=10)
-        second_result = second.result(timeout=10)
 
     assert first_result.status_code in (200, 504)
     assert second_result.status_code == 429
     assert second_result.json()["code"] == "TOO_MANY_QUERIES"
+
+
+def test_timeout_uses_per_query_cancel_not_global_interrupt(
+    client: TestClient, settings_override, monkeypatch
+) -> None:
+    """When a query times out the per-cursor cancel_fn is used; the global
+    db_manager.interrupt() must NOT be called, so other concurrent queries
+    on the shared connection are unaffected (#194)."""
+    settings_override(query_timeout_seconds=0.0001)
+
+    global_interrupt_called = {"called": False}
+
+    def mock_global_interrupt() -> None:
+        global_interrupt_called["called"] = True
+
+    monkeypatch.setattr(db_manager, "interrupt", mock_global_interrupt)
+
+    r = client.post("/query/cells", json=_cells_body())
+    assert r.status_code == 504
+    assert r.json()["code"] == "QUERY_TIMEOUT"
+    assert not global_interrupt_called["called"], (
+        "db_manager.interrupt() must NOT be called when a per-cursor cancel_fn is available"
+    )
