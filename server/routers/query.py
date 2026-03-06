@@ -143,7 +143,7 @@ async def post_query_tuples(
             body.dataset_id,
             body.date_range.model_dump(),
             body.query.model_dump(),
-            data_version_token=data_version_token,
+            fact_version_token=data_version_token,
         )
         result, meta = await cache.get_or_set(
             cache_key,
@@ -270,7 +270,7 @@ async def post_query_cells(
             body.dataset_id,
             body.date_range.model_dump(),
             body.query.model_dump(),
-            data_version_token=data_version_token,
+            fact_version_token=data_version_token,
         )
         ttl = max(1.0, settings.cache_ttl_seconds / 2) if settings.cache_ttl_seconds else settings.cache_ttl_seconds
         max_item = settings.cache_max_item_bytes // 2 if settings.cache_max_item_bytes else settings.cache_max_item_bytes
@@ -382,7 +382,7 @@ async def post_query_picklist(
             body.dataset_id,
             body.date_range.model_dump(),
             body.query.model_dump(),
-            data_token=dim_version_token,
+            dim_version_token=dim_version_token,
         )
         result, meta = await cache.get_or_set(
             cache_key,
