@@ -44,15 +44,19 @@ logger = logging.getLogger("query_service")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize engine and export store on startup, cleanly shut them down on exit."""
-    logger.info("QueryService starting", extra={"host": settings.host, "port": settings.port})
+    startup_settings = get_settings()
+    logger.info(
+        "QueryService starting",
+        extra={"host": startup_settings.host, "port": startup_settings.port},
+    )
     db_manager.initialize()
     load_sample_data(db_manager)
 
     # Prewarm dimension cache for configured hot fields (fire-and-forget).
-    if getattr(settings, "cache_enabled", False) and getattr(settings, "dim_prewarm_fields", None):
+    if getattr(startup_settings, "cache_enabled", False) and getattr(startup_settings, "dim_prewarm_fields", None):
         asyncio.create_task(prewarm_dim_fields())
 
-    export_store = ExportJobStore(settings.export_db_path)
+    export_store = ExportJobStore(startup_settings.export_db_path)
     export_store.initialize()
     svc = init_export_service(export_store)
     try:
@@ -64,7 +68,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    drain_seconds = settings.shutdown_drain_seconds
+    drain_seconds = startup_settings.shutdown_drain_seconds
     logger.info("QueryService draining in-flight queries", extra={"drain_seconds": drain_seconds})
     budget = get_query_budget()
     deadline = asyncio.get_event_loop().time() + drain_seconds
