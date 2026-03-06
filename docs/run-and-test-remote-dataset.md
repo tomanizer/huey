@@ -7,7 +7,7 @@ This guide walks through running **QueryService** (the backend), serving **Huey*
 ## Prerequisites
 
 - **Python 3.11+** (required by QueryService)
-- **Node.js** (for `npx serve` to serve the frontend; or any static file server)
+- **Node.js 20+ and npm 10+** (for `npx serve` to serve the frontend; or any static file server)
 - **Repo root** = directory containing `server/` and `src/`
 
 ---
@@ -95,7 +95,7 @@ The app must be loaded over **HTTP** (not `file://`) so it can call the API. Fro
 npx serve src -p 8765
 ```
 
-(If you don’t have `npx`, install Node.js or use another static server, e.g. `python -m http.server 8765` from `src/`.)
+(If you don’t have `npx`, install Node.js 20+/npm 10+ or use another static server, e.g. `python -m http.server 8765` from `src/`.)
 
 Leave this running. Open in the browser:
 

@@ -1,12 +1,20 @@
 {
   "name": "huey",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
+    "preinstall": "node scripts/check-node-version.js",
     "dev":       "vite",
     "build":     "vite build",
     "preview":   "vite preview",
+    "pretest:unit": "node scripts/check-node-version.js",
     "test:unit": "vitest run",
+    "pretest:coverage": "node scripts/check-node-version.js",
     "test:coverage": "vitest run --coverage",
+    "pretest:ui": "node scripts/check-node-version.js",
     "test:ui":   "playwright test",
     "lint:js":   "eslint src/"
   },
