@@ -121,7 +121,7 @@ test.describe('Accessibility', () => {
     await uploadFixtureAndWaitForAttributes(page, fixturePath);
     await addFilterAxis(page, 'symbol');
 
-    const editFilterButton = page.locator('#queryUi section[data-axis="filters"] button[id$="-edit-filter-condition"]').first();
+    const editFilterButton = page.getByTestId('edit-filter-condition-button').first();
     await editFilterButton.click();
     await expect(page.locator('#filterDialog')).toBeVisible({ timeout: 15000 });
 

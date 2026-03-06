@@ -926,7 +926,7 @@ export class QueryUi {
       case QueryModel.AXIS_CELLS:
         return this.#getCellsAxisPrimaryActionTitle();
       case QueryModel.AXIS_FILTERS:
-        return 'Axis primary action';
+        return 'Filter axis primary action';
       default:
         return 'Axis primary action';
     }
