@@ -25,7 +25,6 @@ def get_real_ip(request: Request) -> str:
     if trusted_proxy_count > 0:
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
-        if forwarded_for:
             # Split the header into raw parts without filtering invalid IPs yet
             parts = [p.strip() for p in forwarded_for.split(",")]
             if len(parts) >= trusted_proxy_count:
