@@ -80,7 +80,7 @@ export class RemoteQueryAdapter {
 
   static #getRemoteOperator(filterType, field) {
     var normalizedFilterType = String(filterType || '').toLowerCase();
-    var operator = RemoteQueryAdapter.#FILTER_OPERATOR_BY_TYPE[normalizedFilterType];
+    const operator = RemoteQueryAdapter.#FILTER_OPERATOR_BY_TYPE[normalizedFilterType];
     if (!operator) {
       throw new Error('Remote datasource does not support filter type "' + normalizedFilterType + '" for field "' + field + '".');
     }
