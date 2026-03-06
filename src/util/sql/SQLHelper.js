@@ -52,7 +52,10 @@ export function getArrowDecimalAsString(value, type){
   fractionalPart = fractionalPart.replace(/0+$/, '');
   let integerPart = absValue.slice(0, decimalPlace);
   integerPart = integerPart.replace(/^0+/, '');
-  let str = `${isNegative ? '-' : ''}${integerPart}.${fractionalPart}`;
+  let str = `${isNegative ? '-' : ''}${integerPart || '0'}${fractionalPart ? `.${fractionalPart}` : ''}`;
+  if (str === '-0'){
+    str = '0';
+  }
   if (str === '.'){
     str = '0';
   }
@@ -240,19 +243,9 @@ export function createDecimalLiteralWriter(precision, scale){
     throw new Error(`Cannot specify scale without specifying precision`);
   }
   
-  const formatter = new Intl.NumberFormat(undefined, {
-    useGrouping: false,
-    signDisplay: 'negative',
-    minimumIntegerDigits: 1,
-    maximumFractionDigits: scale || 0,
-    minimumSignificantDigits: 1
-  });
-  
   return function(value, valueField){
     const decimalString = getArrowDecimalAsString(value, valueField.type);
-    // this is mostly to lose the leading zeroes
-    const formattedDecimalString = formatter.format(decimalString)
-    return `${formattedDecimalString}::${typeDef}`;
+    return `${decimalString}::${typeDef}`;
   }
 }
 
@@ -1317,6 +1310,7 @@ export function getStructTypeDescriptor(structColumnType){
   
   function parseMemberType(){
     const startOfMemberType = index;
+    let endOfMemberType;
     let level = 0;
     _loop: while (index < structColumnType.length){
       const ch = structColumnType.charAt(index);
@@ -1498,11 +1492,11 @@ export function getMemberExpressionType(type, memberExpressionPath){
           case 'value':
             return getMapValueType(type);
           default:
-            throw new Error(`Don't know how to handle memerExpressionPath "${memberExpressionPath}"`);
+            throw new Error(`Don't know how to handle memberExpressionPath "${memberExpressionPath}"`);
         }
         break;
       default:
-        throw new Error(`Don't know how to handle memerExpressionPath of type "${typeOfMemberExpressionPath}"`);
+        throw new Error(`Don't know how to handle memberExpressionPath of type "${typeOfMemberExpressionPath}"`);
     }
   }
   else {
