@@ -25,10 +25,15 @@ def get_real_ip(request: Request) -> str:
     if trusted_proxy_count > 0:
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
-            forwarded_ips = [_parse_ip(ip) for ip in forwarded_for.split(",")]
-            forwarded_ips = [ip for ip in forwarded_ips if ip]
-            if len(forwarded_ips) >= trusted_proxy_count:
-                return forwarded_ips[-trusted_proxy_count]
+        if forwarded_for:
+            # Split the header into raw parts without filtering invalid IPs yet
+            parts = [p.strip() for p in forwarded_for.split(",")]
+            if len(parts) >= trusted_proxy_count:
+                # Select the IP at the trusted depth from the right
+                target_ip = parts[-trusted_proxy_count]
+                parsed_ip = _parse_ip(target_ip)
+                if parsed_ip:
+                    return parsed_ip
 
         real_ip = request.headers.get("X-Real-IP")
         if real_ip:
