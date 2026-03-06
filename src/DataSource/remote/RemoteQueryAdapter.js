@@ -1,12 +1,12 @@
-export const RemoteQueryAdapter = (function () {
-  var FILTER_OPERATOR_BY_TYPE = {
+export class RemoteQueryAdapter {
+  static #FILTER_OPERATOR_BY_TYPE = {
     in: 'INCLUDE',
     notin: 'EXCLUDE',
     like: 'LIKE',
     between: 'BETWEEN'
   };
 
-  var AGGREGATION_BY_NAME = {
+  static #AGGREGATION_BY_NAME = {
     sum: 'SUM',
     count: 'COUNT',
     avg: 'AVG',
@@ -15,21 +15,21 @@ export const RemoteQueryAdapter = (function () {
   };
 
   /** Default date when query model has no date range; use a date that matches common sample data. */
-  function createDefaultDateRange() {
+  static #createDefaultDateRange() {
     return { type: 'single', date: '2026-03-01' };
   }
 
-  function getDateRange(queryModel) {
+  static getDateRange(queryModel) {
     if (queryModel && typeof queryModel.getDateRange === 'function') {
       var queryModelDateRange = queryModel.getDateRange();
       if (queryModelDateRange && typeof queryModelDateRange === 'object' && queryModelDateRange.type) {
         return queryModelDateRange;
       }
     }
-    return createDefaultDateRange();
+    return RemoteQueryAdapter.#createDefaultDateRange();
   }
 
-  function getRemoteFieldForAxisItem(axisItem, context) {
+  static #getRemoteFieldForAxisItem(axisItem, context) {
     if (!axisItem || typeof axisItem.columnName !== 'string' || !axisItem.columnName.length) {
       throw new Error('Remote datasource requires a valid columnName for ' + context + '.');
     }
@@ -39,7 +39,7 @@ export const RemoteQueryAdapter = (function () {
     return axisItem.columnName;
   }
 
-  function normalizeLiteralToValue(literal) {
+  static #normalizeLiteralToValue(literal) {
     if (literal === null || literal === undefined) {
       return literal;
     }
@@ -55,17 +55,17 @@ export const RemoteQueryAdapter = (function () {
     return literal;
   }
 
-  function extractFilterEntryValue(entry, key) {
+  static #extractFilterEntryValue(entry, key) {
     if (entry && Object.prototype.hasOwnProperty.call(entry, 'value')) {
       return entry.value;
     }
     if (entry && Object.prototype.hasOwnProperty.call(entry, 'literal')) {
-      return normalizeLiteralToValue(entry.literal);
+      return RemoteQueryAdapter.#normalizeLiteralToValue(entry.literal);
     }
     return key;
   }
 
-  function getEnabledFilterEntries(values) {
+  static #getEnabledFilterEntries(values) {
     if (!values || typeof values !== 'object' || values instanceof Array) {
       return [];
     }
@@ -78,23 +78,23 @@ export const RemoteQueryAdapter = (function () {
       });
   }
 
-  function getRemoteOperator(filterType, field) {
+  static #getRemoteOperator(filterType, field) {
     var normalizedFilterType = String(filterType || '').toLowerCase();
-    var operator = FILTER_OPERATOR_BY_TYPE[normalizedFilterType];
+    var operator = RemoteQueryAdapter.#FILTER_OPERATOR_BY_TYPE[normalizedFilterType];
     if (!operator) {
       throw new Error('Remote datasource does not support filter type "' + normalizedFilterType + '" for field "' + field + '".');
     }
     return operator;
   }
 
-  function toRemoteFilter(filterAxisItem, context) {
+  static #toRemoteFilter(filterAxisItem, context) {
     if (!filterAxisItem || !filterAxisItem.filter) {
       return null;
     }
-    var field = getRemoteFieldForAxisItem(filterAxisItem, context + ' filters');
+    var field = RemoteQueryAdapter.#getRemoteFieldForAxisItem(filterAxisItem, context + ' filters');
     var filter = filterAxisItem.filter;
-    var operator = getRemoteOperator(filter.filterType, field);
-    var valuesEntries = getEnabledFilterEntries(filter.values);
+    var operator = RemoteQueryAdapter.#getRemoteOperator(filter.filterType, field);
+    var valuesEntries = RemoteQueryAdapter.#getEnabledFilterEntries(filter.values);
 
     if (!valuesEntries.length) {
       return null;
@@ -112,8 +112,8 @@ export const RemoteQueryAdapter = (function () {
         throw new Error('Remote datasource requires a matching range end value for BETWEEN filter. Field: "' + field + '".');
       }
       values = [
-        extractFilterEntryValue(rangeStart.entry, rangeStart.key),
-        extractFilterEntryValue(rangeEnd, rangeStart.key)
+        RemoteQueryAdapter.#extractFilterEntryValue(rangeStart.entry, rangeStart.key),
+        RemoteQueryAdapter.#extractFilterEntryValue(rangeEnd, rangeStart.key)
       ];
     }
     else if (operator === 'LIKE') {
@@ -121,11 +121,11 @@ export const RemoteQueryAdapter = (function () {
         throw new Error('Remote datasource supports exactly one LIKE pattern per field. Field: "' + field + '".');
       }
       var likeEntry = valuesEntries[0];
-      values = [extractFilterEntryValue(likeEntry.entry, likeEntry.key)];
+      values = [RemoteQueryAdapter.#extractFilterEntryValue(likeEntry.entry, likeEntry.key)];
     }
     else {
       values = valuesEntries.map(function (item) {
-        return extractFilterEntryValue(item.entry, item.key);
+        return RemoteQueryAdapter.#extractFilterEntryValue(item.entry, item.key);
       });
     }
 
@@ -136,29 +136,29 @@ export const RemoteQueryAdapter = (function () {
     };
   }
 
-  function toRemoteFilters(filterAxisItems, context) {
+  static toRemoteFilters(filterAxisItems, context) {
     return (filterAxisItems || [])
       .filter(function (item) {
         return item && item.filter;
       })
       .map(function (item) {
-        return toRemoteFilter(item, context || 'query');
+        return RemoteQueryAdapter.#toRemoteFilter(item, context || 'query');
       })
       .filter(function (item) {
         return item !== null;
       });
   }
 
-  function getRemoteAggregation(axisItem) {
+  static #getRemoteAggregation(axisItem) {
     var aggregationName = String(axisItem.aggregator || 'sum').toLowerCase();
-    var aggregation = AGGREGATION_BY_NAME[aggregationName];
+    var aggregation = RemoteQueryAdapter.#AGGREGATION_BY_NAME[aggregationName];
     if (!aggregation) {
       throw new Error('Remote datasource does not support aggregator "' + aggregationName + '" for field "' + axisItem.columnName + '".');
     }
     return aggregation;
   }
 
-  function getMeasureAlias(axisItem, index) {
+  static #getMeasureAlias(axisItem, index) {
     var aggregationName = String(axisItem.aggregator || 'sum').toLowerCase();
     var alias = aggregationName + '_' + axisItem.columnName;
     if (index !== undefined) {
@@ -167,7 +167,7 @@ export const RemoteQueryAdapter = (function () {
     return alias.replace(/[^a-zA-Z0-9_]/g, '_');
   }
 
-  function createRemoteTuplesQuery(queryModel, axisId, limit, offset) {
+  static createRemoteTuplesQuery(queryModel, axisId, limit, offset) {
     var queryAxis = queryModel.getQueryAxis(axisId);
     var axisItems = queryAxis.getItems();
     if (!axisItems.length) {
@@ -176,13 +176,13 @@ export const RemoteQueryAdapter = (function () {
 
     var fields = axisItems.map(function (item) {
       return {
-        field: getRemoteFieldForAxisItem(item, 'tuples'),
+        field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'tuples'),
         sort: 'ASC',
         include_totals: item.includeTotals !== false
       };
     });
 
-    var filters = toRemoteFilters(queryModel.getFiltersAxis().getItems(), 'tuples');
+    var filters = RemoteQueryAdapter.toRemoteFilters(queryModel.getFiltersAxis().getItems(), 'tuples');
 
     return {
       axis: axisId,
@@ -192,27 +192,27 @@ export const RemoteQueryAdapter = (function () {
     };
   }
 
-  function createRemoteCellsQuery(queryModel, rowCount, colCount, cellsAxisItemsToFetch) {
+  static createRemoteCellsQuery(queryModel, rowCount, colCount, cellsAxisItemsToFetch) {
     var rowsAxisItems = queryModel.getRowsAxis().getItems();
     var columnsAxisItems = queryModel.getColumnsAxis().getItems();
-    var filters = toRemoteFilters(queryModel.getFiltersAxis().getItems(), 'cells');
+    var filters = RemoteQueryAdapter.toRemoteFilters(queryModel.getFiltersAxis().getItems(), 'cells');
 
     return {
       rows: { start_index: 0, count: Math.max(1, rowCount || 0) },
       columns: { start_index: 0, count: Math.max(1, colCount || 0) },
       axes: {
         rows: rowsAxisItems.map(function (item) {
-          return { field: getRemoteFieldForAxisItem(item, 'cells rows') };
+          return { field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells rows') };
         }),
         columns: columnsAxisItems.map(function (item) {
-          return { field: getRemoteFieldForAxisItem(item, 'cells columns') };
+          return { field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells columns') };
         }),
         measures: (cellsAxisItemsToFetch || []).map(function (item, index) {
-          var field = getRemoteFieldForAxisItem(item, 'cells measures');
+          var field = RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells measures');
           return {
             field: field,
-            aggregation: getRemoteAggregation(item),
-            alias: getMeasureAlias(item, index)
+            aggregation: RemoteQueryAdapter.#getRemoteAggregation(item),
+            alias: RemoteQueryAdapter.#getMeasureAlias(item, index)
           };
         })
       },
@@ -220,22 +220,14 @@ export const RemoteQueryAdapter = (function () {
     };
   }
 
-  function createRemotePicklistQuery(queryAxisItem, filterAxisItems, search, limit, offset) {
+  static createRemotePicklistQuery(queryAxisItem, filterAxisItems, search, limit, offset) {
     return {
-      field: getRemoteFieldForAxisItem(queryAxisItem, 'picklist'),
+      field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(queryAxisItem, 'picklist'),
       search: search || undefined,
-      filters: toRemoteFilters(filterAxisItems, 'picklist'),
+      filters: RemoteQueryAdapter.toRemoteFilters(filterAxisItems, 'picklist'),
       paging: { limit: limit, offset: offset }
     };
   }
+}
 
-  const adapter = {
-    getDateRange: getDateRange,
-    toRemoteFilters: toRemoteFilters,
-    createRemoteTuplesQuery: createRemoteTuplesQuery,
-    createRemoteCellsQuery: createRemoteCellsQuery,
-    createRemotePicklistQuery: createRemotePicklistQuery
-  };
-  window.RemoteQueryAdapter = adapter;
-  return adapter;
-})();
+window.RemoteQueryAdapter = RemoteQueryAdapter;
