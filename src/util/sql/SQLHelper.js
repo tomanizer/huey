@@ -1019,7 +1019,7 @@ function getQualifiedIdentifier(){
     case 2:
       switch (typeof arguments[1]) {
         case 'object':  //2nd argument is sqlOptions
-          sqlOptions = normalizeSqlOptions(sqlOptions);
+          sqlOptions = normalizeSqlOptions(arguments[1]);
           switch (typeof arguments[0]) {
             case 'string':
               return getQualifiedIdentifier([arguments[0]], sqlOptions);
@@ -1052,7 +1052,6 @@ function getQualifiedIdentifier(){
     default:
       let n = arguments.length;
       const lastArgument = arguments[n - 1];
-      let sqlOptions;
       if (typeof lastArgument === 'object') {
         sqlOptions = lastArgument;
         n -= 1;

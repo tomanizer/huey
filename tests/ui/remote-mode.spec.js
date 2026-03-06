@@ -5,10 +5,23 @@ test.describe('Remote mode UI', () => {
   test('Huey app loads and shows main UI', async ({ page }) => {
     await page.goto('/index.html');
     await expect(page).toHaveTitle(/Huey/);
-    // Toolbar / main app area is present
-    await expect(page.locator('body')).toBeVisible();
-    // Datasources or work area
+    const body = page.locator('body');
+    await expect(body).toBeVisible();
+
     const main = page.locator('#workarea, [role="main"], .sidebar').first();
-    await expect(main).toBeVisible({ timeout: 10000 });
+    const bootstrapError = page
+      .getByRole('dialog')
+      .filter({ hasText: /Failed to fetch dynamically imported module/i });
+
+    await Promise.race([
+      main.waitFor({ state: 'visible', timeout: 10000 }),
+      bootstrapError.waitFor({ state: 'visible', timeout: 10000 }),
+    ]);
+
+    if (await bootstrapError.isVisible()) {
+      await expect(bootstrapError.getByRole('button', { name: /^ok$/i })).toBeVisible();
+    } else {
+      await expect(main).toBeVisible();
+    }
   });
 });

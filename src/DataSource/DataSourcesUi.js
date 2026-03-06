@@ -221,7 +221,7 @@ class DataSourcesUi extends EventEmitter {
     this.#createDataSourceGroupNode(potentialGroups[DuckDbDataSource.types.FILE], true);
     delete potentialGroups[DuckDbDataSource.types.FILE];
 
-    for (var remainingId in potentialGroups) {
+    for (const remainingId in potentialGroups) {
       this.#createDataSourceGroupNode(potentialGroups[remainingId]);
     }
 

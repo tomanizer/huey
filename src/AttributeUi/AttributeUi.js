@@ -716,8 +716,8 @@ class AttributeUi {
    */
   static remoteSchemaTypeToUiType(backendType) {
     if (!backendType) return 'VARCHAR';
-    var t = String(backendType).toLowerCase();
-    var map = {
+    const t = String(backendType).toLowerCase();
+    const map = {
       string: 'VARCHAR',
       int64: 'BIGINT',
       int32: 'INTEGER',
@@ -743,7 +743,7 @@ class AttributeUi {
         const f = fields[i];
         return {
           toJSON: function() {
-            var uiType = f ? AttributeUi.remoteSchemaTypeToUiType(f.type) : 'VARCHAR';
+            const uiType = f ? AttributeUi.remoteSchemaTypeToUiType(f.type) : 'VARCHAR';
             return {
               column_name: f ? f.name : '',
               column_type: uiType
