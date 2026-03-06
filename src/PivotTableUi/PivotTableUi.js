@@ -372,19 +372,19 @@ export class PivotTableUi extends EventEmitter {
     // only clear tuple sets or cellset if the change requires it.
     if (clearColumnsTupleSet) {
       const columnsTupleSet = this.#columnsTupleSet;
-      columnsTupleSet.clear();
+      columnsTupleSet.clearCache();
       needsUpdate = true;
     }
 
     if (clearRowsTupleSet === true) {
       const rowsTupleSet = this.#rowsTupleSet;
-      rowsTupleSet.clear();
+      rowsTupleSet.clearCache();
       needsUpdate = true;
     }
 
     if (clearCellsSet === true) {
       const cellsSet = this.#cellsSet;
-      cellsSet.clear();
+      cellsSet.clearCache();
       needsUpdate = true;
     }
 

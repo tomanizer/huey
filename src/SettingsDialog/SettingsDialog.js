@@ -62,6 +62,10 @@ export class Settings extends EventEmitter {
       autoRunQueryTimeout: 1000,
       filterValuePicklistPageSize: 100,
       filterSearchAutoQueryTimeoutInMilliseconds: 1000,
+      tupleSetMaxCacheEntries: 10000,
+      tupleSetMaxCacheSizeMb: 50,
+      cellSetMaxCacheEntries: 10000,
+      cellSetMaxCacheSizeMb: 50
     },
     pivotSettings: {
       maxCellWidth: 30,

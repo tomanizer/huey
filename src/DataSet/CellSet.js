@@ -14,11 +14,15 @@ export class CellSet extends DataSetComponent {
   #cellValueFields = {};
 
   #tupleSets = [];
+  #cellAccessTimestamps = new Map();
+  #accessCounter = 0;
 
   static datasetRelationName = '__data';
   static #tupleDataRelationName = '__huey_tuples';
   static #cellIndexColumnName = '__huey_cellIndex';
   static #countStarExpressionAlias = '__huey_count_star';
+  static #defaultMaxCacheEntries = 10000;
+  static #defaultMaxCacheSizeMb = 50;
 
   constructor(queryModel, tupleSets, settings){
     super(queryModel, settings);
@@ -28,6 +32,74 @@ export class CellSet extends DataSetComponent {
   clear(){
     this.#cells = [];
     this.#cellValueFields = {};
+    this.#cellAccessTimestamps.clear();
+    this.#accessCounter = 0;
+  }
+
+  clearCache(){
+    this.clear();
+  }
+
+  #touchCell(cellIndex){
+    this.#accessCounter += 1;
+    this.#cellAccessTimestamps.set(cellIndex, this.#accessCounter);
+  }
+
+  #removeCell(cellIndex){
+    this.#cells[cellIndex] = undefined;
+    this.#cellAccessTimestamps.delete(cellIndex);
+  }
+
+  #getMaxCacheEntries(){
+    var settings = this.getSettings();
+    var maxCacheEntries;
+    if (settings && typeof settings.getSettings === 'function'){
+      maxCacheEntries = Number(settings.getSettings(['querySettings', 'cellSetMaxCacheEntries']));
+    }
+    if (!Number.isFinite(maxCacheEntries) || maxCacheEntries < 0) {
+      maxCacheEntries = CellSet.#defaultMaxCacheEntries;
+    }
+    return maxCacheEntries;
+  }
+
+  #getMaxCacheSizeBytes(){
+    var settings = this.getSettings();
+    var maxCacheSizeMb;
+    if (settings && typeof settings.getSettings === 'function'){
+      maxCacheSizeMb = Number(settings.getSettings(['querySettings', 'cellSetMaxCacheSizeMb']));
+    }
+    if (!Number.isFinite(maxCacheSizeMb) || maxCacheSizeMb < 0) {
+      maxCacheSizeMb = CellSet.#defaultMaxCacheSizeMb;
+    }
+    return maxCacheSizeMb * 1024 * 1024;
+  }
+
+  get cacheSize(){
+    var cells = {};
+    this.#cellAccessTimestamps.forEach((value, index) => {
+      cells[index] = this.#cells[index];
+    });
+    return JSON.stringify(cells).length;
+  }
+
+  #enforceCacheLimits(){
+    var maxEntries = this.#getMaxCacheEntries();
+    var maxSizeBytes = this.#getMaxCacheSizeBytes();
+
+    while (this.#cellAccessTimestamps.size > maxEntries || this.cacheSize > maxSizeBytes){
+      var oldestCellIndex;
+      var oldestAccess = Infinity;
+      this.#cellAccessTimestamps.forEach((access, index) =>{
+        if (access < oldestAccess) {
+          oldestAccess = access;
+          oldestCellIndex = index;
+        }
+      });
+      if (oldestCellIndex === undefined){
+        break;
+      }
+      this.#removeCell(oldestCellIndex);
+    }
   }
 
   getCellValueFields(){
@@ -67,6 +139,9 @@ export class CellSet extends DataSetComponent {
     var cellIndex = this.getCellIndex.apply(this, arguments);
     var cells = this.#cells;
     var cell = cells[cellIndex];
+    if (cell !== undefined) {
+      this.#touchCell(cellIndex);
+    }
     return cell;
   }
 
@@ -478,6 +553,7 @@ export class CellSet extends DataSetComponent {
             // cell didn't exist! So lets add it.
             this.#cells[cellIndex] = cell = {values: {}};
           }
+          this.#touchCell(cellIndex);
         }
         else {
           cell.values[fieldName] = value;
@@ -485,6 +561,7 @@ export class CellSet extends DataSetComponent {
       }
       cells[cellIndex] = cell;
     }
+    this.#enforceCacheLimits();
     return cells;
   }
 
