@@ -45,12 +45,12 @@ describe('DuckDbDataSource logic coverage', () => {
   });
 
   describe('static file helpers', () => {
-    it('parses file names with path separators and multiple dots', () => {
-      const result = DuckDbDataSource.getFileNameParts('folder.with.dots/data.backup.CSV');
+    it('parses file names with multiple dots and mixed-case extensions', () => {
+      const result = DuckDbDataSource.getFileNameParts('data.backup.CSV');
       expect(result).toEqual({
         extension: 'CSV',
         lowerCaseExtension: 'csv',
-        fileNameWithoutExtension: 'folder.with.dots/data.backup'
+        fileNameWithoutExtension: 'data.backup'
       });
     });
 

@@ -61,8 +61,11 @@ describe('Upload URL parsing helpers', () => {
   test('detects parquet urls with optional querystring', () => {
     expect(isParquetUrl('https://example.org/data/file.parquet')).toBe(true);
     expect(isParquetUrl('https://example.org/data/file.parquet?token=x')).toBe(true);
-    expect(isParquetUrl('not a valid url but parquet.parquet?token=x')).toBe(true);
     expect(isParquetUrl('https://example.org/data/file.csv')).toBe(false);
+  });
+
+  test('detects parquet extension even for non-URL strings', () => {
+    expect(isParquetUrl('not a valid url but parquet.parquet?token=x')).toBe(true);
     expect(isParquetUrl('not a valid url and not parquet')).toBe(false);
   });
 });
