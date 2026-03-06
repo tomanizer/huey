@@ -105,7 +105,9 @@ describe('DuckDbDataSource logic coverage', () => {
     });
 
     it('createFromUrl supports glob parquet paths without probing headers', async () => {
-      const resourceSpy = vi.spyOn(DuckDbDataSource, 'getResourceInfoForUrl');
+      const resourceSpy = vi.spyOn(DuckDbDataSource, 'getResourceInfoForUrl').mockImplementation(() => {
+        throw new Error('Unexpected call to getResourceInfoForUrl');
+      });
       const datasource = await DuckDbDataSource.createFromUrl(
         duckdbMock,
         createInstanceMock(),
