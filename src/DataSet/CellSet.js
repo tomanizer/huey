@@ -96,7 +96,12 @@ export class CellSet extends DataSetComponent {
     this.#cellAccessTimestamps.forEach((value, index) => {
       cells[index] = this.#cells[index];
     });
-    return JSON.stringify(cells).length;
+    return JSON.stringify(cells, (key, value) => {
+      if (typeof value === 'bigint') {
+        return value.toString();
+      }
+      return value;
+    }).length;
   }
 
   #enforceCacheLimits(){

@@ -236,7 +236,12 @@ export class TupleSet extends DataSetComponent {
     this.#tupleAccessTimestamps.forEach((value, index) => {
       tuples[index] = this.#tuples[index];
     });
-    return JSON.stringify(tuples).length;
+    return JSON.stringify(tuples, (key, value) => {
+      if (typeof value === 'bigint') {
+        return value.toString();
+      }
+      return value;
+    }).length;
   }
 
   #enforceCacheLimits(){
