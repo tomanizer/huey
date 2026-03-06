@@ -87,9 +87,11 @@ def test_queue_depth_rejects_overflow(
         # which can make this concurrency test nondeterministic.
         return first_client.post("/query/cells", json=request_body)
 
-    first_client = TestClient(client.app)
-    second_client = TestClient(client.app)
+    first_client = None
+    second_client = None
     try:
+        first_client = TestClient(client.app)
+        second_client = TestClient(client.app)
         with ThreadPoolExecutor(max_workers=1) as pool:
             first = pool.submit(first_request)
             # Wait until the first request has definitely acquired the budget slot
@@ -98,8 +100,10 @@ def test_queue_depth_rejects_overflow(
             second_result = second_client.post("/query/cells", json=request_body)
             first_result = first.result(timeout=10)
     finally:
-        first_client.close()
-        second_client.close()
+        if first_client is not None:
+            first_client.close()
+        if second_client is not None:
+            second_client.close()
 
     assert first_result.status_code in (200, 504)
     assert second_result.status_code == 429
