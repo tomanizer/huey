@@ -183,6 +183,43 @@ export class QueryAxisItem {
     return caption;
   }
 
+  static getDerivationCaption(derivation) {
+    const derivationInfo = AttributeUi.getDerivationInfo(derivation);
+    if (!derivationInfo) {
+      return derivation;
+    }
+    return derivationInfo.title || derivation;
+  }
+
+  static getAvailableDerivations(dataTypeInfo) {
+    if (!dataTypeInfo) {
+      return {};
+    }
+    const stringType = Boolean(dataTypeInfo.hasTextDerivations) || dataTypeInfo === getDataTypeInfo('JSON');
+    const objectType = (
+      dataTypeInfo === getDataTypeInfo('ARRAY') ||
+      dataTypeInfo === getDataTypeInfo('MAP') ||
+      dataTypeInfo === getDataTypeInfo('STRUCT')
+    );
+    const hashDerivations = Object.assign({}, AttributeUi.hashDerivations);
+    if (objectType) {
+      Object.keys(hashDerivations).forEach((hashDerivationKey) => {
+        const hashDerivation = hashDerivations[hashDerivationKey];
+        if (hashDerivation.forString) {
+          delete hashDerivations[hashDerivationKey];
+        }
+      });
+    }
+    return Object.assign(
+      {},
+      dataTypeInfo.hasDateFields ? AttributeUi.dateFields : undefined,
+      dataTypeInfo.hasTimeFields ? AttributeUi.timeFields : undefined,
+      stringType ? AttributeUi.textDerivations : undefined,
+      dataTypeInfo.hasUUIDDerivations ? AttributeUi.uuidDerivations : undefined,
+      (stringType || objectType) ? hashDerivations : undefined
+    );
+  }
+
   static getIdForQueryAxisItem(axisItem){
     // see issue https://github.com/rpbouman/huey/issues/352
     // only the sql expression is not enough to identify an Item

@@ -303,6 +303,7 @@ export class QueryModel extends EventEmitter {
     if (!axis) {
       if (config.aggregator) {
         axis = QueryModel.AXIS_CELLS;
+        config.axis = axis;
       }
       else {
         // todo: find some way to figure out the most appropriate default axis.
@@ -375,6 +376,19 @@ export class QueryModel extends EventEmitter {
       config.filter = foundItem.filter;
     }
 
+    const itemIsAlreadyAtTargetIndex = foundItem && foundItem.index === config.index;
+    const axisItems = this.getQueryAxis(axis).getItems();
+    const itemIsAlreadyLastOnAxis = foundItem && foundItem.index === axisItems.length - 1;
+    if (
+      foundItem &&
+      foundItem.axis === axis &&
+      (itemIsAlreadyAtTargetIndex || (config.index === undefined && itemIsAlreadyLastOnAxis)) &&
+      (config.includeTotals === undefined || config.includeTotals === foundItem.includeTotals) &&
+      (config.filter === undefined || config.filter === foundItem.filter)
+    ) {
+      return foundItem;
+    }
+
     const axesChangeInfo = {};
     const eventData = {
       axesChanged: axesChangeInfo
@@ -409,6 +423,16 @@ export class QueryModel extends EventEmitter {
 
     this.fireEvent('change', eventData);
     return addedItem;
+  }
+
+  /**
+   * @param {QueryAxisItemConfig} item
+   * @param {string} targetAxis
+   * @returns {Promise<QueryAxisItemConfig>}
+   */
+  moveItem(item, targetAxis) {
+    const config = Object.assign({}, item, { axis: targetAxis });
+    return this.addItem(config);
   }
 
   /**
