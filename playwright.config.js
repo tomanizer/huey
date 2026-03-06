@@ -31,7 +31,7 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
   },
   // CI installs Chromium only; keep full cross-browser coverage available for local runs.
-  projects: process.env.CI ? [localProjects[0]] : localProjects,
+  projects: process.env.CI ? localProjects.filter((p) => p.name === 'chromium') : localProjects,
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
     url: 'http://127.0.0.1:8765',
