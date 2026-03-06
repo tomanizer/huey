@@ -9,7 +9,7 @@ async function waitForAppReady(page) {
   await openApp(page);
   await expect(page.locator('body')).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
   await expect(page.locator('#layout')).toBeAttached({ timeout: 60000 });
-  await expect(page.locator('#layout > menu[role="toolbar"] > label[for="uploader"]')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('#layout menu[role="toolbar"] label[for="uploader"]')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('#uploader')).toBeAttached({ timeout: 20000 });
 }
 
