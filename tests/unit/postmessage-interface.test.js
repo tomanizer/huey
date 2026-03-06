@@ -123,7 +123,7 @@ describe('PostMessageInterface security hardening', () => {
 
   test('registers postMessage globals explicitly for external API integration', () => {
     expect(window.RemoteDatasource).toBeTypeOf('function');
-    expect(window.RemoteQueryAdapter).toBeTypeOf('object');
+    expect(window.RemoteQueryAdapter).toBeTypeOf('function');
     expect(window.postMessageInterface).toBeDefined();
   });
 });
