@@ -31,31 +31,9 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   #dragEnterHandler(event) {
-    let valid = true;
-
     const dataTransfer = event.dataTransfer;
     dataTransfer.dropEffect = 'copy';
-    return;
-
-    // unfortunately, we see that the files list is always emtpy.
-    // instead, when dragging files, we see a list of items of type file, but for some reason we do not see the names of the files.
-    // so this is pretty much useless, we cannot figure out in advance if the dragged items could be successfully loaded.
-
-    const files = dataTransfer.files;
-    valid = Boolean(files.length);
-    const fileTypes = DuckDbDataSource.fileTypes;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileName = file.name;
-      const fileNameParts = DuckDbDataSource.getFileNameParts(fileName);
-      const fileExtension = fileNameParts.lowerCaseExtension;
-      const fileType = fileTypes[fileExtension];
-      valid = Boolean(fileType);
-      if (!valid){
-        break;
-      }
-    }
-    this.getDom().setAttribute('data-drop-allowed', valid);
+    this.getDom().setAttribute('data-drop-allowed', true);
     event.stopPropagation();
     event.preventDefault();
   }

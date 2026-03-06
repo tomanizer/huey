@@ -167,16 +167,9 @@ export class QuickQueryMenu {
   }
   
   #initDestructuredDataPreviewButton(){
-    byId('quickQueryDestructuredDataPreviewButton')
-    .addEventListener('click', this.#destructuredDataPreviewButtonClickHandler.bind(this));
-  }
-  
-  async #destructuredDataPreviewButtonClickHandler(event){
-    // this should be like the data preview but,
-    // - any STRUCT columns should be expanded to column.member items
-    // - if a member of a STRUCT happens to be STRUCT, it should expanded to members too
-    // - any arrays should be expanded to unnest() expressions.
-    alert('Not implemented');
+    const button = byId('quickQueryDestructuredDataPreviewButton');
+    button.disabled = true;
+    button.title = 'Coming soon';
   }
 
 }
