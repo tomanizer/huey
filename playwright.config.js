@@ -30,7 +30,7 @@ module.exports = defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command: 'npx vite --host 127.0.0.1 --port 8765',
+    command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
     url: 'http://127.0.0.1:8765',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
