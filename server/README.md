@@ -35,3 +35,13 @@ Run tests:
 ```bash
 ./.venv-server/bin/pytest server/tests -q
 ```
+
+## Rate limiting behind reverse proxies
+
+When running behind nginx/Caddy/ALB/Cloudflare, set
+`QUERYSERVICE_TRUSTED_PROXY_COUNT` to the number of trusted proxy hops in
+front of QueryService so forwarded client IPs are interpreted safely. Set it to
+`0` when QueryService is directly internet-facing.
+
+When authentication is enabled, rate limits can be keyed by API identity using
+`QUERYSERVICE_RATE_LIMIT_BY_API_KEY=true` (default).
