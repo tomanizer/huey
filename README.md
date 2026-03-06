@@ -19,6 +19,21 @@ Start here for complete backend documentation:
 - [API reference](docs/server/api-reference.md)
 - [Configuration reference](docs/server/configuration-reference.md)
 
+## Development runtime requirements
+
+Frontend tooling (Vite, Vitest, Playwright) requires:
+
+- **Node.js 20+**
+- **npm 10+**
+
+If you use nvm:
+
+```bash
+nvm install 20
+nvm use 20
+npm ci
+```
+
 ![image](https://github.com/user-attachments/assets/f9d49b89-f29e-49b4-accf-64545b3e4c62)
 
 ## Key features
