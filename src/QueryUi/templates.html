@@ -16,7 +16,7 @@
     <ol>
     </ol>
     <footer>
-      <label title="Remove all items from this axis"><button id="-clear-axis">Clear axis</button></label>
+      <label title="Remove all items from this axis"><button id="-clear-axis" aria-label="Clear axis">Clear axis</button></label>
     </footer>
   </section>
 </template>
@@ -24,22 +24,22 @@
 <template id="queryUiAxisItem">
   <li draggable="true">
     <label title="Move this item to the left">
-      <button id="-move-left">Move this item to the left</button>
+      <button id="-move-left" aria-label="Move field left">Move this item to the left</button>
     </label>
     <span></span>
     <menu>
       <label title="Calculate totals for this level">
-        <input id="-toggle-totals" type="checkbox"/>
+        <input id="-toggle-totals" type="checkbox" aria-label="Toggle totals for this level"/>
       </label>
       <label title="Move this item to the other axis">
-        <button id="-move-to-other-axis">Move this item to the other axis</button>
+        <button id="-move-to-other-axis" aria-label="Move field to the other axis">Move this item to the other axis</button>
       </label>
       <label title="Remove this item from the axis">
-        <button id="-remove-from-axis">Remove this item from the axis</button>
+        <button id="-remove-from-axis" aria-label="Remove field from axis">Remove this item from the axis</button>
       </label>
     </menu>
     <label title="Move this item to the right">
-      <button id="-move-right">Move this item to the right</button>
+      <button id="-move-right" aria-label="Move field right">Move this item to the right</button>
     </label>
   </li>
 </template>
@@ -60,7 +60,7 @@
       title="Remove this filter condition"
       for=""
     >
-      <button></button>
+      <button aria-label="Remove filter condition"></button>
     </label>
   </li>
 </template>
@@ -68,7 +68,7 @@
 <template id="queryUiFilterAxisItem">
   <li draggable="true">
     <label title="Move this item to the left">
-      <button id="-move-left">Move this item to the left</button>
+      <button id="-move-left" aria-label="Move field left">Move this item to the left</button>
     </label>
     <details>
       <summary>
@@ -79,14 +79,14 @@
     </details>
     <menu>
       <label title="Click to open the filter dialog to edit the filter.">
-        <button id="-edit-filter-condition">Click to open the filter dialog to edit the filter.</button>
+        <button id="-edit-filter-condition" aria-label="Edit filter condition">Click to open the filter dialog to edit the filter.</button>
       </label>
       <label title="Remove this item from the axis">
-        <button id="-remove-from-axis">Remove this item from the axis</button>
+        <button id="-remove-from-axis" aria-label="Remove field from axis">Remove this item from the axis</button>
       </label>
     </menu>
     <label title="Move this item to the right">
-      <button id="-move-right">Move this item to the right</button>
+      <button id="-move-right" aria-label="Move field right">Move this item to the right</button>
     </label>
   </li>
 </template>

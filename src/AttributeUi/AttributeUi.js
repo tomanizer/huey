@@ -1051,6 +1051,7 @@ export class AttributeUi {
     });
 
     this.#renderAttributeUiNodeAxisButtons(config, head);
+    head.setAttribute('aria-label', `Toggle ${caption} details`);
 
     return head;
   }
@@ -1512,6 +1513,7 @@ export class AttributeUi {
 
   #toggleNodeState(event){
     const node = event.target;
+    node.setAttribute('aria-expanded', String(node.open));
     if (event.newState !== 'open'){
       return;
     }
@@ -1598,6 +1600,7 @@ export class AttributeUi {
     for (let i = 0; i < detailsList.length; i++){
       const details = detailsList.item(i);
       details.setAttribute('open', 'true');
+      details.setAttribute('aria-expanded', 'true');
     }
   }
 

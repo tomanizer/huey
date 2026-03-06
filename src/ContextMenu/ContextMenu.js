@@ -60,17 +60,29 @@ export class ContextMenu {
   
   #initNestedMenuitem(menuItem, _dom, _menuHost){
     const popoverTarget = menuItem.getAttribute('popovertarget');
+    menuItem.setAttribute('aria-haspopup', 'menu');
+    menuItem.setAttribute('aria-expanded', 'false');
     const label = menuItem.parentNode;
     const item = label.parentNode;
+    const popoverTargetDom = byId(popoverTarget);
+    if (popoverTargetDom) {
+      popoverTargetDom.addEventListener('beforetoggle', (event) =>{
+        menuItem.setAttribute('aria-expanded', String(event.newState === 'open'));
+      });
+    }
     item.addEventListener('mouseenter', (_event) =>{
-      const popoverTargetDom = byId(popoverTarget);
       const itemBoundingRect = item.getBoundingClientRect();
+      if (!popoverTargetDom) {
+        return;
+      }
       popoverTargetDom.showPopover();
       popoverTargetDom.style.left = (itemBoundingRect.x + itemBoundingRect.width) + 'px';
       popoverTargetDom.style.top = itemBoundingRect.y + 'px';
     });
     item.addEventListener('mouseleave', (_event) =>{
-      const popoverTargetDom = byId(popoverTarget);
+      if (!popoverTargetDom) {
+        return;
+      }
       popoverTargetDom.hidePopover();
     });
   }

@@ -5,6 +5,7 @@ const {
   waitForAppReady,
   uploadFixtureAndWaitForAttributes,
   addBasicPivotAxes,
+  addFilterAxis,
   runQueryAndWaitForPivot,
 } = require('./helpers/app-bootstrap');
 
@@ -80,5 +81,53 @@ test.describe('Accessibility', () => {
     await expect.poll(async () => {
       return page.evaluate(() => Boolean(document.activeElement?.closest('.pivotTableUiCell')));
     }).toBe(true);
+  });
+
+  test('key layout regions expose stable test ids and axis regions', async ({ page }) => {
+    await waitForAppReady(page);
+
+    await expect(page.getByTestId('app-layout')).toBeVisible();
+    await expect(page.getByTestId('sidebar')).toBeVisible();
+    await expect(page.getByTestId('workarea')).toBeVisible();
+
+    await expect(page.getByTestId('filters-axis')).toHaveAttribute('role', 'region');
+    await expect(page.getByTestId('rows-axis')).toHaveAttribute('aria-label', 'Rows axis');
+    await expect(page.getByTestId('columns-axis')).toHaveAttribute('aria-label', 'Columns axis');
+    await expect(page.getByTestId('cells-axis')).toHaveAttribute('aria-label', 'Cells axis');
+  });
+
+  test('menu trigger buttons expose popup semantics', async ({ page }) => {
+    await uploadFixtureAndWaitForAttributes(page, fixturePath);
+    await addBasicPivotAxes(page);
+    await runQueryAndWaitForPivot(page);
+
+    const datasourceMenuButton = page.locator('#currentDatasourceMenuButton');
+    await expect(datasourceMenuButton).toHaveAttribute('aria-haspopup', 'menu');
+    await expect(datasourceMenuButton).toHaveAttribute('aria-expanded', 'false');
+
+    const valueCell = page.locator('#pivotTableUi .pivotTableUiValueCell').first();
+    await valueCell.click({ button: 'right' });
+    await expect(page.locator('#pivotTableContextMenu')).toBeVisible();
+
+    const copySubmenuButton = page.locator('#copySubmenuActivate');
+    await expect(copySubmenuButton).toHaveAttribute('aria-haspopup', 'menu');
+    await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'false');
+    await copySubmenuButton.click();
+    await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Escape');
+  });
+
+  test('filter option lists expose aria-selected state', async ({ page }) => {
+    await uploadFixtureAndWaitForAttributes(page, fixturePath);
+    await addFilterAxis(page, 'symbol');
+
+    const editFilterButton = page.locator('#queryUi section[data-axis="filters"] button[id$="-edit-filter-condition"]').first();
+    await editFilterButton.click();
+    await expect(page.locator('#filterDialog')).toBeVisible({ timeout: 15000 });
+
+    const picklistOption = page.locator('#filterPicklist option').first();
+    await expect(picklistOption).toHaveAttribute('aria-selected', 'false');
+    await picklistOption.click();
+    await expect(picklistOption).toHaveAttribute('aria-selected', 'true');
   });
 });
