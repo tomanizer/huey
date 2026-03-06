@@ -120,6 +120,12 @@ describe('DuckDbDataSourceConfig', () => {
       expect(result.fileNameWithoutExtension).toBe('my.data.file');
     });
 
+    it('should preserve path separators when parsing filenames', () => {
+      const result = getFileNameParts('nested/path/my.data.file.parquet');
+      expect(result.extension).toBe('parquet');
+      expect(result.fileNameWithoutExtension).toBe('nested/path/my.data.file');
+    });
+
     it('should return undefined for filenames without extension', () => {
       expect(getFileNameParts('noextension')).toBeUndefined();
     });
