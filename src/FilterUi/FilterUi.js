@@ -135,23 +135,23 @@ export class FilterDialog {
     });
 
     // Ok button confirms the filter settings and stores them in the model
-    this.#getOkButton().addEventListener('click', (event) =>{
+    this.#getOkButton().addEventListener('click', (_event) =>{
       const dialogState = this.#getDialogState();
       this.#queryModel.setQueryAxisItemFilter(this.#queryAxisItem, dialogState);
       filterDialog.close();
     });
 
-    this.#getRemoveFilterButton().addEventListener('click', (event) =>{
+    this.#getRemoveFilterButton().addEventListener('click', (_event) =>{
       this.#queryModel.removeItem(this.#queryAxisItem);
       filterDialog.close();
     });
 
-    this.#getCancelButton().addEventListener('click', (event) =>{
+    this.#getCancelButton().addEventListener('click', (_event) =>{
       filterDialog.close();
     });
 
     // Clear button clears the values lists
-    this.#getClearButton().addEventListener('click', (event) =>{
+    this.#getClearButton().addEventListener('click', (_event) =>{
       this.clearFilterValueLists();
 
       this.#updateValueSelectionStatusText();
@@ -368,7 +368,7 @@ export class FilterDialog {
       }
       const literal = literalWriter ? literalWriter(searchString) : searchString;
 
-      let options, option;
+      let option;
 
       if (isRangeFilterType && toFilterValuesList.selectedIndex !== -1) {
         option = toFilterValuesList.options[toFilterValuesList.selectedIndex];
@@ -379,7 +379,7 @@ export class FilterDialog {
         return;
       }
 
-      options = filterValuesList.options;
+      const options = filterValuesList.options;
       const sameValueOptions = [];
       let valueAdded = false;
       for (let i = 0; i < options.length; i++){
@@ -605,7 +605,7 @@ export class FilterDialog {
   }
 
   #handleValuePicklistChange(event){
-    let isSqlNull;
+    let _isSqlNull;
     let valueSelectionStatusText = undefined;
     const selectControl = event.target;
     const options = selectControl.options;
@@ -628,7 +628,7 @@ export class FilterDialog {
     const isRangeFilterType = FilterDialog.isRangeFilterType(filterType);
 
     const filterValuesList = this.#getFilterValuesList();
-    let filterValuesListOptions = filterValuesList.options;
+    const _toFilterValuesListOptions = filterValuesList.options;
     const currentValues = this.#extractOptionsFromSelectList(filterValuesList);
 
     let toFilterValuesList, currentToValues;
@@ -639,7 +639,7 @@ export class FilterDialog {
     // get the current selection and create new options out of it.
     if (isRangeFilterType) {
       toFilterValuesList = this.#getToFilterValuesList();
-      const toFilterValuesListOptions = toFilterValuesList.options;
+      const _toFilterValuesListOptions = toFilterValuesList.options;
       currentToValues = this.#extractOptionsFromSelectList(toFilterValuesList);
 
       let rangeStart, rangeEnd;
@@ -1073,7 +1073,7 @@ export class FilterDialog {
     });
   }
 
-  #getSqlSelectStatementForPickList(offset, limit){
+  #getSqlSelectStatementForPickList(offset, _limit){
     const datasource = this.#queryModel.getDatasource();
     let queryAxisItem = this.#queryAxisItem;
     const filterType = this.#getFilterType().value;
@@ -1192,7 +1192,7 @@ export class FilterDialog {
         console.time(timeMessage);
         const apiResponse = await connection.fetchPicklist(dateRange, query);
         console.timeEnd(timeMessage);
-        const totalCount = apiResponse.total_count != null ? apiResponse.total_count : (apiResponse.values || []).length;
+        const totalCount = apiResponse.total_count !== null ? apiResponse.total_count : (apiResponse.values || []).length;
         const values = apiResponse.values || [];
         const fields = (offset === 0 ? [{ name: FilterDialog.#numRowsColumnName }] : []).concat([{ name: 'value', type: { typeId: 0 } }, { name: 'label', type: { typeId: 0 } }]);
         const resultSet = {
@@ -1200,7 +1200,7 @@ export class FilterDialog {
           schema: { fields: fields },
           get: function(i) {
             const v = values[i];
-            const row = { value: v ? v.value : null, label: v ? (v.label != null ? v.label : v.value) : null };
+            const row = { value: v ? v.value : null, label: v ? (v.label !== null ? v.label : v.value) : null };
             if (offset === 0 && i === 0) row[FilterDialog.#numRowsColumnName] = totalCount;
             return row;
           }

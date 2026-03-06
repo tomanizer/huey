@@ -58,18 +58,18 @@ export class ContextMenu {
     }
   }
   
-  #initNestedMenuitem(menuItem, dom, menuHost){
+  #initNestedMenuitem(menuItem, _dom, _menuHost){
     const popoverTarget = menuItem.getAttribute('popovertarget');
     const label = menuItem.parentNode;
     const item = label.parentNode;
-    item.addEventListener('mouseenter', (event) =>{
+    item.addEventListener('mouseenter', (_event) =>{
       const popoverTargetDom = byId(popoverTarget);
       const itemBoundingRect = item.getBoundingClientRect();
       popoverTargetDom.showPopover();
       popoverTargetDom.style.left = (itemBoundingRect.x + itemBoundingRect.width) + 'px';
       popoverTargetDom.style.top = itemBoundingRect.y + 'px';
     });
-    item.addEventListener('mouseleave', (event) =>{
+    item.addEventListener('mouseleave', (_event) =>{
       const popoverTargetDom = byId(popoverTarget);
       popoverTargetDom.hidePopover();
     });

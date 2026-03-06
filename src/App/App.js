@@ -7,7 +7,7 @@ import { initDragableDialogs } from '../DragAndDrop/DragableDialogs.js';
 import { QueryModel, queryModel, initQueryModel } from '../QueryModel/QueryModel.js';
 import { initAttributeUi } from '../AttributeUi/AttributeUi.js';
 import { initSearch } from '../Search/Search.js';
-import { uploadUi, initUploadUi } from '../UploadUi/UploadUi.js';
+import { initUploadUi } from '../UploadUi/UploadUi.js';
 import { ExportUi, initExportDialog } from '../ExportUi/ExportDialog.js';
 import { DataSourcesUi, initDataSourcesUi } from '../DataSource/DataSourcesUi.js';
 import { initDatasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
@@ -22,7 +22,7 @@ import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
 import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
 import { getConnection, setReservedWords } from '../DataSource/duckdb/database.js';
 import { Theme } from '../Theme/Theme.js';
-import { analyzeDatasource } from './analyzeDatasource.js';
+
 
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
 window.Theme = Theme;
@@ -75,7 +75,7 @@ export function initDuckdbVersion(){
   }).join('\n,');
   let sql = `SELECT ${selectListSql}`;
   sql += `\nFROM duckdb_keywords()\nWHERE keyword_category != 'unreserved'`;
-  const result = connection.query(sql)
+  connection.query(sql)
   .then((resultset) =>{
     const row = resultset.get(0);
     const version = row[versionColumn];
@@ -120,7 +120,7 @@ export { analyzeDatasource } from './analyzeDatasource.js';
 
 export function initExecuteQuery(){
 
-  byId('runQueryButton').addEventListener('click', (event) =>{
+  byId('runQueryButton').addEventListener('click', (_event) =>{
     pivotTableUi.updatePivotTableUi();
   });
 
@@ -168,8 +168,8 @@ export function initApplication(){
       return;
     }
     try {
-      const eventData = event.eventData;
-      let currentDatasourceCaption, datasource = queryModel.getDatasource();
+      const datasource = queryModel.getDatasource();
+      let currentDatasourceCaption;
       if (datasource) {
         currentDatasourceCaption = DataSourcesUi.getCaptionForDatasource(datasource);
       } else {

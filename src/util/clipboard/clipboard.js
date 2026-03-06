@@ -5,7 +5,7 @@ export function createClipboardItem(blob, mimeType){
 }
 
 export async function copyToClipboard(data, mimeType) {
-  let clipboard = navigator.clipboard, method, arg;
+  const clipboard = navigator.clipboard; let method, arg;
   if (typeof data === 'string') {
     if (mimeType) {
       if (!ClipboardItem.supports(mimeType)){
@@ -49,10 +49,10 @@ export function getPastedText(domClipboardEvent){
   const value = target.value;
   
   const selectionStart = domClipboardEvent.selectionStart === undefined ? value.length : domClipboardEvent.selectionStart;
-  const prefix = value.slice(0, selectionStart);
-  
+  const _prefix = value.slice(0, selectionStart);
+
   const selectionEnd = domClipboardEvent.selectionEnd === undefined ? value.length : domClipboardEvent.selectionEnd;
-  const postfix = value.slice(selectionEnd);
+  const _postfix = value.slice(selectionEnd);
 
   const data = domClipboardEvent.clipboardData;
   const mimeType = 'text/plain';

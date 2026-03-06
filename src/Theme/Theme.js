@@ -43,7 +43,7 @@ export class Theme {
   
   static updateCssVariable(control){
     const id = control.id;
-    const previousIndex = 0;
+    const _previousIndex = 0;
     const variableName = id.split('').reduce((acc, curr) =>{
       const lowerCase = curr.toLowerCase();
       if (curr !== lowerCase){
@@ -63,7 +63,7 @@ export class Theme {
   
 }
 
-settings.addEventListener('change', (event) =>{
+settings.addEventListener('change', (_event) =>{
   const themes = byId('themes');
   Theme.applyTheme( themes.selectedIndex );  
 });

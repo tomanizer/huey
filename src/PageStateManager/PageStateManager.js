@@ -27,7 +27,7 @@ export class PageStateManager {
   }
 
   // this basically means: load the query
-  #hashChangeHandler(event){
+  #hashChangeHandler(_event){
     const currentRoute = Routing.getCurrentRoute();
     // TODO: check if the current state already matches the route, if it does we're done.
     this.setPageState(currentRoute);
@@ -142,7 +142,7 @@ export class PageStateManager {
           switch (datasourceType) {
             case DuckDbDataSource.types.FILE:
               const fileName = compatibleDatasource.getFileName();
-              const fileNameParts = DuckDbDataSource.getFileNameParts(fileName);
+              const _fileNameParts = DuckDbDataSource.getFileNameParts(fileName);
               break;
             default:
           }
@@ -246,7 +246,7 @@ export class PageStateManager {
           return;
         }
       }
-      catch (error){
+      catch (_error){
         queryModel.clear();
         Routing.updateRouteFromQueryModel(queryModel);
       }

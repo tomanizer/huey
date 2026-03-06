@@ -69,9 +69,9 @@ export function createNumberFormatter(fractionDigits){
     minimumIntegerDigits: localeSettings.minimumIntegerDigits,
   };
   
-  let intFormatter, decimalSeparator;
+  let _decimalSeparator;
   let locales = getLocales();
-  intFormatter = new Intl.NumberFormat(locales, Object.assign({maximumFractionDigits: 0}, options));
+  const _intFormatter = new Intl.NumberFormat(locales, Object.assign({maximumFractionDigits: 0}, options));
   if (fractionDigits){
     options.minimumFractionDigits = localeSettings.minimumFractionDigits;
     options.maximumFractionDigits = localeSettings.linkMinimumAndMaximumDecimals ? localeSettings.minimumFractionDigits : localeSettings.maximumFractionDigits;
@@ -116,7 +116,7 @@ export function createNumberFormatter(fractionDigits){
       }
 
       const fieldTypeId = field?.type?.typeId;
-      if (fieldTypeId != null) {
+      if (fieldTypeId != null) { // eslint-disable-line eqeqeq -- intentional: catch both null and undefined
         const fieldType = field.type;
         switch (fieldTypeId){
           case 7: // arrow decimal
@@ -137,7 +137,7 @@ export function createNumberFormatter(fractionDigits){
  * @param {boolean} [withTimeZone]
  * @returns {(value: *, field?: Object) => string}
  */
-export function createTimestampFormatter(withTimeZone){
+export function createTimestampFormatter(_withTimeZone){
   // we will receive the value as a javascript Number, representing the milliseconds since Epoch,
   // allowing us to use the value directly as argumnet to the Date constructor.
   // the number may (will) have decimal digits, representing any bit of time beyond the milliseconds resolution
@@ -153,7 +153,7 @@ export function createTimestampFormatter(withTimeZone){
     second: '2-digit',
     fractionalSecondDigits: 3
   });
-  return function(value, field){
+  return function(value, _field){
     if (value === null || value === undefined){
       return getNullString();
     }
@@ -184,7 +184,7 @@ export function createTimestampLiteralWriter(timezoneDatatypeName){
   if (timezoneDatatypeName === undefined){
     timezoneDatatypeName = 'TIMESTAMP';
   }
-  return function(value, field){
+  return function(value, _field){
     return value === null ? `NULL::${timezoneDatatypeName}` : `to_timestamp( ${value}::DOUBLE / 1000 )`;
   };
 }
@@ -257,7 +257,7 @@ export function createDecimalLiteralWriter(precision, scale){
 }
 
 export function createDefaultLiteralWriter(type){
-  return function(value, field){
+  return function(value, _field){
     return `${value === null ? 'NULL' : String(value)}::${type}`;
   }
 }
@@ -602,7 +602,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('DOUBLE');
     }    
   },
@@ -616,7 +616,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('FLOAT');
     }
   },
@@ -630,7 +630,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('REAL');
     }
   },
@@ -645,7 +645,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('BIGINT');
     }
   },
@@ -660,7 +660,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('HUGEINT');
     }    
   },
@@ -675,7 +675,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('INTEGER');
     }    
   },
@@ -690,7 +690,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('SMALLINT');
     }    
   },
@@ -705,7 +705,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('TINYINT');
     }    
   },
@@ -721,7 +721,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('UBIGINT');
     }    
   },
@@ -735,7 +735,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('UHUGEINT');
     }    
   },
@@ -751,7 +751,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('UINTEGER');
     }    
   },
@@ -767,7 +767,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('USMALLINT');
     }    
   },
@@ -783,7 +783,7 @@ export const dataTypes = {
         return formatter.format(value, field);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createDefaultLiteralWriter('UTINYINT');
     }
   },
@@ -792,8 +792,8 @@ export const dataTypes = {
   },
   'BOOLEAN': {
     defaultAnalyticalRole: 'attribute',
-    createLiteralWriter: function(dataTypeInfo, dataType){
-      return function(value, field){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
+      return function(value, _field){
         return `${value === null ? 'NULL::BOOLEAN' : Boolean(value)}`;
       }
     }
@@ -812,7 +812,7 @@ export const dataTypes = {
         month: 'short',
         day: '2-digit'
       });
-      return function(value, field){
+      return function(value, _field){
         if (value === null || value === undefined){
           return getNullString();
         }
@@ -823,8 +823,8 @@ export const dataTypes = {
         return formatter.format(date);
       };
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
-      return function(value, field){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
+      return function(value, _field){
         if (value === null) {
           return 'NULL::DATE';
         }
@@ -847,7 +847,7 @@ export const dataTypes = {
     createFormatter: function(){
       return createTimestampFormatter(false);
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createTimestampLiteralWriter('TIMESTAMP');
     }
   },
@@ -860,7 +860,7 @@ export const dataTypes = {
     createFormatter: function(){
       return createTimestampFormatter(true);
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
       return createTimestampLiteralWriter('TIMESTAMPTZ');
     }
   },
@@ -888,15 +888,15 @@ export const dataTypes = {
         return String(value);
       }
     },
-    createLiteralWriter: function(dataTypeInfo, dataType){
-      return function(value, field){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
+      return function(value, _field){
         return value === null ? 'NULL::VARCHAR' : quoteStringLiteral(value);
       };
     }
   },
   'ARRAY': {
     defaultAnalyticalRole: 'attribute',
-    createLiteralWriter: function(dataTypeInfo, dataType){      
+    createLiteralWriter: function(_dataTypeInfo, dataType){
       return function(value, field){
         const type = field.type;
         let duckdbValue = getDuckDbLiteralForValue(value, type);
@@ -913,7 +913,7 @@ export const dataTypes = {
   },
   'STRUCT': {
     defaultAnalyticalRole: 'attribute',
-    createLiteralWriter: function(dataTypeInfo, dataType){      
+    createLiteralWriter: function(_dataTypeInfo, dataType){
       return function(value, field){
         const type = field.type;
         let duckdbValue = getDuckDbLiteralForValue(value, type);
@@ -924,8 +924,8 @@ export const dataTypes = {
   },
   'JSON': {
     defaultAnalyticalRole: 'attribute',
-    createLiteralWriter: function(dataTypeInfo, dataType){      
-      return function(value, field){
+    createLiteralWriter: function(_dataTypeInfo, _dataType){
+      return function(value, _field){
         return `${quoteStringLiteral(String(value))}::JSON`;
       }
     }
@@ -1181,14 +1181,13 @@ export async function ensureDuckDbExtensionLoadedAndInstalled(extensionName, rep
   const statement = await connection.prepare(sql);
   let result = await statement.query(extensionName);
   statement.close();
-  let loaded, installed;
   if (result.numRows === 0) {
     return;
   }
 
   const row = result.get(0);
-  loaded = row.loaded;
-  installed = row.installed;
+  const loaded = row.loaded;
+  const installed = row.installed;
   
   if (!installed) {
     sql = `INSTALL ${extensionName}`;
@@ -1301,7 +1300,6 @@ export function getStructTypeDescriptor(structColumnType){
   const structure = {};
   
   function parseMemberName(){
-    let memberName;
     let startOfMemberName = index;
     let endOfMemberName;
     if (structColumnType.charAt(index) === '"') {
@@ -1313,7 +1311,7 @@ export function getStructTypeDescriptor(structColumnType){
       endOfMemberName = structColumnType.indexOf(' ', startOfMemberName);
       index = endOfMemberName;
     }
-    memberName = structColumnType.substring(startOfMemberName, endOfMemberName);
+    const memberName = structColumnType.substring(startOfMemberName, endOfMemberName);
     return memberName;
   }
   

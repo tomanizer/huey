@@ -152,7 +152,7 @@ export function replaceClass(dom, oldClass, newClass){
   if (classNames.indexOf(newClass) === -1) {
     args.push(newClass);
   }
-  Array.prototype.splice.apply(classNames, args);
+  classNames.splice(...args);
   dom.className = classNames.join(' ');
 }
 

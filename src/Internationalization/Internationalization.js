@@ -24,11 +24,11 @@ export class Internationalization {
     window.addEventListener('languagechange', Internationalization.#languageChanged)
   }
     
-  static #init(event){
+  static #init(_event){
     if (Internationalization.#currentLocale === undefined){
       Internationalization.#setCurrentLocale(Internationalization.#hueyNativeLanguage);
     }
-    const languages = navigator.languages;
+    const _languages = navigator.languages;
     Internationalization.#loadTexts();
   }
   
@@ -42,7 +42,7 @@ export class Internationalization {
     return Internationalization.#currentLocale.language;
   }
 
-  static #languageChanged(event){
+  static #languageChanged(_event){
     Internationalization.#languageIndex = undefined;
     Internationalization.#texts = {};
     Internationalization.#init();
@@ -168,7 +168,7 @@ export class Internationalization {
     const i18nNativeAttributeName = 'data-i18n-native-text';
     for (let i = 0; i < textContentElements.length; i++){
       const element = textContentElements[i];
-      let key, value;
+      let key;
 
       if (element.hasAttribute(i18nNativeAttributeName)){
         key = element.getAttribute(i18nNativeAttributeName);
@@ -179,7 +179,7 @@ export class Internationalization {
           continue;
         }
       }
-      value = Internationalization.getText(key);
+      const value = Internationalization.getText(key);
             
       callback({
         element,
@@ -248,7 +248,7 @@ export class Internationalization {
     const allTexts = {};
     
     Internationalization.#visitAllTexts((object) =>{
-      const element = object.element;
+      const _element = object.element;
       const key = object.key;
       const value = object.value;
       allTexts[key] = value || null;

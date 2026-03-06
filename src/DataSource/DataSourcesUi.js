@@ -12,7 +12,6 @@ import { analyzeDatasource } from '../App/analyzeDatasource.js';
 import { datasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
 import { getConnection, getDatabase, getDuckDbModule } from './duckdb/database.js';
 import {
-  datasourceExportMenuId,
   getDownloadMenuHTML as _getDownloadMenuHTML,
   promptExportDataFormat as _promptExportDataFormat,
   getDatasourceExportSettings as _getDatasourceExportSettings,
@@ -57,7 +56,7 @@ export class DataSourcesUi extends EventEmitter {
     event.stopPropagation();
     event.preventDefault();
 
-    const dataTransfer = event.dataTransfer;
+    const _dataTransfer = event.dataTransfer;
   }
 
   async #dropHandler(event) {
@@ -129,14 +128,13 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   async #getTabularDatasourceTypeSignature(datasource){
-    let typeSignature;
     const type  = datasource.getType();
     const fileType = datasource.getFileExtension();
     const columnMetadata = await datasource.getColumnMetadata();
     const columnMetadataSerialized = {};
     const datasourceSettings = settings.getSettings('datasourceSettings');
     const useLooseColumnComparisonType = datasourceSettings.useLooseColumnTypeComparison;
-    const looseColumnTypes = datasourceSettings.looseColumnTypes;
+    const _looseColumnTypes = datasourceSettings.looseColumnTypes;
     for (let i = 0; i < columnMetadata.numRows; i++){
       const row = columnMetadata.get(i);
 
@@ -145,13 +143,14 @@ export class DataSourcesUi extends EventEmitter {
       columnMetadataSerialized[row.column_name] = comparisonColumnType;
     }
     const columnMetadataSerializedJSON = JSON.stringify(columnMetadataSerialized);
-    typeSignature = `${type}:${fileType}:${columnMetadataSerializedJSON}`;
+    const typeSignature = `${type}:${fileType}:${columnMetadataSerializedJSON}`;
     return typeSignature;
   }
 
   async #renderDatasources(){
     this.clear();
-    let node, group, potentialGroups = {};
+    let _node, _group;
+    const potentialGroups = {};
     const datasources = this.#datasources;
 
     const groupingPromises = Object.keys(datasources).map(async (datasourceId) =>{
@@ -227,7 +226,7 @@ export class DataSourcesUi extends EventEmitter {
     this.#createDataSourceGroupNode(potentialGroups[DuckDbDataSource.types.FILE], true);
     delete potentialGroups[DuckDbDataSource.types.FILE];
 
-    for (var remainingId in potentialGroups) {
+    for (const remainingId in potentialGroups) {
       this.#createDataSourceGroupNode(potentialGroups[remainingId]);
     }
 
@@ -352,7 +351,7 @@ export class DataSourcesUi extends EventEmitter {
 
     const schemaNodes = {};
     for (let i = 0; i < result.numRows; i++){
-      let summary, label;
+      let _summary, _label;
 
       const row = result.get(i);
       const schemaName = row.table_schema;

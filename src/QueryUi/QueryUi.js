@@ -44,9 +44,9 @@ export class QueryUi {
     }
     let node = target;
     let axis, queryAxisItemUi;
-    let isClearAxisAction, isPrimaryAxisAction, isAxisItemAction;
+    let _isClearAxisAction, _isPrimaryAxisAction, _isAxisItemAction;
     const dom = this.getDom();
-    let dataValueKey = null, dataValueEnabled;
+    let dataValueKey = null, _dataValueEnabled;
     
     while (node && node !== dom){
       switch (node.tagName){
@@ -174,7 +174,7 @@ export class QueryUi {
   }
 
   #queryAxisUiItemToggleTotals(queryAxisItemUi){
-    const id = queryAxisItemUi.getAttribute('id');
+    const _id = queryAxisItemUi.getAttribute('id');
     const toggleTotalsCheckbox = queryAxisItemUi.querySelector(`menu > label > input[type=checkbox]`);
     const value = toggleTotalsCheckbox.checked;
     const queryModelItem = this.#getQueryModelItem(queryAxisItemUi);
@@ -182,7 +182,7 @@ export class QueryUi {
   }
   
   #queryAxisUiItemToggleEnableDataValue(queryAxisItemUi, dataValueKey){
-    const id = queryAxisItemUi.getAttribute('id');
+    const _id = queryAxisItemUi.getAttribute('id');
     const queryModelItem = this.#getQueryModelItem(queryAxisItemUi);
     const filter = queryModelItem.filter;
     const values = filter.values;
@@ -238,7 +238,7 @@ export class QueryUi {
       const minHeight = parseInt(computedStyle.minHeight, 10);
 
       // this is the actual, runtime height of the element
-      const clientHeight = ol.clientHeight;
+      const _clientHeight = ol.clientHeight;
 
       style.height = '';
       let resize, overflow;
@@ -346,7 +346,7 @@ export class QueryUi {
     }
     id += `-${QueryAxisItem.getIdForQueryAxisItem(axisItem)}`;
 
-    let itemUi, itemUiTemplateId;
+    let itemUiTemplateId;
     switch (axisId) {
       case QueryModel.AXIS_FILTERS:
         itemUiTemplateId = QueryUi.#queryUiFilterAxisItemTemplateId;
@@ -354,7 +354,7 @@ export class QueryUi {
       default:
         itemUiTemplateId = QueryUi.#queryUiAxisItemTemplateId;
     }
-    itemUi = this.#instantiateQueryUiTemplate(itemUiTemplateId, id);
+    const itemUi = this.#instantiateQueryUiTemplate(itemUiTemplateId, id);
     
     const title = QueryUi.#getQueryAxisItemUiTitle(axisItem);
     itemUi.setAttribute('title', title);
@@ -488,7 +488,7 @@ export class QueryUi {
     axisItemsUi.replaceChildren();
     const items = queryModelAxis.getItems();
     const n = items.length;
-    let separator, item, queryAxisItemUi;
+    let item, queryAxisItemUi;
     for (let i = 0; i < n; i++){
       item = items[i];
       queryAxisItemUi = this.#createQueryAxisItemUi(item);
@@ -945,7 +945,7 @@ export class QueryUi {
     const axisId = config.axisId;
     const axis = this.#instantiateQueryUiTemplate(QueryUi.#queryUiAxisTemplateId, this.#id + '-' + axisId);
     
-    const itemArea = axis.querySelector('ol');
+    const _itemArea = axis.querySelector('ol');
 
     let primaryAxisActionLabelTitle;
     if (config.primaryAxisActionLabelTitle){

@@ -88,7 +88,7 @@ export class SettingsBase extends EventEmitter {
   
     let settings;
     if (path.length) {
-      const property = path.pop();
+      const _property = path.pop();
       settings = this.#getSettings(path);
     }
     else {
@@ -128,7 +128,7 @@ export class SettingsBase extends EventEmitter {
     this.#synchronize('dialog');
   }
   
-  #synchronize(settingsOrDialog, dialogClass){
+  #synchronize(settingsOrDialog, _dialogClass){
     const settings = this.#settings;
     Settings.synchronize(dialog, settings, settingsOrDialog);
     if (settingsOrDialog === 'settings') {
@@ -137,7 +137,7 @@ export class SettingsBase extends EventEmitter {
     }
   }
     
-  #examineChangesAndSendEvent(oldSettings){
+  #examineChangesAndSendEvent(_oldSettings){
     // TODO: 
     // figure out exactly what changed and prepare a change reccord
     // send the change record along with the change event.

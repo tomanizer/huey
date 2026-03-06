@@ -428,7 +428,7 @@ export class Settings extends EventEmitter {
   }
 
   #initDialog(){
-    const settingsDialog = this.#getDialog();
+    const _settingsDialog = this.#getDialog();
 
     byId('settingsDialogOkButton').addEventListener('click', (event) =>{
       event.cancelBubble = true;
@@ -440,7 +440,7 @@ export class Settings extends EventEmitter {
       event.cancelBubble = true;
     });
 
-    byId('settingsDialogResetButton').addEventListener('click', (event) =>{
+    byId('settingsDialogResetButton').addEventListener('click', (_event) =>{
       this.#resetSettings();
       this.fireEvent('change', this);
     });
@@ -475,7 +475,7 @@ export class Settings extends EventEmitter {
   }
 
   static synchronize(dialog, settings, settingsOrDialog){
-    const settingsCopy = Object.assign({}, settings);
+    const _settingsCopy = Object.assign({}, settings);
     for (const sectionName in settings) {
       const section = settings[sectionName];
       for (const property in section) {
@@ -501,7 +501,7 @@ export class Settings extends EventEmitter {
     }
   }
 
-  #examineChangesAndSendEvent(oldSettings){
+  #examineChangesAndSendEvent(_oldSettings){
     // TODO:
     // figure out exactly what changed and prepare a change reccord
     // send the change record along with the change event.

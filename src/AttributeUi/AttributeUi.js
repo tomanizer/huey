@@ -1,4 +1,4 @@
-import { QueryAxisItem, QueryAxis, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { QueryAxisItem, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { DragAndDropHelper } from '../DragAndDrop/DragAndDropHelper.js';
 import { byId, createEl, instantiateTemplate, setAttributes, getAncestorWithTagName, getClassNames, registerTemplates } from '../util/dom/dom.js';
@@ -44,7 +44,7 @@ export class AttributeUi {
       isInteger: false,
       forNumeric: true,
       expressionTemplate: 'AVG( ${columnExpression} )',
-      createFormatter: function(axisItem){
+      createFormatter: function(_axisItem){
         const formatter = createNumberFormatter(true);
         return function(value, field){
           return formatter.format(value, field);
@@ -86,7 +86,7 @@ export class AttributeUi {
       isInteger: false,
       forNumeric: true,
       expressionTemplate: 'GEOMEAN( ${columnExpression} )',
-      createFormatter: function(axisItem){
+      createFormatter: function(_axisItem){
         const formatter = createNumberFormatter(true);
         return function(value, field){
           return formatter.format(value, field);
@@ -142,7 +142,7 @@ export class AttributeUi {
           };
         }
         else {
-          return function(value, field){
+          return function(value, _field){
             return fallbackFormatter(value);
           };
         }
@@ -615,7 +615,7 @@ export class AttributeUi {
     const typeInfo = getDataTypeInfo(typeName);
 
     const isNumeric = Boolean(typeInfo.isNumeric);
-    const isInteger = Boolean(typeInfo.isInteger);
+    const _isInteger = Boolean(typeInfo.isInteger);
 
     const applicableAggregators = {};
     for (const aggregationName in AttributeUi.aggregators) {
@@ -645,7 +645,7 @@ export class AttributeUi {
     return arrayDerivations;
   }
   
-  static getMapDerivations(typeName){
+  static getMapDerivations(_typeName){
     const mapDerivations = Object.assign(AttributeUi.mapDerivations);
     return mapDerivations;
   }
@@ -745,8 +745,8 @@ export class AttributeUi {
    */
   static remoteSchemaTypeToUiType(backendType) {
     if (!backendType) return 'VARCHAR';
-    var t = String(backendType).toLowerCase();
-    var map = {
+    const t = String(backendType).toLowerCase();
+    const map = {
       string: 'VARCHAR',
       int64: 'BIGINT',
       int32: 'INTEGER',
@@ -772,7 +772,7 @@ export class AttributeUi {
         const f = fields[i];
         return {
           toJSON: function() {
-            var uiType = f ? AttributeUi.remoteSchemaTypeToUiType(f.type) : 'VARCHAR';
+            const uiType = f ? AttributeUi.remoteSchemaTypeToUiType(f.type) : 'VARCHAR';
             return {
               column_name: f ? f.name : '',
               column_type: uiType
@@ -913,7 +913,6 @@ export class AttributeUi {
     }
 
     const queryModel = this.#queryModel;
-    let title;
     if (checked) {
       await queryModel.addItem(itemConfig);
     }
@@ -948,7 +947,7 @@ export class AttributeUi {
     switch (config.type) {
       case 'column':
       case 'member':
-        const profile = config.profile;
+        const _profile = config.profile;
         const columnType = config.columnType || config.profile.column_type;
         const dataTypeInfo = getDataTypeInfo(columnType);
         analyticalRole = dataTypeInfo && dataTypeInfo.defaultAnalyticalRole ? dataTypeInfo.defaultAnalyticalRole : analyticalRole;
@@ -1276,7 +1275,7 @@ export class AttributeUi {
     const columnType = profile.memberExpressionType || profile.column_type;
     const memberExpressionPath = profile.memberExpressionPath || [];
     const structure = getStructTypeDescriptor(columnType);
-    const columnName = profile.column_name
+    const _columnName = profile.column_name
     for (const memberName in  structure){
       const memberType = structure[memberName];
       const config = {
@@ -1321,7 +1320,7 @@ export class AttributeUi {
   #loadArrayChildNodes(node, typeName, profile){
     const arrayDerivations = AttributeUi.getArrayDerivations(typeName);
     const folders = this.#createFolders(arrayDerivations, node);
-    const memberExpressionPath = profile.memberExpressionPath || [];
+    const _memberExpressionPath = profile.memberExpressionPath || [];
     for (const derivationName in arrayDerivations) {
       const derivation = arrayDerivations[derivationName];
       let nodeProfile;
@@ -1364,7 +1363,6 @@ export class AttributeUi {
       const derivation = mapDerivations[derivationName];
       let nodeProfile; 
       const memberExpressionType = profile.memberExpressionType || profile.column_type;
-      let memberExpressionPath;
       switch (derivationName) {
         case 'entries':
         case 'entry keys':
@@ -1456,7 +1454,7 @@ export class AttributeUi {
       memberExpressionPath = JSON.parse(memberExpressionPath);
     }
 
-    const elementType = node.getAttribute('data-element_type');
+    const _elementType = node.getAttribute('data-element_type');
 
     const profile = {
       column_name: columnName,
@@ -1595,7 +1593,7 @@ export class AttributeUi {
 
   revealAllQueryAttributes() {
     // TODO: ensure all query attributes are rendered
-    const dom = this.getDom();
+    const _dom = this.getDom();
     const detailsList = document.querySelectorAll('.attributeUi details:has( details > summary > label > input[type=checkbox]:checked )');
     for (let i = 0; i < detailsList.length; i++){
       const details = detailsList.item(i);

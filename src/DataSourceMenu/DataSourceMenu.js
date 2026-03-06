@@ -39,7 +39,7 @@ export class DataSourceMenu {
     return byId(this.#id);
   }
 
-  #datasourcesChangedHandler(event) {
+  #datasourcesChangedHandler(_event) {
     this.#update();
   }
 
@@ -218,5 +218,5 @@ export class DataSourceMenu {
 
 
 export function initDataSourceMenu(){
-  const datasourceMenu = new DataSourceMenu('dataSourceMenu', queryModel, datasourcesUi);
+  const _datasourceMenu = new DataSourceMenu('dataSourceMenu', queryModel, datasourcesUi);
 }

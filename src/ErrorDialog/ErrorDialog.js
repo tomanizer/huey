@@ -16,7 +16,7 @@ export function getDataFromError(error){
   
   const stack = error.stack;
   let stackLines;
-  let description;
+  let _description;
   if (stack) {
     stackLines = stack.split(newlineRegex);
   }

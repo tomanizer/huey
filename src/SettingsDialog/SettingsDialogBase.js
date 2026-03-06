@@ -12,7 +12,7 @@ export class SettingsDialogBase {
     this.#initDialog();
   }
 
-  restoreToDefaultHandler(event){
+  restoreToDefaultHandler(_event){
     this.#settings.restoreToDefault();    
     this.updateDialogFromSettings();
   }
@@ -70,7 +70,7 @@ export class SettingsDialogBase {
   }
     
   static synchronize(dialog, settings, settingsOrDialog){
-    const settingsCopy = Object.assign({}, settings);
+    const _settingsCopy = Object.assign({}, settings);
     for (const sectionName in settings) {
       const section = settings[sectionName];
       for (const property in section) {

@@ -12,7 +12,7 @@ export default [
       'no-eval': 'error',
       'no-alert': 'warn',
       'eqeqeq': ['warn', 'always'],
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
       'require-await': 'warn',
       'complexity': ['warn', 20],
       'no-prototype-builtins': 'warn',

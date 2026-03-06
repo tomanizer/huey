@@ -85,14 +85,14 @@ export class UploadUi {
     return queryModelState;
   }
 
-  static async #handleHueyFile(file, uploadItem){
+  static async #handleHueyFile(file, _uploadItem){
     const fileName = file.name;
     const extension = fileName.split('.').pop().toLowerCase();
     const fileContents = await file.text();
     return UploadUi.#handleHueyFileContents(fileContents, extension);
   }
 
-  static async #handleHueyFileUrl(url, uploadItem){
+  static async #handleHueyFileUrl(url, _uploadItem){
     const extension = url.split('.').pop().toLowerCase();
     const contents = await fetch(url);
     return UploadUi.#handleHueyFileContents(contents, extension);
@@ -167,7 +167,7 @@ export class UploadUi {
       if (duckDbDataSource) {
         switch (duckDbDataSource.getType()){
           case DuckDbDataSource.types.FILE:
-            const columnMetadata = await duckDbDataSource.getColumnMetadata();
+            const _columnMetadata = await duckDbDataSource.getColumnMetadata();
             break;
           case DuckDbDataSource.types.DUCKDB:
           case DuckDbDataSource.types.SQLITE:
@@ -230,7 +230,7 @@ export class UploadUi {
     return uploadItem;
   }
 
-  #createInstallExtensionItem(extensionName, extensionRepository){
+  #createInstallExtensionItem(extensionName, _extensionRepository){
     const extensionItemId = `duckdb_extension:${extensionName}`;
     const uploadItem = this.#createLoadExtensionItem(extensionItemId);
     const label = uploadItem.getElementsByTagName('span').item(0);
@@ -339,7 +339,7 @@ export class UploadUi {
           installSql += ` FROM ${extensionRepository}`;
         }
         appendMessageLine(Internationalization.getText('Installing extension {1}', extensionName));
-        const result = await connection.query(installSql);
+        const _result = await connection.query(installSql);
         appendMessageLine(Internationalization.getText('Extension {1} is now installed', extensionName));
         this.#setProgressValue(progressbar, parseInt(progressbar.value, 10) + 20);
       }
@@ -433,7 +433,7 @@ export class UploadUi {
         id: id,
         'data-route': route
       });
-      analyzeButton.addEventListener('click', async (event) =>{
+      analyzeButton.addEventListener('click', async (_event) =>{
         await pageStateManager.setPageState(route);
       });
       const analyzeButtonLabel = createEl('label', {
@@ -467,7 +467,7 @@ export class UploadUi {
 
     const requiredDuckDbExtensions = this.getRequiredDuckDbExtensions(files);
     const loadExtensionsPromises = this.loadRequiredDuckDbExtensions(requiredDuckDbExtensions);
-    const loadExtensionsPromiseResults = await Promise.all(loadExtensionsPromises);
+    const _loadExtensionsPromiseResults = await Promise.all(loadExtensionsPromises);
 
     this.#pendingUploads = [];
     for (let i = 0; i < numFiles; i++){
@@ -651,7 +651,7 @@ export function isParquetUrl(url){
     const parsed = new URL(url);
     return /\.parquet$/i.test(parsed.pathname);
   }
-  catch (error){
+  catch (_error){
     return /\.parquet($|[?#])/i.test(url);
   }
 }
@@ -784,7 +784,7 @@ export function initUploadUi(){
   }, false);
 
   byId('loadFromUrl')
-  .addEventListener('click', async (event) =>{
+  .addEventListener('click', async (_event) =>{
     const formHtml = [
       '<form id="loadFromUrlForm">',
       '<label for="loadFromUrlInput">URL or cloud URI</label>',
@@ -910,7 +910,7 @@ export function initUploadUi(){
   });
 
   byId('addRemoteDatasource')
-  .addEventListener('click', async (event) =>{
+  .addEventListener('click', async (_event) =>{
     const formHtml = [
       '<p>Connect to a dataset served by QueryService.</p>',
       '<form id="remoteDatasourceForm">',

@@ -6,7 +6,7 @@ export class PromptUi {
 
     const acceptButton = byId('promptDialogAcceptButton');
     if (acceptButton) {
-      acceptButton.addEventListener('click', (event) =>{
+      acceptButton.addEventListener('click', (_event) =>{
         const dialog = byId('promptUi');
         if (!dialog) {
           return;
@@ -19,7 +19,7 @@ export class PromptUi {
 
     const rejectButton = byId('promptDialogRejectButton');
     if (rejectButton) {
-      rejectButton.addEventListener('click', (event) =>{
+      rejectButton.addEventListener('click', (_event) =>{
         const dialog = byId('promptUi');
         if (!dialog) {
           return;
@@ -33,7 +33,7 @@ export class PromptUi {
   }
 
   static show(config){
-    return new Promise((resolve, reject) =>{
+    return new Promise((resolve, _reject) =>{
       const promptDialog = byId( 'promptUi');
       const ariaLabel = promptDialog.querySelector('#' + promptDialog.getAttribute('aria-labelledby'))
       ariaLabel.textContent = config.title;
@@ -53,13 +53,13 @@ export class PromptUi {
         section.appendChild(contents);
       }
 
-      const closeHandler = function(event){
+      const closeHandler = function(_event){
         byId('promptUi').removeEventListener('close', closeHandler);
         resolve(byId('promptUi').getAttribute('data-returnValue'));
       };
       promptDialog.addEventListener('close', closeHandler);
       promptDialog.showModal();
-      var firstInput = promptDialog.querySelector('section input:not([type="hidden"]), section textarea, section select');
+      const firstInput = promptDialog.querySelector('section input:not([type="hidden"]), section textarea, section select');
       if (firstInput) {
         firstInput.focus();
       }
