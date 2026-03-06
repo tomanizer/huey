@@ -33,13 +33,17 @@ describe('cleanup regressions', () => {
       <button id="quickQueryClearAllButton"></button>
       <button id="quickQueryColumnStatisticsButton"></button>
       <button id="quickQueryDataPreviewButton"></button>
-      <button id="quickQueryDestructuredDataPreviewButton" title="old"></button>
+      <label for="quickQueryDestructuredDataPreviewButton" title="old label title">
+        <button id="quickQueryDestructuredDataPreviewButton" title="old button title"></button>
+      </label>
     `;
 
     new QuickQueryMenu({});
 
     const button = document.getElementById('quickQueryDestructuredDataPreviewButton');
+    const label = button.closest('label');
     expect(button.disabled).toBe(true);
     expect(button.title).toBe('Coming soon');
+    expect(label.title).toBe('Coming soon');
   });
 });

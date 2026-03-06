@@ -170,6 +170,10 @@ export class QuickQueryMenu {
     const button = byId('quickQueryDestructuredDataPreviewButton');
     button.disabled = true;
     button.title = 'Coming soon';
+    const label = button.closest('label');
+    if (label) {
+      label.title = button.title;
+    }
   }
 
 }
