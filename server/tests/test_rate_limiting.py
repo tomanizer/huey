@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 from fastapi.testclient import TestClient
 from starlette.requests import Request
@@ -132,7 +134,10 @@ def test_rate_limit_key_prefers_api_key_when_auth_enabled(monkeypatch) -> None:
     get_settings.cache_clear()
     try:
         request = _create_test_request({"X-API-Key": "client-a", "X-Forwarded-For": "1.2.3.4"})
-        assert get_rate_limit_key(request) == "key:client-a"
+        expected_digest = hashlib.sha256("client-a".encode("utf-8")).hexdigest()[:16]
+        key = get_rate_limit_key(request)
+        assert key == f"key:{expected_digest}"
+        assert "client-a" not in key
     finally:
         get_settings.cache_clear()
 

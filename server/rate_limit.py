@@ -1,11 +1,12 @@
 """Rate limiting helpers for QueryService."""
 
+import hashlib
 import ipaddress
 
 from slowapi import Limiter
 from starlette.requests import Request
 
-from server.auth import _constant_time_key_check
+from server.auth import is_valid_api_key
 from server.config import get_settings
 
 
@@ -44,8 +45,9 @@ def get_rate_limit_key(request: Request) -> str:
     settings = get_settings()
     if settings.auth_enabled and settings.rate_limit_by_api_key:
         api_key = request.headers.get("X-API-Key", "")
-        if api_key and _constant_time_key_check(api_key, settings.api_key_list):
-            return f"key:{api_key}"
+        if is_valid_api_key(api_key, settings.api_key_list):
+            digest = hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:16]
+            return f"key:{digest}"
 
     return f"ip:{get_real_ip(request)}"
 

@@ -25,6 +25,13 @@ def _constant_time_key_check(provided: str, valid_keys: list[str]) -> bool:
     return matched
 
 
+def is_valid_api_key(api_key: str, valid_keys: list[str]) -> bool:
+    """Return True when a non-empty API key matches configured keys."""
+    if not api_key:
+        return False
+    return _constant_time_key_check(api_key, valid_keys)
+
+
 async def require_api_key(api_key: str = Security(api_key_header)) -> str:
     """
     Enforce API key authentication when enabled.
@@ -36,6 +43,6 @@ async def require_api_key(api_key: str = Security(api_key_header)) -> str:
         return "anonymous"
     if not api_key:
         raise AuthError("Missing API key")
-    if not _constant_time_key_check(api_key, settings.api_key_list):
+    if not is_valid_api_key(api_key, settings.api_key_list):
         raise AuthError("Invalid API key")
     return api_key
