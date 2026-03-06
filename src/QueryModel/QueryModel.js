@@ -375,6 +375,16 @@ export class QueryModel extends EventEmitter {
       config.filter = foundItem.filter;
     }
 
+    if (
+      foundItem &&
+      foundItem.axis === axis &&
+      (config.index === undefined || config.index === foundItem.index) &&
+      (config.includeTotals === undefined || config.includeTotals === foundItem.includeTotals) &&
+      (config.filter === undefined || JSON.stringify(config.filter) === JSON.stringify(foundItem.filter))
+    ) {
+      return foundItem;
+    }
+
     const axesChangeInfo = {};
     const eventData = {
       axesChanged: axesChangeInfo
@@ -409,6 +419,16 @@ export class QueryModel extends EventEmitter {
 
     this.fireEvent('change', eventData);
     return addedItem;
+  }
+
+  /**
+   * @param {QueryAxisItemConfig} item
+   * @param {string} targetAxis
+   * @returns {Promise<QueryAxisItemConfig>}
+   */
+  async moveItem(item, targetAxis){
+    const config = Object.assign({}, item, { axis: targetAxis });
+    return this.addItem(config);
   }
 
   /**

@@ -24,6 +24,7 @@ vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
 
 import { QueryAxisItem } from '../../src/QueryModel/QueryModel.js';
 import { FilterDialog } from '../../src/FilterUi/FilterUi.js';
+import { getDataTypeInfo } from '../../src/util/sql/SQLHelper.js';
 
 describe('QueryAxisItem.getFilterConditionSql', () => {
   function createFilterItem(overrides) {
@@ -117,6 +118,25 @@ describe('QueryAxisItem.getFilterConditionSql', () => {
     expect(sql).toContain('AND');
   });
 
+  test('NOT BETWEEN generates NOT BETWEEN condition with null handling', () => {
+    const item = createFilterItem({
+      filter: {
+        filterType: FilterDialog.filterTypes.NOTBETWEEN,
+        values: {
+          low: { literal: "'2021-01-01'", label: 'from', enabled: true },
+          null: { literal: 'NULL', label: 'NULL', enabled: true },
+        },
+        toValues: {
+          low: { literal: "'2021-12-31'", label: 'to', enabled: true },
+          null: { literal: 'NULL', label: 'NULL', enabled: true },
+        },
+      },
+    });
+    const sql = QueryAxisItem.getFilterConditionSql(item);
+    expect(sql).toContain('NOT BETWEEN');
+    expect(sql).toContain('IS NOT NULL');
+  });
+
   test('NULL value in INCLUDE generates IS NULL', () => {
     const item = createFilterItem({
       filter: {
@@ -138,6 +158,34 @@ describe('QueryAxisItem.getFilterConditionSql', () => {
     });
     const sql = QueryAxisItem.getFilterConditionSql(item);
     expect(sql).toContain('IS NOT NULL');
+  });
+
+  test('LIKE preserves special characters and escaped quotes', () => {
+    const item = createFilterItem({
+      filter: {
+        filterType: FilterDialog.filterTypes.LIKE,
+        values: {
+          special: { literal: "'100%_O''Reilly'", label: "100%_O'Reilly", enabled: true },
+        },
+      },
+    });
+    const sql = QueryAxisItem.getFilterConditionSql(item);
+    expect(sql).toContain("LIKE '100%_O''Reilly'");
+  });
+
+  test('derived expression uses derivation SQL in filter condition', () => {
+    const item = createFilterItem({
+      columnName: 'order_date',
+      columnType: 'DATE',
+      derivation: 'year',
+      filter: {
+        filterType: FilterDialog.filterTypes.INCLUDE,
+        values: { y2024: { literal: '2024', label: '2024', enabled: true } },
+      },
+    });
+    const sql = QueryAxisItem.getFilterConditionSql(item);
+    expect(sql).toContain('YEAR(');
+    expect(sql).toContain('= 2024');
   });
 
   test('HAS ANY generates list_has_any', () => {
@@ -198,5 +246,40 @@ describe('QueryAxisItem.getFilterConditionSql', () => {
     const item = createFilterItem();
     const sql = QueryAxisItem.getFilterConditionSql(item);
     expect(sql).toBeUndefined();
+  });
+
+  test('getCaptionForQueryAxisItem returns filter caption text', () => {
+    const item = createFilterItem({
+      axis: 'filters',
+      filter: {
+        filterType: FilterDialog.filterTypes.BETWEEN,
+        values: { low: { literal: '1', label: '1', enabled: true } },
+        toValues: { low: { literal: '10', label: '10', enabled: true } },
+      },
+    });
+    const caption = QueryAxisItem.getCaptionForQueryAxisItem(item);
+    expect(caption).toContain('between');
+    expect(caption).toContain('1 - 10');
+  });
+});
+
+describe('QueryAxisItem derivation helpers', () => {
+  test('getDerivationCaption returns known and unknown captions', () => {
+    expect(QueryAxisItem.getDerivationCaption('year')).toBe('year');
+    expect(QueryAxisItem.getDerivationCaption('unknown-derivation')).toBe('unknown-derivation');
+  });
+
+  test('getAvailableDerivations returns subset by datatype info', () => {
+    const numeric = QueryAxisItem.getAvailableDerivations(getDataTypeInfo('INTEGER'));
+    expect(Object.keys(numeric)).toHaveLength(0);
+
+    const date = QueryAxisItem.getAvailableDerivations(getDataTypeInfo('DATE'));
+    expect(date.year).toBeDefined();
+    expect(date.hour).toBeUndefined();
+    expect(date.uppercase).toBeUndefined();
+
+    const str = QueryAxisItem.getAvailableDerivations(getDataTypeInfo('VARCHAR'));
+    expect(str.uppercase).toBeDefined();
+    expect(str['md5 (hex)']).toBeDefined();
   });
 });

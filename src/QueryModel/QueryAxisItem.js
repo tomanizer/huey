@@ -183,6 +183,28 @@ export class QueryAxisItem {
     return caption;
   }
 
+  static getDerivationCaption(derivation){
+    const derivationInfo = AttributeUi.getDerivationInfo(derivation);
+    if (!derivationInfo) {
+      return derivation;
+    }
+    return derivationInfo.title || derivation;
+  }
+
+  static getAvailableDerivations(dataTypeInfo){
+    if (!dataTypeInfo) {
+      return {};
+    }
+    return Object.assign(
+      {},
+      dataTypeInfo.hasDateFields ? AttributeUi.dateFields : undefined,
+      dataTypeInfo.hasTimeFields ? AttributeUi.timeFields : undefined,
+      dataTypeInfo.hasTextDerivations ? AttributeUi.textDerivations : undefined,
+      dataTypeInfo.hasTextDerivations ? AttributeUi.hashDerivations : undefined,
+      dataTypeInfo.hasUUIDDerivations ? AttributeUi.uuidDerivations : undefined
+    );
+  }
+
   static getIdForQueryAxisItem(axisItem){
     // see issue https://github.com/rpbouman/huey/issues/352
     // only the sql expression is not enough to identify an Item
