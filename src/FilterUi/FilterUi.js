@@ -628,7 +628,7 @@ export class FilterDialog {
     const isRangeFilterType = FilterDialog.isRangeFilterType(filterType);
 
     const filterValuesList = this.#getFilterValuesList();
-    const _toFilterValuesListOptions = filterValuesList.options;
+    let filterValuesListOptions = filterValuesList.options;
     const currentValues = this.#extractOptionsFromSelectList(filterValuesList);
 
     let toFilterValuesList, currentToValues;
