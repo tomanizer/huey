@@ -87,8 +87,9 @@ export class SettingsBase extends EventEmitter {
     path = SettingsBase.#normalizePath(path);
   
     let settings;
+    let property;
     if (path.length) {
-      const _property = path.pop();
+      property = path.pop();
       settings = this.#getSettings(path);
     }
     else {
