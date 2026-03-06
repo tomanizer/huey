@@ -1,5 +1,6 @@
 import { EventEmitter } from '../util/event/EventEmitter.js';
-import { byId, instantiateTemplate } from '../util/dom/dom.js';
+import { byId, instantiateTemplate, registerTemplates } from '../util/dom/dom.js';
+import dataSourceTemplatesHtml from './templates.html?raw';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { DuckDbDataSource } from './duckdb/DuckDbDataSource.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
@@ -27,6 +28,7 @@ export class DataSourcesUi extends EventEmitter {
 
   constructor(id){
     super(['change']);
+    registerTemplates(dataSourceTemplatesHtml);
     this.#id = id;
 
     const dom = this.getDom();

@@ -1,7 +1,8 @@
 import { QueryAxisItem, QueryAxis, QueryModel, queryModel } from '../QueryModel/QueryModel.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { DragAndDropHelper } from '../DragAndDrop/DragAndDropHelper.js';
-import { byId, createEl, instantiateTemplate, setAttributes, getAncestorWithTagName, getClassNames } from '../util/dom/dom.js';
+import { byId, createEl, instantiateTemplate, setAttributes, getAncestorWithTagName, getClassNames, registerTemplates } from '../util/dom/dom.js';
+import attributeTemplatesHtml from './templates.html?raw';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import {
   getDataTypeInfo,
@@ -783,6 +784,7 @@ export class AttributeUi {
   }
 
   constructor(id, queryModel){
+    registerTemplates(attributeTemplatesHtml);
     this.#id = id;
     this.#queryModel = queryModel;
 

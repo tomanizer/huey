@@ -173,23 +173,6 @@
         </div>
       </header>
       
-      <template id="uploadItemTemplate">
-        <details id="filename">
-          <summary>
-            <span></span>
-            <menu></menu>
-            <progress 
-              max="100"
-              value="0"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              aria-valuenow="0"
-            />
-          </summary>
-          <p></p>
-        </details>
-      </template>
-      
       <section id="uploadProgressList">
       </section>
       
@@ -1419,26 +1402,6 @@
       </footer>
     </dialog>
 
-    <!-- this template is to present datasources in a prompt dialog and is used by the PageStateManager -->
-    <template id="datasource-menu-item">
-      <li 
-        role="menuitem" 
-        data-nodetype="datasource" 
-        data-datasourcetype=""
-        data-datasource-id=""
-        popovertarget="dataSourceMenu"
-      >
-        <input 
-          type="radio" 
-          name="compatibleDatasources"
-        />
-        <button
-          popovertarget="dataSourceMenu"
-        ></button>
-        <label for="datasourceMenu-${index}"></label>
-      </li>
-    </template>
-    
     <dialog
       id="datasourceSettingsDialog"
       draggable="true"      
@@ -1921,130 +1884,6 @@
       </li>
     </menu>
 
-    <template id="pivotTableUiTemplate">
-      <!-- pivotTableUi: outmost container of the pivot table-->
-      <div
-        id=""
-        class="pivotTableUiContainer"
-        style="
-          flex-grow: 1;
-          width: 100%;
-          height: 100%;
-          border-width: 1px;
-          border-color: var( --huey-dark-border-color );
-          border-top-style: solid;
-        "
-        aria-busy="false"
-        data-needs-update="false"
-      >
-        <div class="pivotTableUiInnerContainer">
-          <!-- pivotTableColumnsSizer: sizer to generate the horizontal scrollbar -->
-          <div class="pivotTableUiSizer pivotTableUiHorizontalSizer"></div>
-          <!-- pivotTableColumnsSizer: sizer to generate the vertical scrollbar -->
-          <div class="pivotTableUiSizer pivotTableUiVerticalSizer"></div>
-
-          <!-- the actual table structure -->
-          <div class="pivotTableUiTable" role="grid">
-            <div class="pivotTableUiTableHeader" role="rowgroup"></div>
-            <div class="pivotTableUiTableBody" role="rowgroup"></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <template id="queryUiTemplate">
-      <div
-        id=""
-        class="queryUi"
-        data-cellheadersaxis="columns"
-      >
-      </div>
-    </template>
-
-    <template id="queryUiAxis">
-      <section>
-        <header>
-          <label><button id="-axis-primary-action" aria-label="Axis primary action"></button></label>
-          <h1></h1>
-        </header>
-        <ol>
-        </ol>
-        <footer>
-          <label title="Remove all items from this axis"><button id="-clear-axis">Clear axis</button></label>
-        </footer>
-      </section>
-    </template>
-
-    <template id="queryUiAxisItem">
-      <li draggable="true">
-        <label title="Move this item to the left">
-          <button id="-move-left">Move this item to the left</button>
-        </label>
-        <span></span>
-        <menu>
-          <label title="Calculate totals for this level">
-            <input id="-toggle-totals" type="checkbox"/>
-          </label>
-          <label title="Move this item to the other axis">
-            <button id="-move-to-other-axis">Move this item to the other axis</button>
-          </label>
-          <label title="Remove this item from the axis">
-            <button id="-remove-from-axis">Remove this item from the axis</button>
-          </label>
-        </menu>
-        <label title="Move this item to the right">
-          <button id="-move-right">Move this item to the right</button>
-        </label>
-      </li>
-    </template>
-
-    <template id="queryUiFilterAxisItemValue">
-      <li role="menuitem">
-        <label 
-          title="Use the checkbox to enable/disable this condition"
-          for=""
-        >
-          <span></span>
-          <input
-            id=""
-            type="checkbox"
-          />
-        </label>
-        <label 
-          title="Remove this filter condition"
-          for=""
-        >
-          <button></button>
-        </label>
-      </li>
-    </template>
-
-    <template id="queryUiFilterAxisItem">
-      <li draggable="true">
-        <label title="Move this item to the left">
-          <button id="-move-left">Move this item to the left</button>
-        </label>
-        <details>
-          <summary>
-            <span></span>
-          </summary>
-          <header title="Filter condition type"></header>
-          <ol role="menu"></ol>
-        </details>
-        <menu>
-          <label title="Click to open the filter dialog to edit the filter.">
-            <button id="-edit-filter-condition">Click to open the filter dialog to edit the filter.</button>
-          </label>
-          <label title="Remove this item from the axis">
-            <button id="-remove-from-axis">Remove this item from the axis</button>
-          </label>
-        </menu>
-        <label title="Move this item to the right">
-          <button id="-move-right">Move this item to the right</button>
-        </label>
-      </li>
-    </template>
-
     <main
       id="layout"
       class="layout"
@@ -2295,62 +2134,7 @@
             role="tabpanel"
           >
             <label for="uploader">Drop some files here, or click the Upload button:</label>
-            
-            <template id="dataSourceGroupNodeActionButton">
-              <label
-                class="${class}"
-                for="${id}"
-                title="${title}"
-              >
-                <button id="${id}" aria-label="${title}"></button>
-              </label>
-            </template>
-            
-            <template id="dataSourceNode">
-              <details
-                role="treeitem"
-                data-nodetype="datasource"
-                data-datasourcetype="${datasourceType}"
-                title="${title}"
-              >
-                <summary>
-                  <span class="label i18nIgnore">${caption}</span>
-                </summary>
-              </details>
-            </template>
-            
-            <template id="dataSourceGroupNode">
-              <details
-                role="treeitem"
-                data-nodetype="datasourcegroup"
-                title="${title}"
-                data-grouptype="${group-type}"
-                data-datasourceids="${datasource-list}"
-                open="true"
-              >
-                <summary>
-                  <span class="label">${caption}</span>
-                </summary>
-              </details>
-            </template>
-            
-            <template id="dataSourceSchemaNode">
-              <details
-                role="treeitem"
-                data-nodetype="duckdb_schema"
-                title="${title}"
-                data-grouptype="${group-type}"
-                data-datasourceids="${datasource-list}"
-                data-catalog-name="${catalogName}"
-                data-schema-name="${schemaName}"
-                open="true"
-              >
-                <summary>
-                  <span class="label i18nIgnore">${caption}</span>
-                </summary>
-              </details>
-            </template>
-            
+
             <div
               id="datasourcesUi"
               role="tree"
@@ -2387,31 +2171,6 @@
               </fieldset>
             </search>
 
-            <template id="attribute-node">
-              <details role="treeitem" data-nodetype="">
-                <summary>
-                  <span class="label"></span>
-                </summary>
-              </details>
-            </template>
-            
-            <template id="attribute-node-axis-dummybutton">
-              <span class="attributeUiAxisButton" data-axis=""></span>
-            </template>
-            
-            <template id="attribute-node-axis-checkbox">
-              <label 
-                class="attributeUiAxisButton" 
-                data-axis=""
-                data-title-checked=""
-                data-title-unchecked=""
-                title=""
-                for=""
-              >
-                <input type="checkbox"/>
-              </label>
-            </template>
-            
             <div
               id="attributeUi"
               class="attributeUi"

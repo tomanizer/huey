@@ -1,6 +1,7 @@
 import { EventEmitter } from '../util/event/EventEmitter.js';
 import { bufferEvents } from '../util/event/EventBuffer.js';
-import { byId, instantiateTemplate, hasClass, getChildWithClassName, createEl } from '../util/dom/dom.js';
+import { byId, instantiateTemplate, hasClass, getChildWithClassName, createEl, registerTemplates } from '../util/dom/dom.js';
+import pivotTableTemplatesHtml from './templates.html?raw';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { ContextMenu } from '../ContextMenu/ContextMenu.js';
 import { TupleSet } from '../DataSet/TupleSet.js';
@@ -48,6 +49,7 @@ export class PivotTableUi extends EventEmitter {
 
   constructor(config){
     super(['updated', 'busy']);
+    registerTemplates(pivotTableTemplatesHtml);
     this.#initDom(config);
     this.#id = config.id;
 

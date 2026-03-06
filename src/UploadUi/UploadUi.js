@@ -1,4 +1,5 @@
-import { byId, createEl, instantiateTemplate } from '../util/dom/dom.js';
+import { byId, createEl, instantiateTemplate, registerTemplates } from '../util/dom/dom.js';
+import uploadTemplatesHtml from './templates.html?raw';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { Routing } from '../Routing/Routing.js';
 import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
@@ -42,6 +43,7 @@ export class UploadUi {
   }
 
   init(){
+    registerTemplates(uploadTemplatesHtml);
     this.#getCancelButton().addEventListener('click', async () =>{
       await this.#cancelUploads();
       this.getDialog().close();
