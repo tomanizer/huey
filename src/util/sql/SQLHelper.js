@@ -243,19 +243,9 @@ export function createDecimalLiteralWriter(precision, scale){
     throw new Error(`Cannot specify scale without specifying precision`);
   }
   
-  const formatter = new Intl.NumberFormat(undefined, {
-    useGrouping: false,
-    signDisplay: 'negative',
-    minimumIntegerDigits: 1,
-    maximumFractionDigits: scale || 0,
-    minimumSignificantDigits: 1
-  });
-  
   return function(value, valueField){
     const decimalString = getArrowDecimalAsString(value, valueField.type);
-    // this is mostly to lose the leading zeroes
-    const formattedDecimalString = formatter.format(decimalString)
-    return `${formattedDecimalString}::${typeDef}`;
+    return `${decimalString}::${typeDef}`;
   }
 }
 

@@ -95,6 +95,19 @@ describe('SQLHelper literal writers', () => {
       'Couldn\'t match DECIMAL against regex for DECIMAL'
     );
   });
+
+  test('DECIMAL literal writer remains locale-independent', () => {
+    const numberFormatSpy = vi.spyOn(Intl, 'NumberFormat').mockImplementation(() => ({
+      format: () => '1.234,56',
+    }));
+    try {
+      const writer = dataTypes['DECIMAL'].createLiteralWriter({}, 'DECIMAL(10,2)');
+      expect(writer('123456', { type: { scale: 2 } })).toBe('1234.56::DECIMAL(10,2)');
+    }
+    finally {
+      numberFormatSpy.mockRestore();
+    }
+  });
 });
 
 describe('SQLHelper dataTypes metadata', () => {
