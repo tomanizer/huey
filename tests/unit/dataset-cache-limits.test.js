@@ -187,4 +187,85 @@ describe('DataSet cache limits', () => {
     cellSet.clearCache();
     expect(cellSet.cacheSize).toBe(2);
   });
+
+  test('CellSet cache sizing handles BigInt cell values without crashing', async () => {
+    const connection = {
+      fetchCells() {
+        return {
+          cells: [{
+            row_index: 0,
+            column_index: 0,
+            values: { 2: 1n }
+          }]
+        };
+      },
+      getState() {
+        return 'open';
+      }
+    };
+    const datasource = {
+      getType() {
+        return 'remote';
+      },
+      getManagedConnection() {
+        return connection;
+      }
+    };
+    const queryModel = {
+      getDatasource() {
+        return datasource;
+      },
+      getRowsAxis() {
+        return { getItems: () => [{ columnName: 'row_field', columnType: 'VARCHAR' }] };
+      },
+      getColumnsAxis() {
+        return { getItems: () => [{ columnName: 'col_field', columnType: 'VARCHAR' }] };
+      },
+      getCellsAxis() {
+        return { getItems: () => [{ columnName: 'amount', columnType: 'HUGEINT', aggregator: 'sum' }] };
+      },
+      getFiltersAxis() {
+        return { getItems: () => [] };
+      }
+    };
+    const tupleField = [{ name: 'value', type: { typeId: 5 } }];
+    const rowsTupleSet = {
+      getTupleCountSync() {
+        return 1;
+      },
+      getTupleSync(index) {
+        return { values: [index] };
+      },
+      getTupleValueFields() {
+        return tupleField;
+      },
+      getQueryAxisItems() {
+        return [{ columnName: 'row_field', columnType: 'VARCHAR' }];
+      }
+    };
+    const columnsTupleSet = {
+      getTupleCountSync() {
+        return 1;
+      },
+      getTupleSync(index) {
+        return { values: [index] };
+      },
+      getTupleValueFields() {
+        return tupleField;
+      },
+      getQueryAxisItems() {
+        return [{ columnName: 'col_field', columnType: 'VARCHAR' }];
+      }
+    };
+
+    const cellSet = new CellSet(
+      queryModel,
+      [rowsTupleSet, columnsTupleSet],
+      createSettings({ cellSetMaxCacheEntries: 10, cellSetMaxCacheSizeMb: 50 })
+    );
+
+    const cells = await cellSet.getCells([[0, 1], [0, 1]]);
+    expect(cells[0]).toBeDefined();
+    expect(cellSet.cacheSize).toBeGreaterThan(2);
+  });
 });
