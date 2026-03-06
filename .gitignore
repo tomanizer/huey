@@ -18,3 +18,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+
+# Local/dev artifacts
+.copilot_tmp/
+.env
+.github/PULL_REQUEST_TEMPLATE/
+.secrets
+.venv-ci/
+btc-cells.json
+btc-tuples.json
+src/coverage/
