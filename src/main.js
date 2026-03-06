@@ -1,5 +1,6 @@
 import { getDuckDbLogLevel, initApplication } from './App/App.js';
 import { showErrorDialog } from './ErrorDialog/ErrorDialog.js';
+import { setDatabase } from './DataSource/duckdb/database.js';
 import { duckDbLibraryUrl, tablerIconsFontUrl } from './version.js';
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -49,11 +50,7 @@ try {
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   const connection = await db.connect();
 
-  window.hueyDb = {
-    duckdb,
-    instance: db,
-    connection,
-  };
+  setDatabase(duckdb, db, connection);
 
   await initApplication();
 } catch (error) {

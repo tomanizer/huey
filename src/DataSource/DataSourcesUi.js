@@ -10,6 +10,7 @@ import { ExportUi } from '../ExportUi/ExportDialog.js';
 import { uploadUi, afterUploaded } from '../UploadUi/UploadUi.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
 import { datasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
+import { getConnection, getDatabase, getDuckDbModule } from './duckdb/database.js';
 
 export class DataSourcesUi extends EventEmitter {
 
@@ -362,7 +363,7 @@ export class DataSourcesUi extends EventEmitter {
 
   async #loadDatabaseDatasource(databaseDatasource){
     const catalogName = databaseDatasource.getFileNameWithoutExtension();
-    const connection = window.hueyDb.connection;
+    const connection = getConnection();
     const sql = `
       SELECT table_schema, table_name, table_type
       FROM information_schema.tables
@@ -408,8 +409,7 @@ export class DataSourcesUi extends EventEmitter {
       const tableDatasourceId = `${datasourceId}:${getQuotedIdentifier(schemaName)}:${getQuotedIdentifier(tableName)}`;
       let datasource = this.getDatasource(tableDatasourceId);
       if (!datasource) {
-        const hueyDb = window.hueyDb;
-        datasource = new DuckDbDataSource(hueyDb.duckdb, hueyDb.instance, {
+        datasource = new DuckDbDataSource(getDuckDbModule(), getDatabase(), {
           type: datasourcetype,
           catalogName: catalogName,
           schemaName: schemaName,
@@ -572,9 +572,8 @@ export class DataSourcesUi extends EventEmitter {
     const node = this.#getTreeNodeFromClickEvent(event);
     const nodeType = node.getAttribute('data-nodetype');
 
-    const hueyDb = window.hueyDb;
-    const duckdb = hueyDb.duckdb;
-    const instance = hueyDb.instance;
+    const duckdb = getDuckDbModule();
+    const instance = getDatabase();
 
     let datasource;
     switch (nodeType) {

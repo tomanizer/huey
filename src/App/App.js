@@ -20,6 +20,7 @@ import { initSessionCloner } from '../SessionCloner/SessionCloner.js';
 import { initQuickQueryMenu } from '../QuickQueryMenu/QuickQueryMenu.js';
 import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
 import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
+import { getConnection, setReservedWords } from '../DataSource/duckdb/database.js';
 import { Theme } from '../Theme/Theme.js';
 import { analyzeDatasource } from './analyzeDatasource.js';
 
@@ -57,10 +58,10 @@ export function duckDbRowToJSON(object){
 }
 
 export function initDuckdbVersion(){
-  if (!window.hueyDb) {
+  const connection = getConnection();
+  if (!connection) {
     return;
   }
-  const connection = window.hueyDb.connection;
   const versionColumn = 'version';
   const apiColumn = 'api';
   const reservedWordsColumn = 'reserved_words';
@@ -81,7 +82,7 @@ export function initDuckdbVersion(){
     const api = row[apiColumn];
     let reservedWords = row[reservedWordsColumn];
     reservedWords = String(reservedWords).slice(1, -1).split(',');
-    window.hueyDb.reservedWords = reservedWords;
+    setReservedWords(reservedWords);
 
     const duckdbVersionLabel = byId('duckdbVersionLabel');
     duckdbVersionLabel.textContent = `DuckDB ${version}, API: ${api}`;

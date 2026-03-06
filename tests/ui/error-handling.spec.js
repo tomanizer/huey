@@ -6,9 +6,9 @@ test.describe('Error handling', () => {
   test('renders error dialog for thrown errors', async ({ page }) => {
     await waitForAppReady(page);
 
-    await page.evaluate(() => {
-      // @ts-ignore
-      window.showErrorDialog(new Error('Simulated failure for testing'));
+    await page.evaluate(async () => {
+      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
+      showErrorDialog(new Error('Simulated failure for testing'));
     });
 
     const dialog = page.locator('#errorDialog');
@@ -35,9 +35,9 @@ test.describe('Error handling', () => {
     await waitForAppReady(page);
     const longDescription = Array.from({ length: 40 }, (_, index) => `Error line ${index + 1}`).join('\n');
 
-    await page.evaluate((description) => {
-      // @ts-ignore
-      window.showErrorDialog({
+    await page.evaluate(async (description) => {
+      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
+      showErrorDialog({
         title: 'Long error details',
         description,
       });
@@ -55,11 +55,10 @@ test.describe('Error handling', () => {
   test('latest error message replaces previous error content', async ({ page }) => {
     await waitForAppReady(page);
 
-    await page.evaluate(() => {
-      // @ts-ignore
-      window.showErrorDialog(new Error('First message'));
-      // @ts-ignore
-      window.showErrorDialog(new Error('Second message'));
+    await page.evaluate(async () => {
+      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
+      showErrorDialog(new Error('First message'));
+      showErrorDialog(new Error('Second message'));
     });
 
     const dialog = page.locator('#errorDialog');

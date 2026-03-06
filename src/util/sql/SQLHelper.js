@@ -1,4 +1,5 @@
 import { settings } from '../../SettingsDialog/SettingsDialog.js';
+import { getReservedWords } from '../../DataSource/duckdb/database.js';
 
 export function getDataTypeNameFromColumnType(columnType){
   return /^[^\(]+/.exec(columnType)[0];
@@ -970,7 +971,7 @@ export function unQuoteIdentifier(str){
 }
 
 export function identifierRequiresQuoting(identifier){
-  return window.hueyDb.reservedWords.includes(identifier.toLowerCase()) || 
+  return getReservedWords().includes(identifier.toLowerCase()) || 
     /^\d|[\s\[\]\{\}\(\)\.\/\+\-\&\*\^\?\\<>'"%=~!:;@#]/.test(identifier)
   ;
 }
