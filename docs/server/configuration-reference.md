@@ -76,6 +76,19 @@ Example: `QUERYSERVICE_PORT=8000` maps to `port` setting.
 | `QUERYSERVICE_CACHE_SQLITE_PATH` | unset | string | Optional SQLite-backed cache path |
 | `QUERYSERVICE_CACHE_SQLITE_MAX_BYTES` | `268435456` | int | Max SQLite cache size budget |
 
+### Version-token model (WORM / COBDATE-aware)
+
+Query cache keys use two deterministic version tokens:
+
+- **`fact_version_token`** (for `/query/tuples` and `/query/cells`)
+  - Derived from partition metadata fingerprints for the requested `date_range`.
+  - Only partitions intersecting the requested date scope contribute to the token.
+  - This preserves cache entries for closed historical ranges when a new COBDATE is published outside the requested scope.
+- **`dim_version_token`** (for `/query/picklist`)
+  - Derived from dataset config identity + field definitions, with optional external override via `QUERYSERVICE_DIM_VERSION_TOKEN`.
+
+These tokens align with the WORM invariants: fact changes occur at COBDATE boundaries, historical partitions are immutable once finalized, and dimension/reference updates are infrequent.
+
 ## Dimension Dictionary Cache (`/query/picklist`)
 
 Picklist / filter-dropdown queries are backed by a dedicated dimension cache
@@ -114,6 +127,25 @@ Example: `DIM_CACHE_TTL_SECONDS=3600 DIM_STALE_TTL_SECONDS=300` means
 responses are fresh for 1 hour and stale-but-served for an additional 5
 minutes, after which the entry is fully evicted and the next request blocks
 on a fresh computation.
+
+## Endpoint cache policy
+
+- `/query/picklist`: aggressive cache policy (long TTL + optional stale-while-revalidate).
+- `/query/tuples`: moderate/aggressive fact cache policy using `fact_version_token`.
+- `/query/cells`: conservative policy (effective TTL and item-size caps are stricter than tuples).
+
+## Invalidation matrix
+
+- **New COBDATE published**
+  - Fact cache entries whose `date_range` intersects the updated partitions receive a new `fact_version_token` and miss.
+  - Closed historical-range entries outside the changed scope keep their existing token and remain hot.
+  - If an already-finalized historical partition is intentionally corrected/reprocessed, treat it as a fact update event: refresh partition metadata so intersecting keys get a new `fact_version_token`.
+- **Dimension/reference update**
+  - Bump `dim_version_token` (usually via config change or `QUERYSERVICE_DIM_VERSION_TOKEN` override).
+  - Picklist/filter dictionary entries invalidate.
+  - Fact caches are unchanged unless their partition metadata (fact token input) also changes.
+- **Schema/config change**
+  - Cache keys include a config identity token (config path + mtime), so keyspace rotates when the dataset config changes.
 
 ### Configurable prewarming
 

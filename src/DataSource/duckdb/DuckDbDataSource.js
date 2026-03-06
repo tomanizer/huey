@@ -1215,6 +1215,10 @@ export class DuckDbDataSource extends EventEmitter {
     return Boolean(reader_arguments.store_rejects);
   }
 
+  /**
+   * Get normalized file type/extension used to pick DuckDB reader options.
+   * @returns {string|undefined}
+   */
   getFileType(){
     return this.#fileType;
   }
@@ -1227,6 +1231,10 @@ export class DuckDbDataSource extends EventEmitter {
     return fileSize;
   }
 
+  /**
+   * Export file statistics from DuckDB for an already-registered file datasource.
+   * @returns {Promise<Object>}
+   */
   async getFileStatistics(){
     const type = this.getType();
     const expectedType = DuckDbDataSource.types.FILE;
@@ -1308,6 +1316,10 @@ export class DuckDbDataSource extends EventEmitter {
     return sql;
   }
 
+  /**
+   * Describe columns for this datasource and cache the result.
+   * @returns {Promise<Object>}
+   */
   async getColumnMetadata(){
     if (this.#columnMetadata) {
       return this.#columnMetadata;

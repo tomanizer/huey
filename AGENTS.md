@@ -93,3 +93,24 @@ For UI-facing changes, run Playwright when feasible:
 - `npm run test:ui`
 
 If any suite cannot be run, clearly document what was skipped and why.
+
+## Cursor Cloud specific instructions
+
+These notes are for Cursor Cloud agents running in an auto-provisioned VM where the update script (managed by `SetupVmEnvironment`, not a file in the repo) has already installed dependencies.
+
+### Backend dev server
+
+The QueryService defaults to `/data/exports` for export storage, which doesn't exist in the Cloud VM. Override the export path when starting the backend:
+
+```bash
+PYTHONPATH=. QUERYSERVICE_EXPORT_OUTPUT_DIR=/tmp/huey-exports QUERYSERVICE_EXPORT_DB_PATH=/tmp/huey-exports/jobs.db \
+  .venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000
+```
+
+### Backend linting
+
+`ruff` is not in `server/requirements.txt`; install it in the venv (`pip install ruff`) before running `ruff check server/`. The VM update script handles this automatically.
+
+### Autorun Query
+
+When testing the frontend UI manually, the "Autorun Query" setting may be disabled by default. Enable it via Settings > Query tab, or click the play button in the toolbar after configuring a query.
