@@ -296,6 +296,33 @@ describe('QueryModel', () => {
     expect(events).toHaveLength(1);
   });
 
+  test('addItem with undefined index moves existing same-axis item to end', async () => {
+    const model = createModel();
+    const events = [];
+    model.addEventListener('change', (event) => events.push(event.eventData));
+
+    await model.addItem({
+      columnName: 'first',
+      columnType: 'VARCHAR',
+      axis: QueryModel.AXIS_ROWS,
+    });
+    await model.addItem({
+      columnName: 'second',
+      columnType: 'VARCHAR',
+      axis: QueryModel.AXIS_ROWS,
+    });
+
+    await model.addItem({
+      columnName: 'first',
+      columnType: 'VARCHAR',
+      axis: QueryModel.AXIS_ROWS,
+    });
+
+    const rowItems = model.getRowsAxis().getItems();
+    expect(rowItems.map((item) => item.columnName)).toEqual(['second', 'first']);
+    expect(events).toHaveLength(3);
+  });
+
   test('moveItem moves item between axes and emits axis change payload', async () => {
     const model = createModel();
     const events = [];

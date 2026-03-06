@@ -376,10 +376,13 @@ export class QueryModel extends EventEmitter {
       config.filter = foundItem.filter;
     }
 
+    const itemIsAlreadyAtTargetIndex = foundItem && foundItem.index === config.index;
+    const axisItems = this.getQueryAxis(axis).getItems();
+    const itemIsAlreadyLastOnAxis = foundItem && foundItem.index === axisItems.length - 1;
     if (
       foundItem &&
       foundItem.axis === axis &&
-      (config.index === undefined || config.index === foundItem.index) &&
+      (itemIsAlreadyAtTargetIndex || (config.index === undefined && itemIsAlreadyLastOnAxis)) &&
       (config.includeTotals === undefined || config.includeTotals === foundItem.includeTotals) &&
       (config.filter === undefined || config.filter === foundItem.filter)
     ) {
