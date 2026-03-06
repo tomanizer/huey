@@ -63,6 +63,7 @@ test.describe('Accessibility', () => {
     await addBasicPivotAxes(page);
     await runQueryAndWaitForPivot(page);
 
+    await expect(page.getByTestId('pivot-table')).toHaveAttribute('aria-busy', 'false');
     await expect(page.locator('#pivotTableUi .pivotTableUiTable')).toHaveAttribute('role', 'grid');
     await expect(page.locator('#pivotTableUi .pivotTableUiTable [role="columnheader"]').first()).toBeVisible();
     await expect(page.locator('#pivotTableUi .pivotTableUiTable [role="rowheader"]').first()).toBeVisible();
