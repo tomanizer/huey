@@ -98,6 +98,10 @@ Run tests (from repo root):
 ./.venv-server/bin/pytest server/tests -q
 ```
 
+Partitioned API tests explicitly override `QUERYSERVICE_S3_BUCKET` and
+`QUERYSERVICE_PARTITION_BASE_PATH` to empty values so local `.env` settings do
+not affect expected error-path assertions.
+
 Run targeted API contract tests:
 
 ```bash

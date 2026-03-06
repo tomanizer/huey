@@ -27,8 +27,8 @@ def reset_state_after_test(monkeypatch) -> None:
 def partitioned_no_storage(monkeypatch) -> None:
     """Set execution_mode=parquet_partitioned with no bucket or base path configured."""
     monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "parquet_partitioned")
-    monkeypatch.delenv("QUERYSERVICE_S3_BUCKET", raising=False)
-    monkeypatch.delenv("QUERYSERVICE_PARTITION_BASE_PATH", raising=False)
+    monkeypatch.setenv("QUERYSERVICE_S3_BUCKET", "")
+    monkeypatch.setenv("QUERYSERVICE_PARTITION_BASE_PATH", "")
     get_settings.cache_clear()
     datasets.reset_cache()
 
@@ -38,7 +38,7 @@ def partitioned_empty_base_path(monkeypatch, tmp_path: Path) -> None:
     """Set execution_mode=parquet_partitioned with an empty base path (no parquet files)."""
     monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "parquet_partitioned")
     monkeypatch.setenv("QUERYSERVICE_PARTITION_BASE_PATH", str(tmp_path))
-    monkeypatch.delenv("QUERYSERVICE_S3_BUCKET", raising=False)
+    monkeypatch.setenv("QUERYSERVICE_S3_BUCKET", "")
     get_settings.cache_clear()
     datasets.reset_cache()
 
@@ -71,6 +71,30 @@ def _picklist_body() -> dict:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 10, "offset": 0}},
     }
+
+
+def test_partitioned_env_override_beats_dotenv(monkeypatch, tmp_path: Path) -> None:
+    """Explicit env vars win over .env values for partitioned config in tests."""
+    (tmp_path / ".env").write_text(
+        "\n".join(
+            [
+                "QUERYSERVICE_EXECUTION_MODE=parquet_partitioned",
+                "QUERYSERVICE_S3_BUCKET=dotenv-bucket",
+                "QUERYSERVICE_PARTITION_BASE_PATH=/dotenv/path",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "parquet_partitioned")
+    monkeypatch.setenv("QUERYSERVICE_S3_BUCKET", "")
+    monkeypatch.setenv("QUERYSERVICE_PARTITION_BASE_PATH", "")
+    get_settings.cache_clear()
+
+    settings = get_settings()
+    assert settings.s3_bucket == ""
+    assert settings.partition_base_path == ""
 
 
 def test_partition_config_error_cells_no_bucket_or_path(
