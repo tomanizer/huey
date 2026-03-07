@@ -135,6 +135,56 @@ describe('DataSet cache limits', () => {
     expect(tupleSet.cacheSize).toBeGreaterThan(2);
   });
 
+  test('TupleSet evicts least-recently-used tuples when size limit is exceeded', async () => {
+    const allValues = ['A'.repeat(20), 'B'.repeat(20), 'C'.repeat(20)];
+    const connection = {
+      fetchTuples(dateRange, query) {
+        const paging = query.paging || {};
+        const limit = paging.limit || allValues.length;
+        const offset = paging.offset || 0;
+        const items = allValues.slice(offset, offset + limit).map((value) => ({ values: [value] }));
+        return { items, total_count: allValues.length };
+      },
+      getState() {
+        return 'open';
+      }
+    };
+    const datasource = {
+      getType() {
+        return 'remote';
+      },
+      getManagedConnection() {
+        return connection;
+      }
+    };
+    const axisItems = [{ columnName: 'city', columnType: 'VARCHAR' }];
+    const queryModel = {
+      getDatasource() {
+        return datasource;
+      },
+      getQueryAxis() {
+        return { getItems: () => axisItems };
+      },
+      getFiltersAxis() {
+        return { getItems: () => [] };
+      }
+    };
+
+    const maxCacheSizeMb = 0.00007;
+    const tupleSet = new TupleSet(queryModel, 'rows', createSettings({
+      tupleSetMaxCacheEntries: 10,
+      tupleSetMaxCacheSizeMb: maxCacheSizeMb
+    }));
+    tupleSet.setPageSize(3);
+
+    await tupleSet.getTuples(3, 0);
+
+    expect(tupleSet.getTupleSync(0)).toBeUndefined();
+    expect(tupleSet.getTupleSync(1)).toBeUndefined();
+    expect(tupleSet.getTupleSync(2)).toBeDefined();
+    expect(tupleSet.cacheSize).toBeLessThanOrEqual(maxCacheSizeMb * 1024 * 1024);
+  });
+
   test('CellSet evicts least-recently-used cells when entry limit is exceeded', async () => {
     let fetchCellsCallCount = 0;
     const connection = {
