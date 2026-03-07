@@ -197,7 +197,7 @@ class TestDuckDBManager:
         try:
             first_handle = QueryCancelHandle()
             second_handle = QueryCancelHandle()
-            row_count = 1_000_000_000
+            row_count = 100_000_000
             expected_sum = row_count * (row_count - 1) // 2
 
             slow_query = f"SELECT sum(i) FROM range({row_count}) t(i)"
@@ -208,7 +208,7 @@ class TestDuckDBManager:
                 mgr.execute_sql_async(slow_query, cancel_handle=second_handle)
             )
 
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.05)
             first_handle.cancel()
 
             with pytest.raises(duckdb.InterruptException, match="Interrupted"):

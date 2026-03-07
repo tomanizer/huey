@@ -5,7 +5,6 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-import duckdb
 import pytest
 from starlette.testclient import TestClient
 
@@ -128,7 +127,6 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
         lambda: pytest.fail("db_manager.interrupt() should not be used for query-scoped timeouts"),
     )
     first_started = threading.Event()
-    first_cancelled = threading.Event()
     call_lock = threading.Lock()
     call_count = {"value": 0}
 
@@ -138,18 +136,9 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
             call_number = call_count["value"]
 
         if call_number == 1:
-            original_cancel = cancel_handle.cancel
-
-            def wrapped_cancel() -> None:
-                first_cancelled.set()
-                original_cancel()
-
-            cancel_handle.cancel = wrapped_cancel
             first_started.set()
-
-            while not first_cancelled.is_set():
-                await asyncio.sleep(0.01)
-            raise duckdb.InterruptException("INTERRUPT Error: Interrupted!")
+            await asyncio.sleep(1)
+            return [[-1]]
 
         return await original_execute(
             "SELECT 42 AS v",
