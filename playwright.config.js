@@ -17,11 +17,14 @@ const liveRemoteEnabled = process.env.PLAYWRIGHT_REMOTE_LIVE === '1';
 const liveRemoteBaseUrl = process.env.PLAYWRIGHT_REMOTE_BASE_URL || 'http://127.0.0.1:8002';
 const liveRemoteUrl = new URL(liveRemoteBaseUrl);
 const liveRemotePort = liveRemoteUrl.port || '8002';
+const reuseExistingServer = !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === '1';
 const frontendServer = {
-  command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
+  command: 'node scripts/playwright-web-server.cjs',
   url: 'http://127.0.0.1:8765',
-  reuseExistingServer: !process.env.CI,
-  timeout: 120000,
+  reuseExistingServer,
+  stdout: 'pipe',
+  stderr: 'pipe',
+  timeout: 180000,
 };
 const liveRemoteServer = {
   command: 'mkdir -p /tmp/huey-playwright-exports && '
@@ -46,7 +49,6 @@ if (!selectedProjects.length) {
 
 module.exports = defineConfig({
   testDir: 'tests/ui',
-  outputDir: 'test-results/playwright-output',
   timeout: 120000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

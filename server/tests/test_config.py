@@ -31,6 +31,7 @@ def test_settings_defaults() -> None:
     assert s.duckdb_memory_limit is None
     assert s.duckdb_temp_directory == "/tmp/huey-duckdb-tmp"
     assert s.duckdb_enable_object_cache is True
+    assert s.max_date_range_days == 366
 
 
 def test_duckdb_threads_validation() -> None:

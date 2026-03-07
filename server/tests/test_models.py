@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+from server.config import get_settings
 from server.models import (
     AxesSpec,
     AxisField,
@@ -79,6 +80,28 @@ class TestDateRangeRange:
     def test_bad_end_calendar_date(self) -> None:
         with pytest.raises(ValidationError, match="YYYY-MM-DD"):
             DateRangeRange(type="range", start="2026-03-01", end="2026-13-01")
+
+    def test_span_at_limit(self, monkeypatch) -> None:
+        monkeypatch.setenv("QUERYSERVICE_MAX_DATE_RANGE_DAYS", "2")
+        get_settings.cache_clear()
+        try:
+            dr = DateRangeRange(type="range", start="2026-03-01", end="2026-03-02")
+        finally:
+            get_settings.cache_clear()
+        assert dr.start == "2026-03-01"
+        assert dr.end == "2026-03-02"
+
+    def test_span_over_limit(self, monkeypatch) -> None:
+        monkeypatch.setenv("QUERYSERVICE_MAX_DATE_RANGE_DAYS", "2")
+        get_settings.cache_clear()
+        try:
+            with pytest.raises(ValidationError) as exc_info:
+                DateRangeRange(type="range", start="2026-03-01", end="2026-03-03")
+        finally:
+            get_settings.cache_clear()
+        errors = exc_info.value.errors()
+        assert errors[0]["type"] == "date_range_too_large"
+        assert errors[0]["ctx"] == {"requested_days": 3, "max_days": 2}
 
 
 class TestTupleFieldSpec:

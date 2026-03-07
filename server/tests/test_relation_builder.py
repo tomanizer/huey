@@ -5,13 +5,14 @@ from pathlib import Path
 import pytest
 
 from server import datasets
-from server.errors import PartitionNotFoundError
+from server.errors import PartitionNotFoundError, ValidationAppError
 from server.models import DateRangeRange, DateRangeSingle
 from server.relation_builder import BaseRelation, build_base_relation, required_relation_columns
 
 
 class DummySettings:
     def __init__(self, **kwargs):
+        self.max_date_range_days = 366
         self.__dict__.update(kwargs)
 
 
@@ -69,6 +70,33 @@ def test_partition_mode_missing_partition(monkeypatch, tmp_path: Path) -> None:
             DateRangeRange(type="range", start="2026-03-01", end="2026-03-02"),
             ["symbol", "date"],
         )
+
+
+def test_partition_mode_rejects_oversized_range_before_path_expansion(monkeypatch) -> None:
+    calls = {"count": 0}
+    settings = DummySettings(
+        execution_mode="parquet_partitioned",
+        partition_base_path=None,
+        s3_bucket="bucket",
+        max_date_range_days=1,
+    )
+    monkeypatch.setattr("server.relation_builder.get_settings", lambda: settings)
+
+    def count_build_partition_path(bucket: str, dataset_id: str, partition_date: str) -> str:
+        calls["count"] += 1
+        return f"s3://{bucket}/{dataset_id}/date={partition_date}/"
+
+    monkeypatch.setattr("server.relation_builder.build_partition_path", count_build_partition_path)
+
+    with pytest.raises(ValidationAppError) as exc_info:
+        build_base_relation(
+            "trades_v1",
+            DateRangeRange(type="range", start="2026-03-01", end="2026-03-02"),
+            ["symbol", "date"],
+        )
+
+    assert calls["count"] == 0
+    assert exc_info.value.details["errors"][0]["ctx"] == {"requested_days": 2, "max_days": 1}
 
 
 def test_partition_mode_source_without_time_filter(monkeypatch, tmp_path: Path) -> None:

@@ -9,7 +9,10 @@ export async function analyzeDatasource(datasource){
   try {
     TabUi.setSelectedTab('#sidebar', '#attributesTab');
     clearSearch();
-    uploadUi.getDialog().close();
+    const uploadDialog = uploadUi.getDialog();
+    if (uploadDialog && uploadDialog.open) {
+      uploadDialog.close();
+    }
     queryModel.setDatasource(datasource);
   }
   catch (error) {

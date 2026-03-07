@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from server import datasets
+from server.errors import ValidationAppError
 
 # Extra wait multiplier to ensure TTL expiry on slower clocks in CI.
 TTL_EXPIRY_WAIT_MULTIPLIER = 2.5
@@ -28,6 +29,7 @@ def _settings(path: Path | None, ttl: float = 60) -> object:
         {
             "datasets_config_path": str(path) if path else None,
             "schema_cache_ttl_seconds": ttl,
+            "max_date_range_days": 366,
         },
     )()
 
@@ -197,6 +199,39 @@ def test_fact_version_token_ignores_non_intersecting_cobdate_updates(monkeypatch
     )
     token_after = datasets.get_data_version_token("ds", {"type": "single", "date": "2026-03-01"})
     assert token_before == token_after
+
+
+def test_data_version_token_rejects_oversized_range_before_normalization(monkeypatch) -> None:
+    monkeypatch.setattr(
+        datasets,
+        "get_settings",
+        lambda: type(
+            "MockSettings",
+            (),
+            {
+                "datasets_config_path": None,
+                "schema_cache_ttl_seconds": 1,
+                "max_date_range_days": 1,
+            },
+        )(),
+    )
+    datasets.reset_cache()
+    calls = {"count": 0}
+
+    def counted_normalize(metadata, date_scope):
+        calls["count"] += 1
+        return []
+
+    monkeypatch.setattr(datasets, "_normalize_partition_records", counted_normalize)
+
+    with pytest.raises(ValidationAppError) as exc_info:
+        datasets.get_data_version_token(
+            "ds",
+            {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        )
+
+    assert calls["count"] == 0
+    assert exc_info.value.details["errors"][0]["ctx"] == {"requested_days": 2, "max_days": 1}
 
 
 def test_schema_cache_concurrent_reads_consistent(monkeypatch) -> None:
