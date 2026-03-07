@@ -19,10 +19,13 @@ async function preparePivot(page) {
 }
 
 async function openFilterDialog(page) {
+  const filterDialog = page.locator('#filterDialog');
+  if (await filterDialog.isVisible().catch(() => false)) {
+    return filterDialog;
+  }
   const filterButton = page.locator('#queryUi section[data-axis="filters"] li button[id$="-edit-filter-condition"]');
   await expect(filterButton).toBeVisible({ timeout: 10000 });
   await filterButton.click();
-  const filterDialog = page.locator('#filterDialog');
   await expect(filterDialog).toBeVisible({ timeout: 10000 });
   return filterDialog;
 }

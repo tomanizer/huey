@@ -117,14 +117,18 @@ test.describe('Data accuracy', () => {
     await addSymbolFilterAxis(page);
     await runQueryAndWaitForPivot(page);
 
+    const filterDialog = page.locator('#filterDialog');
     const filterButton = page.locator('#queryUi section[data-axis="filters"] li button[id$="-edit-filter-condition"]');
-    await expect(filterButton).toBeVisible({ timeout: 10000 });
-    await filterButton.click();
-    await expect(page.locator('#filterDialog')).toBeVisible({ timeout: 10000 });
+    if (!(await filterDialog.isVisible().catch(() => false))) {
+      await expect(filterButton).toBeVisible({ timeout: 10000 });
+      await filterButton.click();
+      await expect(filterDialog).toBeVisible({ timeout: 10000 });
+    }
     await page.locator('#filterSearch').fill('GOOG');
     await page.locator('#addFilterValueButton').click();
     await expect(page.locator('#filterValueList option')).toContainText('GOOG');
     await page.locator('#filterDialogOkButton').click();
+    await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
     await runQueryAndWaitForPivot(page);
 
     await expect(page.locator('#pivotTableUi')).toContainText('GOOG');
