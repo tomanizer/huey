@@ -15,11 +15,13 @@ import { copyToClipboard } from '../util/clipboard/clipboard.js';
 import { getDuckDbLiteralForValue, quoteStringLiteral } from '../util/sql/SQLHelper.js';
 import {
   pivotTableUiDefaults,
+  appendNodes as _appendNodes,
   getTotalsItemsIndices as _getTotalsItemsIndices,
   isTotalsMember as _isTotalsMember,
   getDittoMark as _getDittoMark,
   getHideRepeatingAxisValues as _getHideRepeatingAxisValues,
   getMaxCellWidth as _getMaxCellWidth,
+  waitForAnimationFrame as _waitForAnimationFrame,
 } from './PivotTableUiUtils.js';
 
 export class PivotTableUi extends EventEmitter {
@@ -44,6 +46,7 @@ export class PivotTableUi extends EventEmitter {
 
   // the maximum width in ch units
   static #maximumCellWidth = pivotTableUiDefaults.maximumCellWidth;
+  static #renderBatchSize = pivotTableUiDefaults.renderBatchSize;
 
   #lastMetrics = undefined;
 
@@ -497,23 +500,25 @@ export class PivotTableUi extends EventEmitter {
 
     //
     const scrollWidth = innerContainer.scrollWidth;
-    const left = innerContainer.scrollLeft;
+    const left = Math.floor(innerContainer.scrollLeft);
 
     const columnsAxisSizeInfo = this.#getColumnsAxisSizeInfo();
     const headersWidth = columnsAxisSizeInfo ? columnsAxisSizeInfo.headers.width : 0;
-    const horizontallyScrolledFraction = left / (scrollWidth - headersWidth);
+    const horizontalScrollableWidth = scrollWidth - headersWidth;
+    const horizontallyScrolledFraction = horizontalScrollableWidth > 0 ? left / horizontalScrollableWidth : 0;
     const numberOfPhysicalColumnsAxisTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_COLUMNS);
-    const physicalColumnsAxisTupleIndex = Math.ceil(numberOfPhysicalColumnsAxisTuples * horizontallyScrolledFraction);
+    const physicalColumnsAxisTupleIndex = Math.max(0, Math.floor(numberOfPhysicalColumnsAxisTuples * horizontallyScrolledFraction));
 
     //
     const scrollHeight = innerContainer.scrollHeight;
-    const top = innerContainer.scrollTop;
+    const top = Math.floor(innerContainer.scrollTop);
 
     const rowsAxisSizeInfo = this.#getRowsAxisSizeInfo();
     const headersHeight = rowsAxisSizeInfo.headers.height;
-    const verticallyScrolledFraction = top / (scrollHeight - headersHeight);
+    const verticalScrollableHeight = scrollHeight - headersHeight;
+    const verticallyScrolledFraction = verticalScrollableHeight > 0 ? top / verticalScrollableHeight : 0;
     const numberOfPhysicalRowsAxisTuples = this.#getNumberOfPhysicalTuplesForAxis(QueryModel.AXIS_ROWS);
-    const physicalRowsAxisTupleIndex = Math.ceil(numberOfPhysicalRowsAxisTuples * verticallyScrolledFraction);
+    const physicalRowsAxisTupleIndex = Math.max(0, Math.floor(numberOfPhysicalRowsAxisTuples * verticallyScrolledFraction));
 
     return {
       columnsAxisSizeInfo: columnsAxisSizeInfo,
@@ -593,6 +598,14 @@ export class PivotTableUi extends EventEmitter {
 
   static #isTotalsMember(groupingId, totalsItemsIndices, currentItemIndex){
     return _isTotalsMember(groupingId, totalsItemsIndices, currentItemIndex);
+  }
+
+  static #appendNodes(parentNode, nodes, beforeNode){
+    _appendNodes(parentNode, nodes, beforeNode);
+  }
+
+  async #waitForAnimationFrame(){
+    await _waitForAnimationFrame();
   }
 
   #getTupleGroupingId(tuple){
@@ -1276,15 +1289,15 @@ export class PivotTableUi extends EventEmitter {
       numRowAxisColumns = 1;
     }
 
-    let firstTableHeaderRow, firstTableHeaderRowCells;
+    const headerRows = [];
     for (let i = 0; i < numColumnAxisRows; i++){
       const tableRow = createEl('div', {
         "class": "pivotTableUiRow",
         "role": "row"
       });
-      tableHeaderDom.appendChild(tableRow);
+      headerRows.push(tableRow);
 
-    let tableCell, labelText, label, columnWidth;
+      let tableCell, labelText, label, columnWidth;
       for (let j = 0; j < numRowAxisColumns; j++) {
         tableCell = createEl('div', {
           "class": 'pivotTableUiCell pivotTableUiHeaderCell',
@@ -1330,8 +1343,8 @@ export class PivotTableUi extends EventEmitter {
             columnWidth += 'ch';
           }
 
-          firstTableHeaderRow = tableHeaderDom.childNodes.item(0);
-          firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
+          const firstTableHeaderRow = headerRows[0];
+          const firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
           const firstTableHeaderRowCell = firstTableHeaderRowCells.item(j);
           firstTableHeaderRowCell.style.width = columnWidth;
         }
@@ -1359,7 +1372,9 @@ export class PivotTableUi extends EventEmitter {
       }
     }
 
-    firstTableHeaderRow = tableHeaderDom.childNodes.item(0);
+    PivotTableUi.#appendNodes(tableHeaderDom, headerRows);
+
+    const firstTableHeaderRow = headerRows[0];
     let stufferCell;
     stufferCell = createEl('div', {
       "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell",
@@ -1379,7 +1394,7 @@ export class PivotTableUi extends EventEmitter {
     stufferRow.appendChild(stufferCell);
   }
 
-  #renderColumns(tuples){
+  async #renderColumns(tuples){
 
     const containerDom = this.#getInnerContainerDom();
     const innerContainerWidth = containerDom.clientWidth;
@@ -1430,6 +1445,8 @@ export class PivotTableUi extends EventEmitter {
 
     // loop for each row from the column axis query result
     // if there aren't any, but the cells are on the column axis, and there is at least one item on the cell axis, this will still run once.
+    let pendingCellsByRow = headerRows.length ? Array.from({length: headerRows.length}, () => []) : [];
+    let pendingColumns = 0;
     for (let i = 0; i < numColumns; i++){
       let tuple;
       if (i < numTuples){
@@ -1443,12 +1460,11 @@ export class PivotTableUi extends EventEmitter {
         groupingId = tuple[TupleSet.groupingIdAlias];
       }
 
+      let firstHeaderCellForColumn;
       for (let k = 0; k < numCellHeaders; k++){
         for (let j = 0; j < headerRows.length; j++){
           const queryAxisItem = queryAxisItems[j];
           const isTotalsMember = PivotTableUi.#isTotalsMember(groupingId, totalsItemsIndices, queryAxisItem ? j : undefined);
-
-          const headerRow = headerRows.item(j);
 
           const cell = createEl('div', {
             "class": "pivotTableUiCell pivotTableUiHeaderCell",
@@ -1505,11 +1521,9 @@ export class PivotTableUi extends EventEmitter {
           cell.appendChild(label);
 
           if (j === 0){
-            headerRow.insertBefore(cell, stufferCell);
+            firstHeaderCellForColumn = cell;
           }
-          else {
-            headerRow.appendChild(cell);
-          }
+          pendingCellsByRow[j].push(cell);
 
           if (j === headerRows.length - 1) {
 
@@ -1518,15 +1532,40 @@ export class PivotTableUi extends EventEmitter {
               columnWidth = PivotTableUi.#maximumCellWidth;
             }
 
-            stufferCell.previousSibling.style.width = columnWidth + 'ch';
+            if (firstHeaderCellForColumn) {
+              firstHeaderCellForColumn.style.width = columnWidth + 'ch';
+            }
           }
         }
 
         _physicalColumnsAdded += 1;
-        //check if the table overshoots the allowable width
-        if (tableDom.clientWidth > innerContainerWidth) {
-          return;
+        pendingColumns += 1;
+        if (pendingColumns === PivotTableUi.#renderBatchSize || i === numColumns - 1) {
+          for (let j = 0; j < headerRows.length; j++) {
+            const headerRow = headerRows.item(j);
+            const pendingCells = pendingCellsByRow[j];
+            if (!pendingCells.length) {
+              continue;
+            }
+            if (j === 0){
+              PivotTableUi.#appendNodes(headerRow, pendingCells, stufferCell);
+            }
+            else {
+              PivotTableUi.#appendNodes(headerRow, pendingCells);
+            }
+          }
+          pendingCellsByRow = Array.from({length: headerRows.length}, () => []);
+          pendingColumns = 0;
+
+          if (tableDom.clientWidth > innerContainerWidth) {
+            this.#removeExcessColumns();
+            return;
+          }
+          if (i < numColumns - 1) {
+            await this.#waitForAnimationFrame();
+          }
         }
+        //check if the table overshoots the allowable width
       }
     }
   }
@@ -1587,7 +1626,7 @@ export class PivotTableUi extends EventEmitter {
     }
   }
 
-  #renderRows(tuples){
+  async #renderRows(tuples){
     const containerDom = this.#getInnerContainerDom();
     const innerContainerHeight = containerDom.clientHeight;
     const tableDom = this.#getTableDom();
@@ -1650,6 +1689,7 @@ export class PivotTableUi extends EventEmitter {
     const tableBodyDom = this.#getTableBodyDom();
     const tableBodyDomRows = tableBodyDom.childNodes;
     const stufferRow = tableBodyDomRows.item(0);
+    let pendingRows = [];
 
     for (let i = 0; i < numRows; i++){
       const tuple = tuples[i];
@@ -1661,8 +1701,6 @@ export class PivotTableUi extends EventEmitter {
           "role": "row",
           "data-totals": groupingId > 0
         });
-
-        tableBodyDom.insertBefore(bodyRow, stufferRow);
 
         for (let j = 0; j < numColumns; j++){
           const cell = createEl('div', {
@@ -1721,20 +1759,25 @@ export class PivotTableUi extends EventEmitter {
         }
 
         _physicalRowsAdded += 1;
-        // check if the table overshoots its heigh.
-        const newTableDomHeight = tableDom.clientHeight;
-        if (newTableDomHeight > innerContainerHeight) {
-          // remove the last added row to ensure it fits in the container
-          // we need it to it or else the "sticky" positioning won't work as intended
-          // TODO: mabe position the table explicitly to achieve the sticky effect so we don't need to remove the ultimate row/column
-          //tableBodyDom.removeChild(bodyRow);
-          return;
+        pendingRows.push(bodyRow);
+        if (pendingRows.length === PivotTableUi.#renderBatchSize || i === numRows - 1) {
+          PivotTableUi.#appendNodes(tableBodyDom, pendingRows, stufferRow);
+          pendingRows = [];
+          const newTableDomHeight = tableDom.clientHeight;
+          if (newTableDomHeight > innerContainerHeight) {
+            this.#removeExcessRows();
+            return;
+          }
+          if (i < numRows - 1) {
+            await this.#waitForAnimationFrame();
+          }
         }
+        // check if the table overshoots its heigh.
       }
     }
   }
 
-  #renderCells(){
+  async #renderCells(){
     const _tableHeaderDom = this.#getTableHeaderDom();
 
     const columnAxisSizeInfo = this.#getColumnsAxisSizeInfo();
@@ -1747,9 +1790,11 @@ export class PivotTableUi extends EventEmitter {
 
     const tableBodyDom = this.#getTableBodyDom();
     const tableBodyDomRows = tableBodyDom.childNodes;
+    let renderedRows = 0;
 
     for (let i = 0; i < tableBodyDomRows.length - 1; i++){
       const bodyRow = tableBodyDomRows.item(i);
+      const pendingCells = [];
       for (let j = columnOffset; j < columnCount; j++){
 
         const cell = createEl('div', {
@@ -1762,6 +1807,12 @@ export class PivotTableUi extends EventEmitter {
           "class": "pivotTableUiCellLabel"
         }, '');
         cell.appendChild(label);
+        pendingCells.push(cell);
+      }
+      PivotTableUi.#appendNodes(bodyRow, pendingCells);
+      renderedRows += 1;
+      if (renderedRows % PivotTableUi.#renderBatchSize === 0 && i < tableBodyDomRows.length - 2) {
+        await this.#waitForAnimationFrame();
       }
     }
   }
@@ -1812,6 +1863,7 @@ export class PivotTableUi extends EventEmitter {
       const rowsTupleSet = this.#rowsTupleSet;
 
       this.#renderHeader();
+      await this.#waitForAnimationFrame();
 
       tableDom.style.width = '';
 
@@ -1835,17 +1887,17 @@ export class PivotTableUi extends EventEmitter {
 
       const columnTuples = renderAxisPromisesResults[0];
       this.#setHorizontalSize(0);
-      this.#renderColumns(columnTuples);
+      await this.#renderColumns(columnTuples);
 
       const rowTuples = renderAxisPromisesResults[1];
       this.#setVerticalSize(0);
 
-      this.#renderRows(rowTuples);
+      await this.#renderRows(rowTuples);
 
       this.#updateVerticalSizer();
       this.#toggleObserveColumnsResizing(true);
 
-      this.#renderCells();
+      await this.#renderCells();
 
       await this.#updateDataToScrollPosition();
 

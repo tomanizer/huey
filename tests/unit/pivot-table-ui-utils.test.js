@@ -1,4 +1,6 @@
 import {
+  appendNodes,
+  waitForAnimationFrame,
   pivotTableUiDefaults,
   getTotalsItemsIndices,
   isTotalsMember,
@@ -18,7 +20,54 @@ describe('PivotTableUiUtils', () => {
       expect(pivotTableUiDefaults.defaultDittoMark).toBe('〃');
       expect(pivotTableUiDefaults.defaultHideRepeatingAxisValues).toBe(true);
       expect(pivotTableUiDefaults.defaultPageSize).toBe(100);
+      expect(pivotTableUiDefaults.renderBatchSize).toBe(10);
       expect(pivotTableUiDefaults.templateId).toBe('pivotTableUiTemplate');
+    });
+  });
+
+  describe('appendNodes', () => {
+    it('should append nodes via a document fragment in order', () => {
+      const parent = document.createElement('div');
+      const first = document.createElement('span');
+      first.textContent = 'first';
+      const second = document.createElement('span');
+      second.textContent = 'second';
+
+      appendNodes(parent, [first, second]);
+
+      expect(Array.from(parent.childNodes).map((node) => node.textContent)).toEqual(['first', 'second']);
+    });
+
+    it('should insert nodes before the provided sibling', () => {
+      const parent = document.createElement('div');
+      const anchor = document.createElement('span');
+      anchor.textContent = 'anchor';
+      parent.appendChild(anchor);
+      const first = document.createElement('span');
+      first.textContent = 'first';
+      const second = document.createElement('span');
+      second.textContent = 'second';
+
+      appendNodes(parent, [first, second], anchor);
+
+      expect(Array.from(parent.childNodes).map((node) => node.textContent)).toEqual(['first', 'second', 'anchor']);
+    });
+  });
+
+  describe('waitForAnimationFrame', () => {
+    it('should resolve on the provided animation frame scheduler', async () => {
+      const callbacks = [];
+      const promise = waitForAnimationFrame((callback) => {
+        callbacks.push(callback);
+      });
+
+      expect(callbacks).toHaveLength(1);
+      callbacks[0]();
+      await expect(promise).resolves.toBeUndefined();
+    });
+
+    it('should resolve immediately when requestAnimationFrame is unavailable', async () => {
+      await expect(waitForAnimationFrame(undefined)).resolves.toBeUndefined();
     });
   });
 

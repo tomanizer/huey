@@ -14,8 +14,35 @@ export const pivotTableUiDefaults = {
   defaultDittoMark: '〃',
   defaultHideRepeatingAxisValues: true,
   defaultPageSize: 100,
+  renderBatchSize: 10,
   templateId: 'pivotTableUiTemplate'
 };
+
+export function appendNodes(parentNode, nodes, beforeNode) {
+  if (!nodes?.length) {
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  for (let i = 0; i < nodes.length; i++) {
+    fragment.appendChild(nodes[i]);
+  }
+  if (beforeNode) {
+    parentNode.insertBefore(fragment, beforeNode);
+    return;
+  }
+  parentNode.appendChild(fragment);
+}
+
+export function waitForAnimationFrame(requestAnimationFrameImplementation = globalThis.requestAnimationFrame?.bind(globalThis)) {
+  if (typeof requestAnimationFrameImplementation !== 'function') {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    requestAnimationFrameImplementation(() => {
+      resolve();
+    });
+  });
+}
 
 /**
  * Get the indices of all totals items in a query axis items array.

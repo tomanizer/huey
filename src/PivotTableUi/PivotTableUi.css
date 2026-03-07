@@ -57,6 +57,7 @@
 .pivotTableUiContainer {
   overflow: hidden;
   background-color: var( --huey-light-background-color );
+  contain: layout style;
 
   > .pivotTableUiInnerContainer {
     overflow: scroll;
@@ -70,6 +71,8 @@
     left: 0px;
     border-style: none;
     border-width: 0px;
+    contain: strict;
+    will-change: transform;
 
     > .pivotTableUiSizer {
       position: absolute;
@@ -480,7 +483,6 @@
 
   }
 }
-
 
 
 
