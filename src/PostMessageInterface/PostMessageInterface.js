@@ -4,6 +4,7 @@ import { datasourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import { getDatabase, getDuckDbModule } from '../DataSource/duckdb/database.js';
 import { registerPostMessageGlobals } from './register-globals.js';
+import { analyzeDatasource } from '../App/analyzeDatasource.js';
 
 /**
  * @typedef {Object} PostMessageRequestEnvelope
