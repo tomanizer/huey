@@ -86,7 +86,6 @@ export class TupleSet extends DataSetComponent {
   #tupleCount = undefined;
   #pageSize = 50;
   #tupleAccessTimestamps = new Map();
-  #accessCounter = 0;
 
   constructor(queryModel, axisId, settings){
     super(queryModel, settings);
@@ -197,7 +196,6 @@ export class TupleSet extends DataSetComponent {
     this.#tupleSerializedSizes.clear();
     this.#tupleCacheEntrySizeTotal = 0;
     this.#tupleAccessTimestamps.clear();
-    this.#accessCounter = 0;
   }
 
   clearCache(){
@@ -205,8 +203,8 @@ export class TupleSet extends DataSetComponent {
   }
 
   #touchTuple(index){
-    this.#accessCounter += 1;
-    this.#tupleAccessTimestamps.set(index, this.#accessCounter);
+    this.#tupleAccessTimestamps.delete(index);
+    this.#tupleAccessTimestamps.set(index, true);
   }
 
   #removeTuple(index){
@@ -282,14 +280,7 @@ export class TupleSet extends DataSetComponent {
     let currentCacheSize = this.cacheSize;
 
     while (this.#tupleAccessTimestamps.size > maxEntries || currentCacheSize > maxSizeBytes){
-      let oldestIndex;
-      let oldestAccess = Infinity;
-      this.#tupleAccessTimestamps.forEach((access, index) =>{
-        if (access < oldestAccess) {
-          oldestAccess = access;
-          oldestIndex = index;
-        }
-      });
+      const oldestIndex = this.#tupleAccessTimestamps.keys().next().value;
       if (oldestIndex === undefined){
         break;
       }
