@@ -38,12 +38,15 @@ function mockAppModuleDependencies(mockQueryRow){
   }));
   vi.doMock('../../src/AttributeUi/AttributeUi.js', () => ({
     initAttributeUi: vi.fn(),
+    attributeUi: {},
   }));
   vi.doMock('../../src/Search/Search.js', () => ({
     initSearch: vi.fn(),
+    clearSearch: vi.fn(),
   }));
   vi.doMock('../../src/UploadUi/UploadUi.js', () => ({
     initUploadUi: vi.fn(),
+    uploadUi: {},
   }));
   vi.doMock('../../src/ExportUi/ExportDialog.js', () => ({
     ExportUi: class {},
