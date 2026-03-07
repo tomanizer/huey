@@ -48,7 +48,8 @@ When Playwright UI tests are present (see `docs/ui-testing-remote.md`), `npm run
 - `timeout: 120000` per test to reduce false negatives on slower machines.
 - `retries: 1` in CI (`0` locally) to balance flake mitigation and signal quality.
 - `expect.timeout: 10000` for explicit, bounded element/state waits.
-- Browser scope: CI runs `chromium` only; local runs keep `chromium`, `firefox`, and `webkit` projects.
+- Browser scope: CI sets `PLAYWRIGHT_PROJECTS=chromium`; local runs keep `chromium`, `firefox`, and `webkit` projects by default.
+- To override project selection locally, set `PLAYWRIGHT_PROJECTS` (comma-separated), for example `PLAYWRIGHT_PROJECTS=chromium npm run test:ui`.
 
 ### CI reporting
 
