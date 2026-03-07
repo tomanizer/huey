@@ -784,10 +784,7 @@ export function initExportDialog(context){
   const exportButton = byId('exportButton');
 
   exportButton.addEventListener('click', (_event) =>{
-    exportDialog.open({
-      queryModel: context && context.has('queryModel') ? context.queryModel : queryModel,
-      settings: context && context.has('settings') ? context.settings : settings
-    });
+    exportDialog.open();
   });
 
   const exportTitleTemplate = byId('exportTitleTemplate');
