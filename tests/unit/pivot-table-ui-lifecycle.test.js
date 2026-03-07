@@ -274,7 +274,7 @@ describe('PivotTableUi lifecycle flows', () => {
     });
 
     document.getElementById('cancelQueryButton').click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await Promise.resolve();
 
     expect(tupleSetInstances[0].cancelPendingQuery).toHaveBeenCalledTimes(1);
     expect(tupleSetInstances[1].cancelPendingQuery).toHaveBeenCalledTimes(1);
