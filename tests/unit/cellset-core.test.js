@@ -185,6 +185,7 @@ describe('CellSet clear and cache', () => {
     expect(cellSet.getTotalQueryTimeMs()).toBe(8);
 
     cellSet.clearCache();
+    expect(cellSet.getTotalQueryTimeMs()).toBe(0);
     await cellSet.getCells([[0, 1], [0, 1]]);
     expect(cellSet.getLastQueryTimeMs()).toBe(5);
     expect(cellSet.getTotalQueryTimeMs()).toBe(5);

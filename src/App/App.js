@@ -190,7 +190,7 @@ export function initApplication(){
   }, null, 50);
 
   const tupleNumberFormatter = createNumberFormatter(0).format;
-  pivotTableUi.addEventListener('updated', (e) =>{
+  pivotTableUi.addEventListener('updated', (e) => {
     const eventData = e.eventData;
     const status = eventData.status;
     

@@ -321,7 +321,7 @@ export class PostMessageInterface {
     return undefined;
   }
 
-  sendMessage(message){
+  sendMessage(message) {
     const hostingWindow = PostMessageInterface.getHostingWindow();
     if (!hostingWindow) {
       return false;

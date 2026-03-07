@@ -448,7 +448,7 @@ export class PivotTableUi extends EventEmitter {
       this.#columnsTupleSet,
       this.#rowsTupleSet,
       this.#cellsSet
-    ].reduce((totalQueryTimeMs, dataSet) =>{
+    ].reduce((totalQueryTimeMs, dataSet) => {
       return totalQueryTimeMs + (dataSet.getTotalQueryTimeMs() || 0);
     }, 0);
   }
