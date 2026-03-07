@@ -1,16 +1,21 @@
 """Tests for query execution budgets: timeout, cancellation, and concurrency caps."""
 
 import asyncio
+import math
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 
+import duckdb
 import pytest
 from starlette.testclient import TestClient
 
 from server.config import get_settings
 from server.engine import db_manager
-from server.query_budget import reset_query_budget
+from server.query_budget import QueryBudget, reset_query_budget
+
+WAIT_FOR_WAITER_SECONDS = 0.5
 
 
 @pytest.fixture
@@ -115,7 +120,6 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
 ) -> None:
     """Timing out one request should not cause unrelated concurrent requests to fail."""
     timeout_seconds = 0.2
-    slow_query_delay_seconds = timeout_seconds + 0.8
     settings_override(
         query_timeout_seconds=timeout_seconds,
         max_concurrent_queries=2,
@@ -129,6 +133,7 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
         lambda: pytest.fail("db_manager.interrupt() should not be used for query-scoped timeouts"),
     )
     first_started = threading.Event()
+    first_cancelled = threading.Event()
     call_lock = threading.Lock()
     call_count = {"value": 0}
 
@@ -138,9 +143,17 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
             call_number = call_count["value"]
 
         if call_number == 1:
+            original_cancel = cancel_handle.cancel
+
+            def wrapped_cancel() -> None:
+                first_cancelled.set()
+                original_cancel()
+
+            cancel_handle.cancel = wrapped_cancel
             first_started.set()
-            await asyncio.sleep(slow_query_delay_seconds)
-            return [[-1]]
+            while not first_cancelled.is_set():
+                await asyncio.sleep(0.01)
+            raise duckdb.InterruptException("INTERRUPT Error: Interrupted!")
 
         return await original_execute(
             "SELECT 42 AS v",
@@ -149,6 +162,7 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
             cancel_handle=cancel_handle,
         )
 
+    original_execute = db_manager.execute_sql_async
     monkeypatch.setattr(db_manager, "execute_sql_async", mock_execute)
 
     request_body = _cells_body()
@@ -174,3 +188,113 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
     assert first_result.json()["code"] == "QUERY_TIMEOUT"
     assert second_result.status_code == 200
     assert second_result.json()["cells"] == [{"row_index": 0, "values": {"0": 42}}]
+
+
+def test_cancelled_acquire_does_not_increment_active_count(settings_override) -> None:
+    """Cancelling while waiting on the semaphore must not leak active slots."""
+    settings_override(max_concurrent_queries=1, max_query_queue_depth=1, query_timeout_seconds=5)
+
+    async def scenario() -> None:
+        budget = QueryBudget()
+        async with budget.acquire():
+            assert budget.active_count == 1
+
+            async def wait_for_slot() -> None:
+                async with budget.acquire():
+                    pytest.fail("Cancelled waiter unexpectedly acquired the semaphore")
+
+            waiter = asyncio.create_task(wait_for_slot())
+            deadline = asyncio.get_running_loop().time() + WAIT_FOR_WAITER_SECONDS
+            while asyncio.get_running_loop().time() < deadline:
+                if budget._waiting == 1:
+                    break
+                await asyncio.sleep(0.01)
+            assert budget._waiting == 1
+
+            waiter.cancel()
+            with suppress(asyncio.CancelledError):
+                await waiter
+
+            assert budget.active_count == 1
+            assert budget._waiting == 0
+
+        assert budget.active_count == 0
+        assert budget._waiting == 0
+
+    asyncio.run(scenario())
+
+
+def test_cancelled_acquire_cleans_waiting_while_queue_lock_is_contended(
+    settings_override,
+) -> None:
+    """Cancellation must still clean waiting counters while queue-lock cleanup waits."""
+    settings_override(max_concurrent_queries=1, max_query_queue_depth=1, query_timeout_seconds=5)
+
+    async def scenario() -> None:
+        budget = QueryBudget()
+        async with budget.acquire():
+            assert budget.active_count == 1
+
+            async def wait_for_slot() -> None:
+                async with budget.acquire():
+                    pytest.fail("Cancelled waiter unexpectedly acquired the semaphore")
+
+            waiter = asyncio.create_task(wait_for_slot())
+            deadline = asyncio.get_running_loop().time() + WAIT_FOR_WAITER_SECONDS
+            while asyncio.get_running_loop().time() < deadline:
+                if budget._waiting == 1:
+                    break
+                await asyncio.sleep(0.01)
+            assert budget._waiting == 1
+
+            await budget._queue_lock.acquire()
+            try:
+                waiter.cancel()
+                await asyncio.sleep(0)
+                assert budget._waiting == 1
+                assert not waiter.done()
+            finally:
+                budget._queue_lock.release()
+
+            with suppress(asyncio.CancelledError):
+                await waiter
+
+            assert budget.active_count == 1
+            assert budget._waiting == 0
+
+        assert budget.active_count == 0
+        assert budget._waiting == 0
+
+    asyncio.run(scenario())
+
+
+def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
+    """Disconnect polling should be rate-limited while a query keeps running."""
+    settings_override(query_timeout_seconds=5)
+    poll_interval_seconds = 0.05
+
+    class StubRequest:
+        def __init__(self) -> None:
+            self.poll_count = 0
+
+        async def is_disconnected(self) -> bool:
+            self.poll_count += 1
+            return False
+
+    async def scenario() -> tuple[int, float]:
+        budget = QueryBudget()
+        budget._disconnect_poll_interval_seconds = poll_interval_seconds
+        request = StubRequest()
+
+        result, execution_ms = await budget.run_with_budget(
+            request,
+            lambda: asyncio.sleep(0.12, result="ok"),
+        )
+
+        assert result == "ok"
+        assert execution_ms >= 0
+        return request.poll_count, execution_ms
+
+    poll_count, execution_ms = asyncio.run(scenario())
+    allowed_poll_count = math.ceil(execution_ms / (poll_interval_seconds * 1000)) + 2
+    assert poll_count <= allowed_poll_count
