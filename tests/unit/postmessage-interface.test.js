@@ -22,6 +22,28 @@ vi.mock('../../src/PromptUi/PromptUi.js', () => ({
   PromptUi: { show: vi.fn() },
 }));
 
+vi.mock('../../src/DataSource/DataSourcesUi.js', () => ({
+  datasourcesUi: { addDatasources: vi.fn().mockResolvedValue(undefined) },
+  initDataSourcesUi: vi.fn(),
+}));
+
+vi.mock('../../src/DataSource/duckdb/database.js', () => ({
+  getDuckDbModule: vi.fn().mockReturnValue({}),
+  getDatabase: vi.fn().mockReturnValue({}),
+  initDatabase: vi.fn(),
+}));
+
+vi.mock('../../src/DataSource/duckdb/DuckDbDataSource.js', () => ({
+  DuckDbDataSource: vi.fn().mockImplementation(() => ({
+    getId: vi.fn().mockReturnValue('test-ds-id'),
+    getType: vi.fn().mockReturnValue('file'),
+  })),
+}));
+
+vi.mock('../../src/App/analyzeDatasource.js', () => ({
+  analyzeDatasource: vi.fn(),
+}));
+
 import { PostMessageInterface, initPostMessageInterface } from '../../src/PostMessageInterface/PostMessageInterface.js';
 
 describe('PostMessageInterface security hardening', () => {
@@ -125,5 +147,38 @@ describe('PostMessageInterface security hardening', () => {
     expect(window.RemoteDatasource).toBeTypeOf('function');
     expect(window.RemoteQueryAdapter).toBeTypeOf('function');
     expect(window.postMessageInterface).toBeDefined();
+  });
+
+  test('createDatasource with selectForAnalysis true returns Ok and calls analyzeDatasource', async () => {
+    const { DuckDbDataSource } = await import('../../src/DataSource/duckdb/DuckDbDataSource.js');
+    const { datasourcesUi } = await import('../../src/DataSource/DataSourcesUi.js');
+    const { analyzeDatasource } = await import('../../src/App/analyzeDatasource.js');
+
+    const mockInstance = { getId: vi.fn().mockReturnValue('test-ds-id'), getType: vi.fn().mockReturnValue('file') };
+    vi.mocked(DuckDbDataSource).mockImplementation(() => mockInstance);
+    vi.mocked(datasourcesUi.addDatasources).mockResolvedValue(undefined);
+    vi.mocked(analyzeDatasource).mockImplementation(() => {});
+
+    const source = { postMessage: vi.fn() };
+    const event = new MessageEvent('message', {
+      origin: 'http://trusted.test',
+      source,
+      data: {
+        messageType: 'createDatasource',
+        requestId: 'req-analyze',
+        body: {
+          datasourceConfig: { type: 'file' },
+          selectForAnalysis: true,
+        },
+      },
+    });
+
+    window.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(source.postMessage).toHaveBeenCalledTimes(1);
+    const [response] = source.postMessage.mock.calls[0];
+    expect(response.status.code).toBe('Ok');
+    expect(analyzeDatasource).toHaveBeenCalledTimes(1);
   });
 });
