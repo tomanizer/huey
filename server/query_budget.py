@@ -10,7 +10,6 @@ from typing import Any, Awaitable, Callable, Generator
 from fastapi import Request
 
 from server.config import get_settings
-from server.engine import db_manager
 from server.errors import (
     QueryCancelledError,
     QueryTimeoutError,
@@ -20,6 +19,8 @@ from server.errors import (
 
 class QueryBudget:
     """Enforce per-query timeout and bounded concurrency with queue limits."""
+
+    DEFAULT_DISCONNECT_POLL_INTERVAL_SECONDS = 0.05
 
     def __init__(self) -> None:
         settings = get_settings()
@@ -31,6 +32,33 @@ class QueryBudget:
         self._queue_lock = asyncio.Lock()
         self._waiting = 0
         self._active = 0
+        self._disconnect_poll_interval_seconds = (
+            self.DEFAULT_DISCONNECT_POLL_INTERVAL_SECONDS
+        )
+
+    async def _run_cleanup_shielded(self, cleanup: Awaitable[None]) -> None:
+        """Finish critical cleanup even if the caller is cancelled."""
+        cleanup_task = asyncio.create_task(cleanup)
+        try:
+            await asyncio.shield(cleanup_task)
+        except asyncio.CancelledError:
+            await cleanup_task
+            raise
+
+    async def _finalize_acquire(self, acquired: bool) -> None:
+        """Update queued and active counters after an acquire attempt."""
+        async with self._queue_lock:
+            self._waiting = max(0, self._waiting - 1)
+            if acquired:
+                self._active += 1
+
+    async def _release_slot(self) -> None:
+        """Drop the active count and release the semaphore for a held slot."""
+        try:
+            async with self._queue_lock:
+                self._active = max(0, self._active - 1)
+        finally:
+            self._semaphore.release()
 
     @asynccontextmanager
     async def acquire(self) -> Generator[float, None, None]:
@@ -46,25 +74,42 @@ class QueryBudget:
                     self._max_concurrent, self._max_queue_depth
                 )
             self._waiting += 1
+        acquired = False
         try:
             await self._semaphore.acquire()
+            acquired = True
         finally:
-            async with self._queue_lock:
-                self._waiting = max(0, self._waiting - 1)
-                self._active += 1
+            await self._run_cleanup_shielded(self._finalize_acquire(acquired))
 
         queue_wait_ms = (time.perf_counter() - queue_start) * 1000
         try:
             yield queue_wait_ms
         finally:
-            async with self._queue_lock:
-                self._active = max(0, self._active - 1)
-            self._semaphore.release()
+            await self._run_cleanup_shielded(self._release_slot())
 
     @property
     def active_count(self) -> int:
         """Return the current number of in-flight queries holding a semaphore slot."""
         return self._active
+
+    async def _watch_disconnect(self, request: Request) -> bool:
+        """Poll for request disconnect until one is observed or the task is cancelled."""
+        while True:
+            if await request.is_disconnected():
+                return True
+            await asyncio.sleep(self._disconnect_poll_interval_seconds)
+
+    def _cancel_disconnect_task(self, disconnect_task: asyncio.Task[Any]) -> None:
+        if disconnect_task.done():
+            return
+        disconnect_task.cancel()
+
+    @staticmethod
+    def _cancel(task: asyncio.Task[Any], cancel_fn: Callable[[], None] | None) -> None:
+        """Cancel the awaiting task and, when provided, the underlying query."""
+        task.cancel()
+        if cancel_fn is not None:
+            cancel_fn()
 
     async def run_with_budget(
         self,
@@ -74,15 +119,14 @@ class QueryBudget:
     ) -> tuple[Any, float]:
         """Execute a coroutine with timeout and disconnect cancellation.
 
-        When *cancel_fn* is supplied it is called instead of
-        ``db_manager.interrupt()`` on timeout or client disconnect.  This
-        allows per-query cursor-level cancellation so that unrelated
-        concurrent queries on the shared DuckDB connection are not
-        interrupted.
+        When *cancel_fn* is supplied it is called on timeout or client
+        disconnect to cancel the underlying blocking work. QueryBudget itself
+        never interrupts shared global state; callers that run blocking work
+        should provide a query-scoped cancellation function.
         """
         exec_start = time.perf_counter()
         task = asyncio.create_task(coro_factory())
-        disconnect_task = asyncio.create_task(request.is_disconnected())
+        disconnect_task = asyncio.create_task(self._watch_disconnect(request))
         timeout = self._timeout_seconds if self._timeout_seconds is not None and self._timeout_seconds > 0 else None
         deadline = (time.perf_counter() + timeout) if timeout else None
         try:
@@ -91,11 +135,7 @@ class QueryBudget:
                 if deadline is not None:
                     wait_timeout = deadline - time.perf_counter()
                     if wait_timeout <= 0:
-                        task.cancel()
-                        if cancel_fn is not None:
-                            cancel_fn()
-                        else:
-                            db_manager.interrupt()
+                        self._cancel(task, cancel_fn)
                         raise QueryTimeoutError(timeout)
 
                 done, _ = await asyncio.wait(
@@ -104,29 +144,18 @@ class QueryBudget:
                     return_when=asyncio.FIRST_COMPLETED,
                 )
                 if task in done:
-                    disconnect_task.cancel()
+                    self._cancel_disconnect_task(disconnect_task)
                     result = await task
                     execution_ms = (time.perf_counter() - exec_start) * 1000
                     return result, execution_ms
                 if disconnect_task in done and disconnect_task.result():
-                    task.cancel()
-                    if cancel_fn is not None:
-                        cancel_fn()
-                    else:
-                        db_manager.interrupt()
+                    self._cancel(task, cancel_fn)
                     raise QueryCancelledError()
-                if disconnect_task in done and not disconnect_task.result():
-                    disconnect_task = asyncio.create_task(request.is_disconnected())
         except asyncio.TimeoutError:
-            task.cancel()
-            if cancel_fn is not None:
-                cancel_fn()
-            else:
-                db_manager.interrupt()
+            self._cancel(task, cancel_fn)
             raise QueryTimeoutError(self._timeout_seconds)
         finally:
-            if not disconnect_task.done():
-                disconnect_task.cancel()
+            self._cancel_disconnect_task(disconnect_task)
 
 
 _query_budget: QueryBudget | None = None

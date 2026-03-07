@@ -108,8 +108,8 @@ export class PivotTableUi extends EventEmitter {
     );
   }
 
-  async #cancelQueryButtonClicked(_event){
-    await Promise.all([
+  #cancelQueryButtonClicked(_event){
+    void Promise.allSettled([
       this.#columnsTupleSet.cancelPendingQuery(),
       this.#rowsTupleSet.cancelPendingQuery(),
       this.#cellsSet.cancelPendingQuery()
