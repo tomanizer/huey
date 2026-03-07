@@ -1,0 +1,30 @@
+    <dialog
+      id="promptUi"
+      draggable="true"
+      aria-modal="true"
+      aria-labelledby="promptDialogTitle"
+      popover="manual"
+    >
+      <header>
+        <h3 id="promptDialogTitle"></h3>
+      </header>
+      <section>
+      </section>
+      <footer role="toolbar">
+        <form id="promptUiForm" method="dialog">
+        </form>
+        <button
+          id="promptDialogAcceptButton"
+          form="promptUiForm"
+          autofocus="true" 
+          popovertarget="promptUi"
+          popovertargetaction="hide"
+        >Yes</button>
+        <button
+          id="promptDialogRejectButton"
+          form="promptUiForm"
+          popovertarget="promptUi"
+          popovertargetaction="hide"
+        >No</button>
+      </footer>
+    </dialog>

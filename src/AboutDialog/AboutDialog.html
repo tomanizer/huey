@@ -1,0 +1,44 @@
+    <dialog
+      id="aboutDialog"
+      draggable="true"
+      aria-modal="true"
+      aria-labelledby="aboutDialogTitle"
+      popover="auto"
+    >
+      <header>
+        <h3 id="aboutDialogTitle">About Huey...</h3>
+      </header>
+      <section>
+        <p >
+          Relational OLAP powered by DuckDB-WASM 
+        </p>
+        <ul>
+          <li id="hueyVersion" translate="no"></li>
+          <li>
+            <a href="https://duckdb.org/" target="_duckdb" id="duckdbVersionLabel" translate="no"></a>
+            <img id="duckdb-version-specific-avatar" width="16px" alt="" />
+          </li>
+          <li><a id="duckDbLibraryUrl" target="_duckdb-jsdelivr" translate="no"></a></li>
+          <li><a id="tablerIconsUrl" href="https://tabler.io/icons" target="_tabler-icons" translate="no"></a></li>
+          <li><a href="https://github.com/rpbouman/huey/" target="_github">Huey Github Repository</a></li>
+          <li><a href="https://github.com/rpbouman/huey/issues/new" target="_github">Bug report/feature request...</a></li>
+          <li><a href="https://raw.githubusercontent.com/rpbouman/huey/dev/LICENSE" target="_github">License (MIT)</a></li>
+          <li><a href="https://github.com/sponsors/rpbouman?o=nsm&sc=t" target="_github_sponsor">Become a sponsor...</a></li>
+        </ul>
+        <p style="font-size: smaller">Created and maintained by Roland.Bouman@gmail.com</p>
+        <p><a href="https://www.paypal.com/donate/?hosted_button_id=776A6UNZ35M84" target="_donate">Donations help to keep Huey in good shape!</a></p>
+      </section>
+      <footer role="toolbar">
+        <button
+          id="aboutDialogOkButton"
+          autofocus="true"
+          popovertarget="aboutDialog"
+          popovertargetaction="hide"
+        >Ok</button>
+        <button
+          title="Donate and help to keep Huey developed and maintained"
+          onclick="window.open('https://www.paypal.com/donate/?hosted_button_id=776A6UNZ35M84', '_donate')"
+          style="width: 7em"
+        >Donate...</button>
+      </footer>
+    </dialog>

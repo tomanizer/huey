@@ -1,0 +1,26 @@
+    <dialog
+      id="errorDialog"
+      draggable="true"
+      aria-modal="true"
+      popover="auto"
+      aria-labelledby="errorDialogTitle"
+      aria-describedby="errorDialogDescription"
+    >
+      <header>
+        <h3 id="errorDialogTitle"></h3>
+      </header>
+      <section id="errorDialogDescription">
+      </section>
+      <details id="errorDialogDetails">
+        <summary>Details...</summary>
+        <pre id="errorDialogStack"></pre>
+      </details>
+      <footer role="toolbar">
+        <button
+          id="errorDialogOkButton"
+          autofocus="true"
+          popovertarget="errorDialog"
+          popovertargetaction="hide"
+        >Ok</button>
+      </footer>
+    </dialog>

@@ -1,0 +1,122 @@
+    <menu
+      role="menu"
+      id="pivotTableContextMenu"
+      popover="auto"
+    >
+      <li role="menuitem">
+        <menu
+          id="copySubmenu"
+          role="menu"
+          popover="auto"
+        >
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyCell"
+              title="Copy the value of this cell to the clipboard"
+            >
+              <span>Copy Cell Value</span>
+              <button id="pivotTableContextMenuItemCopyCell">Copy Cell Value</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyColumn"
+              title="Copy the column header values to the clipboard"
+            >
+              <span>Copy Column Headings</span>
+              <button id="pivotTableContextMenuItemCopyColumn">Copy Column Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyColumnTuples"
+              title="Copy the header values for each column to the clipboard"
+            >
+              <span>Copy All Column Headings</span>
+              <button id="pivotTableContextMenuItemCopyColumnTuples">Copy All Column Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyRow"
+              title="Copy the row header values to the clipboard"
+            >
+              <span>Copy Row Headings</span>
+              <button id="pivotTableContextMenuItemCopyRow">Copy Row Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyRowTuples"
+              title="Copy the header values for each row to the clipboard"
+            >
+              <span>Copy All Row Headings</span>
+              <button id="pivotTableContextMenuItemCopyRowTuples">Copy All Row Headings</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemCopyTable"
+              title="Copy the entire pivot table to the clipboard"
+            >
+              <span>Copy Table</span>
+              <button id="pivotTableContextMenuItemCopyTable">Copy Table</button>
+            </label>
+          </li>
+        </menu>
+        <label 
+          for="copySubmenuActivate"
+          title="Menu with copy actions"
+        >
+          <span>Copy</span>
+          <button
+            id="copySubmenuActivate"
+            popovertarget="copySubmenu"
+            aria-label="Open copy submenu"
+            aria-haspopup="menu"
+            aria-expanded="false"
+          >
+          </button>
+        </label>
+      </li>
+      <li role="menuitem">
+        <label 
+          for="filterSubmenuActivate"
+          title="Menu with filter actions"
+        >
+          <span>Filter</span>
+          <button
+            id="filterSubmenuActivate"
+            popovertarget="filterSubmenu"
+            aria-label="Open filter submenu"
+            aria-haspopup="menu"
+            aria-expanded="false"
+          >
+          </button>
+        </label>
+        <menu
+          id="filterSubmenu"
+          role="menu"
+          popover="auto"
+        >
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemFilterIncludeValue"
+              title="Add this value in an include filter"
+            >
+              <span>Include Value</span>
+              <button id="pivotTableContextMenuItemFilterIncludeValue">Include Value</button>
+            </label>
+          </li>
+          <li role="menuitem">
+            <label 
+              for="pivotTableContextMenuItemFilterExcludeValue"
+              title="Add this value in an exclude filter"
+            >
+              <span>Exclude Value</span>
+              <button id="pivotTableContextMenuItemFilterExcludeValue">Exclude Value</button>
+            </label>
+          </li>
+        </menu>
+      </li>
+    </menu>

@@ -1,0 +1,32 @@
+    <dialog
+      id="uploadUi"
+      popover="manual"
+      aria-modal="true"
+      aria-labelledby="uploadUiTitle"
+      aria-describedby="uploadUiDescription"
+      draggable="true"
+    >
+      <header>
+        <h3 id="uploadUiTitle"></h3>
+        <p id="uploadUiDescription"></p>
+        <div class="timer">
+          <span class="digit"></span>
+          <span class="digit"></span>
+          <span class="digit"></span>
+          <span class="digit"></span>
+        </div>
+      </header>
+      
+      <section id="uploadProgressList">
+      </section>
+      
+      <footer role="toolbar">
+        <button
+          id="uploadDialogOkButton"
+          autofocus="true"
+        >Ok</button>
+        <button
+          id="uploadDialogCancelButton"
+        >Cancel</button>
+      </footer>
+    </dialog>

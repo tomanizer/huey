@@ -1,0 +1,582 @@
+    <dialog
+      id="exportDialog"
+      draggable="true"
+      popover="auto"
+      aria-modal="true"
+      aria-labelledby="exportDialogTitle"
+      aria-busy="false"
+    >
+      <header>
+        <h3 id="exportDialogTitle">Export...</h3>
+        <form id="exportGeneralSettings">
+          <label
+            for="exportTitleTemplate"
+            title="The title template is used to generate a file name for downloads"
+          >Title template</label>
+          <input
+            id="exportTitleTemplate"
+            type="text"
+            title="
+              Export filename template. Special fields ${datasource}, ${cells-itms}, ${rows-items}, ${columns-items}, and ${filters-items} are replaced with the respective element from the current query.
+              Use fields ${timestamp} or ${iso-timestamp} to include date/time.
+            "
+            value="${cells-items} from ${datasource} with ${rows-items} on rows and ${columns-items} on columns"
+          />
+          <label
+            for="exportTitle"
+            title="The title generated from the template"
+          >Title</label>
+          <output
+            id="exportTitle"
+            for="exportTitleTemplate"
+            title="The title generated from the template"
+          ></output>
+          <fieldset>
+            <legend title="Control the shape of the exported dataset">Data Structure</legend>
+            <label
+              for="exportResultShapePivot"
+              title="Export results as a pivot table"
+            >Pivot</label>
+            <input
+              id="exportResultShapePivot"
+              type="radio"
+              name="exportResultShape"
+              checked="true"
+              title="Check this to export results as a pivot table"
+            />
+            <label
+              for="exportResultShapeTable"
+              title="Export results as a plain table. In this format, all items from the query are used to produce a list of rows "
+            >Table</label>
+            <input
+              id="exportResultShapeTable"
+              type="radio"
+              name="exportResultShape"
+              title="Check this to export results as a plain table"
+            />
+          </fieldset>
+          <fieldset>
+            <legend title="Control where the results are exported to">Export destination</legend>
+            <label
+              for="exportDestinationFile"
+              title="Download the export data and save it to a local file."
+            >File</label>
+            <input
+              id="exportDestinationFile"
+              type="radio"
+              name="exportDestination"
+              checked="true"
+              title="Check this to download the result as a file"
+            />
+            <label
+              for="exportDestinationClipboard"
+              title="Copy the export data to the clipboard"
+            >Clipboard</label>
+            <input
+              id="exportDestinationClipboard"
+              type="radio"
+              name="exportDestination"
+              title="Check to copy the data to the clipboard in order to paste it in other applications"
+            />
+          </fieldset>
+        </form>
+      </header>
+      <section role="tablist">
+        <!--
+          See: https://duckdb.org/docs/sql/statements/copy.html#csv-options
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportDelimited"
+            title="Use this tab to export data as delimited text, like .CSV, TSV, etc."
+          >Delimited text</label>
+          <input
+            id="exportDelimited"
+            name="exportFormat"
+            type="radio"
+            checked="true"
+            aria-label="Export format delimited text"
+          />
+          <div role="tabpanel">
+            <form id="exportDelimitedSettings">
+              <label
+                for="exportDelimitedCompression"
+                title="The algorithm used for compressing the query result. Compression typically results in smaller result files."
+              >Compression</label>
+              <select
+                id="exportDelimitedCompression"
+                title="Use this to choose the algorithm used for compressing the query result."
+              >
+                <option value="UNCOMPRESSED" label="uncompressed" title="Uncompressed - no compression will be applied"/>
+                <option value="GZIP" label="gzip" title="GZIP - applies gzip compression"/>
+                <option value="ZSTD" label="zstd" title="ZSTD - applies zstd compression"/>
+              </select>
+              <label
+                title="Whether to include a line of column headers."
+                for="exportDelimitedIncludeHeaders"
+              >Include Headers</label>
+              <input
+                id="exportDelimitedIncludeHeaders"
+                title="Check this to include a header line of column names."
+                type="checkbox"
+                checked="true"
+              />
+              <fieldset>
+                <legend>Formatting</legend>
+                <label
+                  for="exportDelimitedDateFormat"
+                  title="The date format controls how date values are represented in the result."
+                >Date Format</label>
+                <input
+                  id="exportDelimitedDateFormat"
+                  title="Enter a valid DuckDB date format string."
+                  type="text"
+                  value="%x"
+                  list="commonDateFormats"
+                />
+                <label
+                  for="exportDelimitedTimestampFormat"
+                  title="The timestamp format controls how timestamp values are represented in the result."
+                >Timestamp Format</label>
+                <input
+                  id="exportDelimitedTimestampFormat"
+                  title="Enter a valid DuckDB timestamp format string."
+                  type="text"
+                  value="%c"
+                  list="commonTimestampFormats"
+                />
+                <label
+                  for="exportDelimitedNullString"
+                  title="The NULL-string controls how SQL NULL-values are rendered to the result"
+                ><code>NULL</code>-value string</label>
+                <input
+                  id="exportDelimitedNullString"
+                  title="Enter the string that should be written to the result to represent SQL NULL-values"
+                  type="text"
+                  value=""
+                  list="commonCsvNullValueStrings"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Delimiters</legend>
+                <label
+                  for="exportDelimitedColumnDelimiter"
+                  title="The column delimiter is the character used to separate the values within a row in the result."
+                >Column delimiter</label>
+                <input
+                  id="exportDelimitedColumnDelimiter"
+                  type="text"
+                  value="\t"
+                  title="Enter the character that is to be used as column delimiter."
+                  list="commonCsvFieldDelimiters"
+                />
+                <label
+                  for="exportDelimitedQuote"
+                  title="The quote character is used to enclose column values in case the column value contains a delimiter character"
+                >Quote Character</label>
+                <input
+                  id="exportDelimitedQuote"
+                  type="text"
+                  value="&quot;"
+                  title="Enter the character that is to be used as quote character."
+                  list="commonCsvQuoteCharacters"
+                />
+                <label
+                  for="exportDelimitedEscape"
+                  title="The escape character is used to signal a literal occurrence of the quote character within a column value"
+                >Escape Character</label>
+                <input
+                  id="exportDelimitedEscape"
+                  type="text"
+                  value="&quot;"
+                  title="Enter the character used to escape the quote character."
+                  list="commonCsvEscapeCharacters"
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <!--
+          See: https://duckdb.org/docs/stable/extensions/excel#writing-xlsx-files
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportXlsx"
+            title="Use this tab to export the data to a Microsoft Excel (.xlsx) file."
+          >Excel</label>
+          <input
+            id="exportXlsx"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportXlsxSettings">
+              <label
+                title="Whether to include a row with column headers."
+                for="exportXlsxIncludeHeaders"
+              >Include Headers</label>
+              <input
+                id="exportXlsxIncludeHeaders"
+                title="Check this to include a header row with column names."
+                type="checkbox"
+                checked="true"
+              />
+              <label
+                title="Name of the target sheet."
+                for="exportXlsxSheet"
+              >Sheet name</label>
+              <!-- see https://www.keynotesupport.com/excel-basics/worksheet-names-characters-allowed-prohibited.shtml -->
+              <input
+                id="exportXlsxSheet"
+                title="Optionally enter a name for the target sheet"
+                type="text"
+                size="31"
+                pattern="^[A-Za-z0-9 `~!@#\$%\^&amp;\(\)\-_=+\{\}\|;:,&lt;\.&gt;]([A-Za-z0-9 `~!@#\$%\^&amp;\(\)\-_=+\{\}\|;:,&lt;\.&gt;']{0,29}[A-Za-z0-9 `~!@#\$%\^&amp;\(\)\-_=+\{\}\|;:,&lt;\.&gt;])?$"
+              />
+              <label
+                for="exportXlsxSheetRowLimit"
+              >Row Limit</label>
+              <input
+                id="exportXlsxSheetRowLimit"
+                value="1048576"
+                type="number"
+                min="0"
+                max="1048576"
+                step="1"
+              />
+            </form>
+          </div>
+        </div>
+        <!--
+          See: https://duckdb.org/docs/sql/statements/copy.html#json-options
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportJson"
+            title="Use this tab to export data in the JSON format"
+          >JSON</label>
+          <input
+            id="exportJson"
+            name="exportFormat"
+            type="radio"
+            aria-label="Export format JSON"
+          />
+          <div role="tabpanel">
+            <form id="exportJsonSettings">
+              <label
+                for="exportJsonCompression"
+                title="Use this to choose the algorithm used for compressing the query result."
+              >Compression</label>
+              <select
+                id="exportJsonCompression"
+                title="Use this to choose the algorithm used for compressing the query result."
+              >
+                <option value="UNCOMPRESSED" label="uncompressed" title="Uncompressed - no compression will be applied"/>
+                <option value="GZIP" label="gzip" title="GZIP - applies gzip compression"/>
+                <option value="ZSTD" label="zstd" title="ZSTD - applies zstd compression"/>
+              </select>
+              <fieldset>
+                <legend>Formatting</legend>
+                <label
+                  for="exportJsonDateFormat"
+                  title="The date format controls how date values are represented in the result."
+                >Date Format</label>
+                <input
+                  id="exportJsonDateFormat"
+                  type="text"
+                  value="%x"
+                  title="Enter a valid DuckDB date format string."
+                />
+                <label
+                  for="exportJsonTimestampFormat"
+                  title="The timestamp format controls how timestamp values are represented in the result."
+                >Timestamp Format</label>
+                <input
+                  id="exportJsonTimestampFormat"
+                  type="text"
+                  title="Enter a valid DuckDB timestamp format string."
+                  value="%c"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Delimiters</legend>
+                <label
+                  for="exportJsonRowDelimiter"
+                  title="This controls how rows are delimited in the JSON output"
+                >Row Delimiter</label>
+                <select
+                  id="exportJsonRowDelimiter"
+                  title="This controls how rows are delimited in the JSON output"
+                >
+                  <option value="false" label="newline" title="This option generates one row-object per line (JSONL format)"/>
+                  <option value="true" label="array" title="This option generates an array with row-object elements (JSON)"/>
+                </select>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <!--
+          See: https://duckdb.org/docs/sql/statements/copy.html#parquet-options
+        -->
+        <div>
+          <label
+            role="tab"
+            for="exportParquet"
+            title="Use this tab to export data in Parquet format"
+          >Parquet</label>
+          <input
+            id="exportParquet"
+            name="exportFormat"
+            type="radio"
+            aria-label="Export format Parquet"
+          />
+          <div role="tabpanel">
+            <form id="exportParquetSettings">
+              <fieldset>
+                <legend>Version</legend>
+                <label 
+                  for="exportParquetVersion"
+                  title="The parquet version to use."
+                >Version</label>
+                <select
+                  id="exportParquetVersion"
+                  title="The parquet version to use."
+                >
+                  <option value="V1" label="V1" title="Parquet Version 1"/>
+                  <option value="V2" label="V2" title="Parquet Version 2"/>
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend>Compression</legend>
+                <label
+                  for="exportParquetCompression"
+                  title="Use this to choose the algorithm used for compressing the query result."
+                >Compression</label>
+                <select
+                  id="exportParquetCompression"
+                  title="Use this to choose the algorithm used for compressing the query result."
+                >
+                  <option value="UNCOMPRESSED" label="uncompressed" title="Uncompressed - no compression will be applied"/>
+                  <option value="BROTLI" label="brotli" title="BROTLI - applies Brotli compression"/>
+                  <option value="GZIP" label="gzip" title="GZIP - applies gzip compression"/>
+                  <option value="LZ4" label="lz4" title="LZ4 - applies LZ4 compression"/>
+                  <option value="LZ4_RAW" label="lz4 raw" title="LZ4 Raw - applies LZ4 Raw compression"/>
+                  <option value="SNAPPY" label="snappy" title="SNAPPY - applies snappy compression"/>
+                  <option value="ZSTD" label="zstd" title="ZSTD - applies zstd compression"/>
+                </select>
+                <label
+                  for="exportParquetCompressionLevel"
+                  title="Compression level, set between 1 (lowest compression, fastest) and 22 (highest compression, slowest)."
+                >Compression Level</label>
+                <input 
+                  id="exportParquetCompressionLevel" 
+                  type="number" 
+                  value="3" 
+                  min="1" 
+                  max="22" 
+                  step="1"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Rowgroups</legend>
+                <label
+                  for="exportParquetRowGroupSize"
+                  title="The target size, i.e., number of rows, of each row group."
+                >Row group size (no. of rows)</label>
+                <input 
+                  id="exportParquetRowGroupSize" 
+                  type="number" 
+                  step="1" 
+                  min="1" 
+                  value="122880"
+                />
+                <!-- 
+                This option requires preserve_insertion_order to be disabled.
+                <label
+                  for="exportParquetRowGroupSizeBytes"
+                  title="The target size of each row group as number of bytes."
+                >Row group size (bytes)</label>
+                <input 
+                  id="exportParquetRowGroupSizeBytes" 
+                  type="number" 
+                  step="1" 
+                  min="1" 
+                  value="125829120"
+                />
+                -->
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportSql"
+            title="Use this tab to export a SQL query that would produce this result."
+          >SQL</label>
+          <input
+            id="exportSql"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportSqlSettings">
+              <label
+                for="exportSqlKeywordLettercase"
+                title="The lettercase for SQL keywords"
+              >Keywords Case</label>
+              <select
+                title="The lettercase for SQL keywords"
+                id="exportSqlKeywordLettercase"
+              >
+                <option
+                  title="Initial capital followed by lowercase"
+                  value="initialCapital">initial capital</option>
+                <option
+                  title="lowercase"
+                  value="lowerCase">lowercase</option>
+                <option
+                  title="uppercase"
+                  value="upperCase"
+                  selected="true">uppercase</option>
+              </select>
+              <label
+                for="exportSqlAlwaysQuoteIdentifiers"
+                title="Whether to always quote identifiers."
+              >Always Quote identifiers</label>
+              <input
+                id="exportSqlAlwaysQuoteIdentifiers"
+                title="Check this to force all identifiers to be quoted."
+                checked="true"
+                type="checkbox"
+              />
+              <label
+                for="exportSqlCommaStyle"
+                title="How to render commas in the SQL output"
+              >Comma style</label>
+              <select
+                title="Select the style for rendering commas in the SQL output"
+                id="exportSqlCommaStyle"
+              >
+                <option
+                  value="spaceAfter">Space After</option>
+                <option
+                  value="newlineAfter">Newline After</option>
+                <option
+                  value="newlineBefore"
+                  selected="true">Newline Before</option>
+              </select>
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportSqlite"
+            title="Use this tab to export the data to a SQLite database file."
+          >SQLite</label>
+          <input
+            id="exportSqlite"
+            name="exportFormat"
+            type="radio"
+            aria-label="Export format SQLite"
+          />
+          <div role="tabpanel">
+            <form id="exportSqliteSettings">
+              <label
+                for="exportSqliteTableName"
+                title="Name of the SQLite table to create."
+              >Table name</label>
+              <input
+                id="exportSqliteTableName"
+                title="Enter the SQLite table name that will receive the exported result set."
+                type="text"
+                value="export_result"
+              />
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportDuckdb"
+            title="Use this tab to export the data to a DuckDB database file."
+          >DuckDB</label>
+          <input
+            id="exportDuckdb"
+            name="exportFormat"
+            type="radio"
+            aria-label="Export format DuckDB"
+          />
+          <div role="tabpanel">
+            <form id="exportDuckdbSettings">
+              <label
+                for="exportDuckdbTableName"
+                title="Name of the DuckDB table to create."
+              >Table name</label>
+              <input
+                id="exportDuckdbTableName"
+                title="Enter the DuckDB table name that will receive the exported result set."
+                type="text"
+                value="export_result"
+              />
+            </form>
+          </div>
+        </div>
+        <div>
+          <label
+            role="tab"
+            for="exportQuery"
+            title="Use this tab to export your query."
+          >Query</label>
+          <input
+            id="exportQuery"
+            name="exportFormat"
+            type="radio"
+          />
+          <div role="tabpanel">
+            <form id="exportQuerySettings">
+              <label for="exportQueryEncoding">Encoding</label>
+              <select id="exportQueryEncoding">
+                <option value="JSON" label="JSON" title="JSON representation of the query state"/>
+                <option value="HASH" label="URL Hash" title="A URL hash to create a shortcut link to the query"/>
+              </select>
+              <label for="exportQueryIndentation">Indentation</label>
+              <input id="exportQueryIndentation" type="number" step="1" min="0"/>
+            </form>
+          </div>
+        </div>
+      </section>
+      <footer role="toolbar">
+        <button
+          id="exportDialogExecuteButton"
+          autofocus="true"
+        >Export</button>
+        <button
+          id="exportDialogCloseButton"
+          popovertarget="exportDialog"
+          popovertargetaction="hide"
+        >Close</button>
+      </footer>
+      <dialog role="progressbar" aria-modal="true">
+        <header>
+          <h3 role="status"></h3>
+        </header>
+        <section>
+          <div class="loader loader-medium">Exporting...</div>
+          <div class="timer">
+            <span class="digit"></span>
+            <span class="digit"></span>
+            <span class="digit"></span>
+            <span class="digit"></span>
+          </div>
+        </section>
+        <footer>
+          <!-- TODO: implement cancel of pending export -->
+          <button id="cancelExportButton">Cancel</button>
+        </footer>
+      </dialog>
+    </dialog>

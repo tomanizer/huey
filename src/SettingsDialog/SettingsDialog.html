@@ -1,0 +1,370 @@
+    <dialog
+      id="settingsDialog"
+      draggable="true"
+      aria-modal="true"
+      aria-labelledby="settingsDialogTitle"
+      popover="auto"
+    >
+      <header>
+        <h3 id="settingsDialogTitle">Settings</h3>
+      </header>
+      <section
+        id="settingsTabs"
+        role="tablist"
+      >
+        <!--
+          Datasources settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="datasourcesSettingTab"
+          >
+            Datasources
+          </label>
+          <input
+            id="datasourcesSettingTab"
+            type="radio"
+            name="settingsTabs"
+            checked="true"
+          />
+          <div role="tabpanel">
+            <form id="datasourceSettings">
+              <label
+                for="useLooseColumnTypeComparison"
+                title="Whether to use exact or loose typing for automatic creation of UNION datasources."
+              >UNION loose typing</label>
+              <input
+                id="useLooseColumnTypeComparison"
+                type="checkbox"
+              />
+            </form>
+          </div>
+        </div>
+        <!--
+          Locale Settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="localeSettingsTab"
+          >
+            Value Formatting
+          </label>
+          <input
+            id="localeSettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="localeSettings">
+              <fieldset>
+                <legend><code>NULL</code>-behavior</legend>
+                <label
+                  for="nullString"
+                  title="The string to use for displaying NULL-values"
+                ><code>NULL</code>-value label</label>
+                <input
+                  id="nullString"
+                  type="text"
+                />
+                <label
+                  for="nullsSortOrder"
+                  title="Sorting order for NULL-values"
+                ><code>NULL</code>-Sort Order</label>
+                <select id="nullsSortOrder">
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend>Locale</legend>
+                <label
+                  for="useDefaultLocale"
+                  title="Check to use the browser's default locale, uncheck to enter a custom locale."
+                >Use default locale</label>
+                <input
+                  id="useDefaultLocale"
+                  type="checkbox"
+                />
+                <!--
+                  see: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl
+                  A locale identifier is a string that consists of:
+
+                  A language subtag with 2–3 or 5–8 letters
+                  A script subtag with 4 letters Optional
+                  A region subtag with either 2 letters or 3 digits Optional
+                  One or more variant subtags (all of which must be unique), each with either 5–8 alphanumerals or a digit followed by 3 alphanumerals Optional
+                  One or more BCP 47 extension sequences Optional
+                  A private-use extension sequence Optional
+                -->
+                <label
+                  for="locale"
+                  title="The locale to use for creating value formatters"
+                >Locale</label>
+                <!--
+                  on change we should try to call Intl.DisplayNames.supportedLocalesOf('DE-AU'). this will return an array
+                  and if that is empty it probably means the entered locale is either not valid or not supported.
+                -->
+                <input
+                  id="locale"
+                  type="text"
+                  pattern="^(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?)(\s*,\s*(([A-Za-z]{2,3}|[A-Za-z]{5,8})(-[A-Za-z]{4})?(-([A-Za-z]{2}|\d{3}))?(-([0-9A-Za-z]{5,8}|\d[0-9A-Za-z]{3}))?))*$"
+                  data-value-getter="splitCommaSeparatedValue"
+                  data-value-setter="joinCommaSeparatedValue"
+                />
+              </fieldset>
+
+              <fieldset>
+                <legend>Integer</legend>
+                <!-- minimum integer digits -->
+                <label for="minimumIntegerDigits"
+                  title="The minimum number of integer digits to use. A value with a smaller number of integer digits than this number will be left-padded with zeros (to the specified length) when formatted. Possible values are from 1 to 21; the default is 1."
+                >Minimum digits</label>
+                <input
+                  id="minimumIntegerDigits"
+                  type="number"
+                  min="1"
+                  max="21"
+                  value="1"
+                />
+              </fieldset>
+
+              <!-- minimum fraction digits -->
+              <fieldset>
+                <legend>Decimals</legend>
+                <label for="linkMinimumAndMaximumDecimals">Link min. and max. decimals</label>
+                <input id="linkMinimumAndMaximumDecimals" type="checkbox"/>
+                <label for="minimumFractionDigits"
+                  title="The minimum number of fraction digits to use. .Possible values are from 0 to 20; the default for plain number and percent formatting is 0; the default for currency formatting is the number of minor unit digits provided by the ISO 4217 currency code list (2 if the list doesn't provide that information)."
+                ></label>
+                <input
+                  id="minimumFractionDigits"
+                  type="number"
+                  min="0"
+                  max="20"
+                  value="2"
+                />
+                <!-- maximum fraction digits -->
+                <label for="maximumFractionDigits"
+                  title="The maximum number of fraction digits to use. Possible values are from 0 to 20; the default for plain number formatting is the larger of minimumFractionDigits and 3; the default for currency formatting is the larger of minimumFractionDigits and the number of minor unit digits provided by the ISO 4217 currency code list (2 if the list doesn't provide that information); the default for percent formatting is the larger of minimumFractionDigits and 0."
+                >Maximum decimals</label>
+                <input
+                  id="maximumFractionDigits"
+                  type="number"
+                  min="0"
+                  max="20"
+                  value="2"
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          Query settings
+        -->
+        <div>
+          <label
+            role="tab"
+            for="querySettingsTab"
+          >
+            Query
+          </label>
+          <input
+            id="querySettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="querySettings">
+              <fieldset>
+                <legend>Autorun Query</legend>
+                <label
+                  for="autoRunQuery"
+                  title="When enabled, the pivot table will update automatically after modifying the query. When disabled, you have to explicitly hit the execute button."
+                >Enabled</label>
+                <input
+                  id="autoRunQuery"
+                  type="checkbox"
+                />
+                <label
+                  for="autoRunQueryTimeout"
+                  title="The number of milliseconds to wait after a change to the query to auto-run it."
+                >Timeout (ms)</label>
+                <input
+                  id="autoRunQueryTimeout"
+                  type="number"
+                  step="1"
+                  min="0"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Filter</legend>
+                <label
+                  title="How many milliseconds to wait to search for filter values."
+                  for="filterSearchAutoQueryTimeoutInMilliseconds"
+                >Search timeout (ms)</label>
+                <input
+                  id="filterSearchAutoQueryTimeoutInMilliseconds"
+                  min="1"
+                  type="number"
+                  step="1"
+                />
+                <label
+                  title="How many filter values to fetch."
+                  for="filterValuePicklistPageSize"
+                >Picklist Pagesize</label>
+                <input
+                  id="filterValuePicklistPageSize"
+                  type="number"
+                  min="1"
+                  step="1"
+                />
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          Pivot Table
+        -->
+        <div>
+          <label
+            role="tab"
+            for="pivotSettingsTab"
+          >
+            Pivot Table
+          </label>
+          <input
+            id="pivotSettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="pivotSettings">
+              <fieldset>
+                <legend>Columns</legend>
+                <label
+                  for="maxCellWidth"
+                  title="The maximum string length to consider when sizing pivot table cells and headers"
+                >Max cellwidth (ch)</label>
+                <input
+                  id="maxCellWidth"
+                  title="The maximum string length to consider when sizing pivot table cells and headers"
+                  type="number"
+                  min="1"
+                  max="256"
+                  value="30"
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Repeating Values</legend>
+                <label
+                  for="hideRepeatingAxisValues"
+                  title="Uncheck to always show all axis values; check to hide repeated values."
+                >Hide repeating axis values</label>
+                <input 
+                  id="hideRepeatingAxisValues"
+                  title="Uncheck to always show all axis values; check to hide repeated values."
+                  type="checkbox"
+                />
+                <label
+                  for="dittoMark"
+                  title="A symbol to indicate a repeated value."
+                >Ditto mark</label>
+                <input 
+                  id="dittoMark"
+                  list="commonDittoMarks"
+                  size="6"
+                  type="text"
+                  title="A symbol to indicate a repeated value."
+                />
+              </fieldset>
+              <fieldset>
+                <legend>Totals</legend>
+                <label
+                  for="totalsString"
+                  title="The string to use for displaying totals"
+                >Totals label</label>
+                <input
+                  id="totalsString"
+                  type="text"
+                  title="The string to use for displaying totals"
+                />
+                <label
+                  for="totalsPosition"
+                  title="Whether Totals are shown before or after the items"
+                >Totals Position</label>
+                <select
+                  id="totalsPosition"
+                  title="Whether Totals are shown before or after the items"
+                >
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend>Appearance</legend>
+                <label
+                  title="Enable to let alternating rows have a slightly different color. This makes easier to visually identify a cell's row headers."
+                  for="alternatingRowColors"
+                >Alternating Row Colors</label>
+                <input type="checkbox" id="alternatingRowColors"/>
+                <label
+                  title="Enable this to create a highlight effect when hovering the mouse pointer over a row. This makes it easier to identify a cell's row headers."
+                  for="hoverRowHighlight"
+                >Hover Row Highlighting</label>
+                <input type="checkbox" id="hoverRowHighlight"/>
+                <label
+                  title="Enable this to create a highlight effect when hovering the mouse pointer over a column. This makes it easier to identify a cell's column headers."
+                  for="hoverColumnHighlight"
+                >Hover Column Highlighting</label>
+                <input type="checkbox" id="hoverColumnHighlight"/>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+
+        <!--
+          Theme
+        -->
+        <div>
+          <label
+            role="tab"
+            for="themeSettingsTab"
+          >
+            Theme
+          </label>
+          <input
+            id="themeSettingsTab"
+            type="radio"
+            name="settingsTabs"
+          />
+          <div role="tabpanel">
+            <form id="themeSettings">
+              <label for="themes">Themes</label>
+              <select
+                id="themes"
+                onchange="Theme.applyTheme(this.selectedIndex)"
+                data-value-getter="parseJsonValue"
+                data-value-setter="stringifyJsonValue"
+              >
+              </select>
+            </form>
+          </div>
+        </div>
+      </section>
+      <footer role="toolbar">
+        <button
+          id="settingsDialogOkButton"
+          autofocus="true"
+          popovertarget="settingsDialog"
+          popovertargetaction="hide"
+        >Ok</button>
+        <button
+          id="settingsDialogResetButton"
+        >Reset All</button>
+        <button
+          id="settingsDialogCancelButton"
+          popovertarget="settingsDialog"
+          popovertargetaction="hide"
+        >Cancel</button>
+      </footer>
+    </dialog>

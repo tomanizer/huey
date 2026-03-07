@@ -1,0 +1,305 @@
+    <main
+      id="layout"
+      class="layout"
+      data-testid="app-layout"
+    >
+      <menu role="toolbar" aria-live="polite">
+        <label for="uploader" title="Register local data files to explore their contents with Huey">
+          <input
+            id="uploader"
+            type="file"
+            multiple="true"
+            accept=".csv,.duckdb,.json,.jsonl,.parquet,.sql,.sqlite,.tsv,.xlsx"
+          />
+        </label>
+        <label for="uploaderFolder" title="Load all parquet files from a local folder as one datasource">
+          <input
+            id="uploaderFolder"
+            type="file"
+            webkitdirectory="true"
+            directory="true"
+            multiple="true"
+            accept=".parquet"
+          />
+        </label>
+        <label for="loadFromUrl" title="Load data from URL">
+          <button
+            id="loadFromUrl"
+          >Data from URL</button>
+        </label>
+        <label for="addRemoteDatasource" title="Connect to a remote dataset (QueryService)">
+          <button
+            id="addRemoteDatasource"
+            type="button"
+          >Remote dataset</button>
+        </label>
+
+        <label for="cloneHueySession" title="Open a new Huey browser tab including the currently loaded datasources and query">
+          <button
+            id="cloneHueySession"
+          >Clone Huey Session</button>
+        </label>
+
+        <label for="runQueryButton" title="Execute Query">
+          <button
+            id="runQueryButton"
+          >Execute Query</button>
+        </label>
+
+        <label
+          for="autoRunQuery"
+          title="Check this if you want to execute the query automatically"
+        >Autorun:</label>
+
+        <label
+          role="menuitem"
+          id="quickQueryMenuLabel"
+          for="quickQueryMenuButton"
+          title="The Quick Query Menu provides easy access to predefined queries for exploring the datasource."
+        >
+          <span>Quick Query</span>
+          <button
+            id="quickQueryMenuButton"
+            popovertarget="quickQueryMenu"
+            popovertargetaction="show"
+          >Quick Query</button>
+          <menu
+            id="quickQueryMenu"
+            role="menu"
+            aria-labelledby="quickQueryMenuLabel"
+            popover="auto"
+          >
+            <li role="menuitem">
+              <label
+                for="quickQueryClearAllButton"
+                title="Clear the query and start a new one."
+              ><span>Clear All</span>
+                <button
+                  id="quickQueryClearAllButton"
+                  title="Clear the query and start a new one."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Clear All</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryFlipAxesButton"
+                title="Flip the rows and columns axes."
+              ><span>Flip Axes</span>
+                <button
+                  id="quickQueryFlipAxesButton"
+                  title="Flip the rows and columns axes."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Flip Axes</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryCellHeadersOnColumnsButton"
+                title="Place the cell headers on the columns axis."
+              ><span>Cell Headers on Columns</span>
+                <button
+                  id="quickQueryCellHeadersOnColumnsButton"
+                  title="Place the cell headers on the columns axis."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Cell Headers on Columns</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryCellHeadersOnRowsButton"
+                title="Place the cell headers on the rows axis."
+              ><span>Cell Headers on Rows</span>
+                <button
+                  id="quickQueryCellHeadersOnRowsButton"
+                  title="Place the cell headers on the rows axis."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Cell Headers on Rows</button>
+              </label>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryColumnStatisticsButton"
+                title="Get statistics for each column."
+              ><span>Column Statistics</span>
+                <button
+                  id="quickQueryColumnStatisticsButton"
+                  title="Get statistics for each column."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Column Statistics</button>
+              </labe>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryDataPreviewButton"
+                title="Add all columns to the query and preview the data at the detail level."
+              ><span>Data Preview</span>
+                <button
+                  id="quickQueryDataPreviewButton"
+                  title="Add all columns to the query and preview the data at the detail level."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Data Preview</button>
+              </labe>
+            </li>
+            <li role="menuitem">
+              <label
+                for="quickQueryDestructuredDataPreviewButton"
+                title="Add scalar columns and STRUCT members to the query and preview the data at the detail level."
+              ><span>Destructured Data Preview</span>
+                <button
+                  id="quickQueryDestructuredDataPreviewButton"
+                  title="Add scalar columns and STRUCT members to the query and preview the data at the detail level."
+                  popovertarget="quickQueryMenu"
+                  popovertargetaction="hide"
+                >Destructured Data Preview</button>
+              </labe>
+            </li>
+          </menu>
+        </label>
+
+        <!-- title in the toolbar identifies the currently selected datasource -->
+        <label 
+          role="menuitem"
+          id="currentDatasource"
+          for="currentDatasourceMenuButton"
+          data-current-datasource=""
+          title="Current datasource"
+        >
+          <button 
+            id="currentDatasourceMenuButton" 
+            aria-label="Open datasource menu"
+            popovertarget="dataSourceMenu"
+            aria-haspopup="menu"
+            aria-expanded="false"
+          ></button>
+          <menu
+            id="dataSourceMenu"
+            class="dataSources"
+            role="menu"
+            aria-labelledby="currentDatasourceLabel"
+            popover="auto"
+          >
+            
+          </menu>
+        </label>
+
+        <!-- info about the last executed query -->
+        <label for="queryResultRowsInfo" title="The total number of tuples on the rows axis.">
+          <output id="queryResultRowsInfo"/>
+        </label>
+        <label for="queryResultColumnsInfo" title="The total number of tuples on the columns axis.">
+          <output id="queryResultColumnsInfo"/>
+        </label>
+
+        <label for="queryPerformanceInfo" title="Query and render performance timing.">
+          <output id="queryPerformanceInfo"/>
+        </label>
+
+        <label for="aboutButton" title="About Huey...">
+          <button
+            id="aboutButton"
+            popovertarget="aboutDialog"
+            popovertargetaction="show"
+          >About Huey...</button>
+        </label>
+
+        <label for="settingsButton" title="Open the Huey Settings dialog.">
+          <button
+            id="settingsButton"
+            popovertarget="settingsDialog"
+            popovertargetaction="show"
+          >Settings...</button>
+        </label>
+
+        <label
+          for="exportButton"
+          title="Export &amp; Download queries and/or result data..."
+        >
+          <button
+            id="exportButton"
+            popovertarget="exportDialog"
+            popovertargetaction="show"
+          >Download...</button>
+        </label>
+      </menu>
+
+      <nav
+        role="tablist"
+        id="sidebar"
+        class="resizeHorizontal"
+        data-testid="sidebar"
+      >
+        <!-- Datasources tab -->
+        <div>
+          <label
+            for="datasourcesTab"
+            role="tab"
+            title="Files, database tables and so on that provide data you'd like to explore."
+          >Datasources</label>
+          <input
+            id="datasourcesTab"
+            type="radio"
+            name="sidebarTabs"
+            checked="true"
+          />
+          <div
+            role="tabpanel"
+          >
+            <label for="uploader">Drop some files here, or click the Upload button:</label>
+
+            <div
+              id="datasourcesUi"
+              role="tree"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Attributes tab -->
+        <div>
+          <label
+            for="attributesTab"
+            role="tab"
+            title="Columns, formulas and aggregates to query and pivot"
+          >Attributes</label>
+          <input
+            id="attributesTab"
+            type="radio"
+            name="sidebarTabs"
+          />
+          <div role="tabpanel">
+            <search
+              id="searchAttributeUi"
+            >
+              <fieldset>
+                <legend id="searchAttributesLabel">Search for Attributes</legend>
+                <input
+                  id="searchAttribute"
+                  type="search"
+                  placeholder="Search by Attribute name"
+                  title="Enter a search term to find matching attributes. You can use % as wildcard to match arbitrary character sequences."
+                  aria-labelledby="searchAttributesLabel"
+                  autofocus="true"
+                />
+              </fieldset>
+            </search>
+
+            <div
+              id="attributeUi"
+              class="attributeUi"
+              style="flex-grow: 1;"
+              role="tree"
+              data-testid="attribute-list"
+            ></div>
+          </div>
+        </div>
+      </nav>
+
+      <div id="workarea" class="workarea" data-testid="workarea"></div>
+      
+    </main>
