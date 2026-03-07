@@ -134,7 +134,7 @@ def test_query_tuples_cursor_paging(client: TestClient) -> None:
     first_page = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 2, "offset": 0}},
+        "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 2}},
     }
     first_response = client.post("/query/tuples", json=first_page)
     assert first_response.status_code == 200

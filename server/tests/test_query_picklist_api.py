@@ -104,7 +104,7 @@ def test_query_picklist_cursor_paging(client: TestClient) -> None:
     first_page = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "paging": {"limit": 2, "offset": 0}},
+        "query": {"field": "symbol", "paging": {"limit": 2}},
     }
     first_response = client.post("/query/picklist", json=first_page)
     assert first_response.status_code == 200

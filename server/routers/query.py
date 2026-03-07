@@ -80,6 +80,10 @@ def _decode_cursor(cursor: str) -> dict[str, Any]:
     return {"values": payload["values"], "total_count": total_count}
 
 
+def _should_fetch_total_count(total_count: int | None, has_cursor: bool, offset: int) -> bool:
+    return total_count is None or (total_count == 0 and not has_cursor and offset > 0)
+
+
 def _apply_client_request_id(body, request: Request) -> None:
     """Override correlation ID with client_context.request_id when provided."""
     if body.client_context and body.client_context.request_id:
@@ -165,7 +169,7 @@ async def post_query_tuples(
             total_count = 0
             items = []
 
-        if total_count is None or (total_count == 0 and not cursor_payload and paging.offset > 0):
+        if _should_fetch_total_count(total_count, has_cursor=cursor_payload is not None, offset=paging.offset):
             count_sql, count_params = build_tuples_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
             count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
@@ -449,7 +453,7 @@ async def post_query_picklist(
             total_count = 0
             values = []
 
-        if total_count is None or (total_count == 0 and not cursor_payload and paging.offset > 0):
+        if _should_fetch_total_count(total_count, has_cursor=cursor_payload is not None, offset=paging.offset):
             count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
             count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
