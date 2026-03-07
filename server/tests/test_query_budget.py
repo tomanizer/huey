@@ -132,7 +132,7 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
     call_lock = threading.Lock()
     call_count = {"value": 0}
 
-    async def mock_execute(sql, params=None, *, dataset_id=None, cancel_handle=None):
+    async def mock_execute(_sql, _params=None, *, dataset_id=None, cancel_handle=None):
         with call_lock:
             call_count["value"] += 1
             call_number = call_count["value"]

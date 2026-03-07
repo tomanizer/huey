@@ -197,9 +197,10 @@ class TestDuckDBManager:
         try:
             first_handle = QueryCancelHandle()
             second_handle = QueryCancelHandle()
-            expected_sum = 499999999500000000
+            row_count = 1_000_000_000
+            expected_sum = row_count * (row_count - 1) // 2
 
-            slow_query = "SELECT sum(i) FROM range(1000000000) t(i)"
+            slow_query = f"SELECT sum(i) FROM range({row_count}) t(i)"
             first_task = asyncio.create_task(
                 mgr.execute_sql_async(slow_query, cancel_handle=first_handle)
             )
