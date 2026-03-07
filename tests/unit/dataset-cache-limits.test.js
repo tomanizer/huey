@@ -399,6 +399,138 @@ describe('DataSet cache limits', () => {
     expect(fetchCellsCallCount).toBe(2);
   });
 
+  test('CellSet evicts least-recently-used cells when size limit is exceeded', async () => {
+    let fetchCellsCallCount = 0;
+    const connection = {
+      fetchCells(dateRange, query) {
+        fetchCellsCallCount += 1;
+        const rowCount = query.rows.count || 1;
+        const colCount = query.columns.count || 1;
+        const cells = [];
+        for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+          for (let columnIndex = 0; columnIndex < colCount; columnIndex++) {
+            cells.push({
+              row_index: rowIndex,
+              column_index: columnIndex,
+              values: { 2: `value-${rowIndex}-${columnIndex}-${'x'.repeat(64)}` }
+            });
+          }
+        }
+        return { cells };
+      },
+      getState() {
+        return 'open';
+      }
+    };
+    const datasource = {
+      getType() {
+        return 'remote';
+      },
+      getManagedConnection() {
+        return connection;
+      }
+    };
+    const queryModel = {
+      getDatasource() {
+        return datasource;
+      },
+      getRowsAxis() {
+        return { getItems: () => [{ columnName: 'row_field', columnType: 'VARCHAR' }] };
+      },
+      getColumnsAxis() {
+        return { getItems: () => [{ columnName: 'col_field', columnType: 'VARCHAR' }] };
+      },
+      getCellsAxis() {
+        return { getItems: () => [{ columnName: 'amount', columnType: 'VARCHAR', aggregator: 'max' }] };
+      },
+      getFiltersAxis() {
+        return { getItems: () => [] };
+      }
+    };
+    const tupleField = [{ name: 'value', type: { typeId: 5 } }];
+    const singleRowTupleSet = {
+      getTupleCountSync() {
+        return 1;
+      },
+      getTupleSync(index) {
+        return { values: [index] };
+      },
+      getTupleValueFields() {
+        return tupleField;
+      },
+      getQueryAxisItems() {
+        return [{ columnName: 'row_field', columnType: 'VARCHAR' }];
+      }
+    };
+    const rowsTupleSet = {
+      getTupleCountSync() {
+        return 2;
+      },
+      getTupleSync(index) {
+        return { values: [index] };
+      },
+      getTupleValueFields() {
+        return tupleField;
+      },
+      getQueryAxisItems() {
+        return [{ columnName: 'row_field', columnType: 'VARCHAR' }];
+      }
+    };
+    const columnsTupleSet = {
+      getTupleCountSync() {
+        return 1;
+      },
+      getTupleSync(index) {
+        return { values: [index] };
+      },
+      getTupleValueFields() {
+        return tupleField;
+      },
+      getQueryAxisItems() {
+        return [{ columnName: 'col_field', columnType: 'VARCHAR' }];
+      }
+    };
+
+    const singleCellSet = new CellSet(
+      queryModel,
+      [singleRowTupleSet, columnsTupleSet],
+      createSettings({ cellSetMaxCacheEntries: 10, cellSetMaxCacheSizeMb: 50 })
+    );
+    await singleCellSet.getCells([[0, 1], [0, 1]]);
+
+    const twoCellSet = new CellSet(
+      queryModel,
+      [rowsTupleSet, columnsTupleSet],
+      createSettings({ cellSetMaxCacheEntries: 10, cellSetMaxCacheSizeMb: 50 })
+    );
+    await twoCellSet.getCells([[0, 2], [0, 1]]);
+
+    expect(twoCellSet.cacheSize).toBeGreaterThan(singleCellSet.cacheSize);
+
+    const maxCacheSizeBytes = Math.floor((singleCellSet.cacheSize + twoCellSet.cacheSize) / 2);
+    const maxCacheSizeMb = maxCacheSizeBytes / (1024 * 1024);
+    fetchCellsCallCount = 0;
+
+    const cellSet = new CellSet(
+      queryModel,
+      [rowsTupleSet, columnsTupleSet],
+      createSettings({
+        cellSetMaxCacheEntries: 10,
+        cellSetMaxCacheSizeMb: maxCacheSizeMb
+      })
+    );
+
+    await cellSet.getCells([[0, 2], [0, 1]]);
+    expect(fetchCellsCallCount).toBe(1);
+    expect(cellSet.cacheSize).toBeLessThanOrEqual(maxCacheSizeBytes);
+
+    await cellSet.getCells([[1, 2], [0, 1]]);
+    expect(fetchCellsCallCount).toBe(1);
+
+    await cellSet.getCells([[0, 1], [0, 1]]);
+    expect(fetchCellsCallCount).toBe(2);
+  });
+
   test('CellSet cache sizing handles BigInt cell values without crashing', async () => {
     const connection = {
       fetchCells() {
