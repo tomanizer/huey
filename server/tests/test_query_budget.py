@@ -13,6 +13,8 @@ from server.config import get_settings
 from server.engine import db_manager
 from server.query_budget import QueryBudget, reset_query_budget
 
+WAIT_FOR_WAITER_SECONDS = 0.5
+
 
 @pytest.fixture
 def settings_override(monkeypatch):
@@ -148,10 +150,11 @@ def test_cancelled_acquire_does_not_increment_active_count(settings_override) ->
                     pytest.fail("Cancelled waiter unexpectedly acquired the semaphore")
 
             waiter = asyncio.create_task(wait_for_slot())
-            for _ in range(50):
+            deadline = asyncio.get_running_loop().time() + WAIT_FOR_WAITER_SECONDS
+            while asyncio.get_running_loop().time() < deadline:
                 if budget._waiting == 1:
                     break
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.01)
             assert budget._waiting == 1
 
             waiter.cancel()
@@ -194,4 +197,6 @@ def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
         return request.poll_count
 
     poll_count = asyncio.run(scenario())
+    # With a 0.05s polling interval over ~0.12s of work, about 3 polls are
+    # expected; <= 4 allows small scheduling variance without permitting a hot loop.
     assert poll_count <= 4

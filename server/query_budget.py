@@ -21,7 +21,7 @@ from server.errors import (
 class QueryBudget:
     """Enforce per-query timeout and bounded concurrency with queue limits."""
 
-    _disconnect_poll_interval_seconds = 0.05
+    DEFAULT_DISCONNECT_POLL_INTERVAL_SECONDS = 0.05
 
     def __init__(self) -> None:
         settings = get_settings()
@@ -33,6 +33,9 @@ class QueryBudget:
         self._queue_lock = asyncio.Lock()
         self._waiting = 0
         self._active = 0
+        self._disconnect_poll_interval_seconds = (
+            self.DEFAULT_DISCONNECT_POLL_INTERVAL_SECONDS
+        )
 
     @asynccontextmanager
     async def acquire(self) -> Generator[float, None, None]:
@@ -72,6 +75,7 @@ class QueryBudget:
         return self._active
 
     async def _watch_disconnect(self, request: Request) -> bool:
+        """Poll for request disconnect until one is observed or the task is cancelled."""
         while True:
             if await request.is_disconnected():
                 return True
