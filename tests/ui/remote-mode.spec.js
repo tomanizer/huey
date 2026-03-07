@@ -62,7 +62,7 @@ test.describe('Remote mode UI', () => {
     await page.locator('#remoteDatasourceDatasetId').fill('trades_v1');
     await page.locator('#promptDialogAcceptButton').click();
     await expect(page.locator('details[data-grouptype="remote"]')).toBeVisible({ timeout: 15000 });
-    await page.locator('details[data-grouptype="remote"] summary').click();
+    await page.locator('details[data-grouptype="remote"]').first().locator('summary').click();
     await page.locator('details[data-grouptype="remote"] .analyzeActionButton').first().click();
     await expect(page.locator('#attributeUi')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#attributeUi details[data-column_name="symbol"]')).toBeVisible({ timeout: 10000 });

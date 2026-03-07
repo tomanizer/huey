@@ -598,6 +598,7 @@ export class FilterDialog {
       "role": "option",
       "aria-selected": "false"
     });
+    optionElement.textContent = valueObject.label;
     if (valueObject.isSqlNull){
       optionElement.setAttribute('data-sql-null', true);
     }

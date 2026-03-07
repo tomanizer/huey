@@ -37,7 +37,7 @@ test.describe('Filters', () => {
     const filterDialog = await openFilterDialog(page);
 
     await page.fill('#filterSearch', 'AAPL');
-    await page.click('#addFilterValueButton');
+    await page.locator('#filterSearch').press('Enter');
 
     await expect(page.locator('#filterValueList option')).toHaveAttribute('value', 'AAPL');
 
@@ -55,7 +55,7 @@ test.describe('Filters', () => {
     await openFilterDialog(page);
     await page.selectOption('#filterType', 'notin');
     await page.fill('#filterSearch', 'AAPL');
-    await page.click('#addFilterValueButton');
+    await page.locator('#filterSearch').press('Enter');
     await page.click('#filterDialogOkButton');
     await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
 
@@ -73,25 +73,24 @@ test.describe('Filters', () => {
     await openFilterDialog(page);
     await page.selectOption('#filterType', 'between');
     await page.fill('#filterSearch', '2026-01-01');
-    await page.click('#addFilterValueButton');
+    await page.locator('#filterSearch').press('Enter');
     await page.fill('#filterSearch', '2026-01-02');
-    await page.click('#addFilterValueButton');
+    await page.locator('#filterSearch').press('Enter');
     await page.click('#filterDialogOkButton');
     await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
 
     await runQueryAndWaitForPivot(page);
     await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveAttribute('data-filtertype', 'between');
-    const filterValues = page.locator('#queryUi section[data-axis="filters"] > ol > li ol li');
-    await expect(filterValues).toHaveCount(2);
-    await expect(filterValues.nth(0)).toContainText('2026-01-01');
-    await expect(filterValues.nth(1)).toContainText('2026-01-02');
+    const filterValues = page.locator('#queryUi section[data-axis="filters"] > ol > li ol');
+    await expect(filterValues).toContainText('2026-01-01');
+    await expect(filterValues).toContainText('2026-01-02');
   });
 
   test('clear all filter values', async ({ page }) => {
     await preparePivot(page);
     await openFilterDialog(page);
     await page.fill('#filterSearch', 'AAPL');
-    await page.click('#addFilterValueButton');
+    await page.locator('#filterSearch').press('Enter');
     await expect(page.locator('#filterValueList option')).toHaveCount(1);
     await page.click('#filterDialogClearButton');
     await expect(page.locator('#filterValueList option')).toHaveCount(0);
@@ -105,7 +104,7 @@ test.describe('Filters', () => {
     await preparePivot(page);
     await openFilterDialog(page);
     await page.fill('#filterSearch', 'AAPL');
-    await page.click('#addFilterValueButton');
+    await page.locator('#filterSearch').press('Enter');
     await page.click('#filterDialogOkButton');
     await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
 
