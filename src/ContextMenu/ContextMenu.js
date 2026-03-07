@@ -70,22 +70,6 @@ export class ContextMenu {
         menuItem.setAttribute('aria-expanded', String(event.newState === 'open'));
       });
     }
-    item.addEventListener('mouseenter', (_event) =>{
-      const itemBoundingRect = item.getBoundingClientRect();
-      if (!popoverTargetDom) {
-        return;
-      }
-      popoverTargetDom.showPopover();
-      popoverTargetDom.style.left = (itemBoundingRect.x + itemBoundingRect.width) + 'px';
-      popoverTargetDom.style.top = itemBoundingRect.y + 'px';
-    });
-    item.addEventListener('mouseleave', (_event) =>{
-      if (!popoverTargetDom) {
-        return;
-      }
-      popoverTargetDom.hidePopover();
-      menuItem.setAttribute('aria-expanded', 'false');
-    });
     menuItem.addEventListener('click', (event) =>{
       event.preventDefault();
       if (!popoverTargetDom) {
@@ -135,6 +119,14 @@ export class ContextMenu {
     menuItems[correctedIndex].focus();
   }
 
+  #focusMenuItemFromList(menuItems, index){
+    if (!menuItems.length) {
+      return;
+    }
+    const correctedIndex = ((index % menuItems.length) + menuItems.length) % menuItems.length;
+    menuItems[correctedIndex].focus();
+  }
+
   #focusFirstMenuItem(){
     this.#focusMenuItem(0);
   }
@@ -156,21 +148,29 @@ export class ContextMenu {
       return;
     }
 
-    const menuItems = this.#getMenuItems();
+    let menuItems = this.#getMenuItems();
+    const activeElement = document.activeElement;
+    if (activeElement) {
+      const nestedMenu = activeElement.closest('menu[role=menu]');
+      if (nestedMenu && nestedMenu !== dom) {
+        menuItems = Array.from(nestedMenu.querySelectorAll(':scope > li[role=menuitem] > label > button')).filter((menuItem) => {
+          return menuItem.disabled !== true;
+        });
+      }
+    }
     if (!menuItems.length) {
       return;
     }
 
-    const activeElement = document.activeElement;
     const activeIndex = menuItems.indexOf(activeElement);
     switch (event.key){
       case 'ArrowDown':
         event.preventDefault();
-        this.#focusMenuItem(activeIndex + 1);
+        this.#focusMenuItemFromList(menuItems, activeIndex + 1);
         break;
       case 'ArrowUp':
         event.preventDefault();
-        this.#focusMenuItem(activeIndex <= 0 ? menuItems.length - 1 : activeIndex - 1);
+        this.#focusMenuItemFromList(menuItems, activeIndex <= 0 ? menuItems.length - 1 : activeIndex - 1);
         break;
       case 'Enter':
       case ' ':
@@ -186,6 +186,27 @@ export class ContextMenu {
         this.#restoreFocus();
         break;
     }
+  }
+
+  #focusFirstNestedMenuItem(menuItem){
+    const popoverTarget = menuItem.getAttribute('popovertarget');
+    if (!popoverTarget) {
+      return false;
+    }
+    const popoverTargetDom = byId(popoverTarget);
+    if (!popoverTargetDom) {
+      return false;
+    }
+    if (!popoverTargetDom.matches(':popover-open')) {
+      popoverTargetDom.showPopover();
+    }
+    menuItem.setAttribute('aria-expanded', 'true');
+    const nestedItems = popoverTargetDom.querySelectorAll(':scope > li[role=menuitem] > label > button');
+    if (!nestedItems.length) {
+      return false;
+    }
+    nestedItems.item(0).focus();
+    return true;
   }
 
   // show the popover at the coordinates of the initiating contextmenu event.
@@ -226,6 +247,10 @@ export class ContextMenu {
       }
     }
     dom.style.top = top  + 'px';
+    const menuItems = this.#getMenuItems();
+    if (menuItems.length && this.#focusFirstNestedMenuItem(menuItems[0])) {
+      return;
+    }
     this.#focusFirstMenuItem();
   }
   
