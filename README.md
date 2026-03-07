@@ -442,6 +442,8 @@ Currently this experimental feature is under development and not documented in d
 
 # Development, Releases, and contributions 
 
+- [Frontend audit improvement roadmap](docs/frontend-audit-roadmap.md) – current issue index and recommended implementation order for frontend hardening work.
+
 ## Branches
 The Huey repository has two important branches - [dev](https://github.com/rpbouman/huey/tree/dev) and [main](https://github.com/rpbouman/huey/tree/main). 
 Active development is done on the dev branch. 
