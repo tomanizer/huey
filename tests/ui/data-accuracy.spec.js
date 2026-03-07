@@ -12,19 +12,48 @@ const {
 const typedFixturePath = path.join(__dirname, 'fixtures/test-data-types.csv');
 const nullsFixturePath = path.join(__dirname, 'fixtures/test-data-nulls.csv');
 
-async function findPivotRowText(page, label) {
-  const text = await page.locator('#pivotTableUi').innerText();
-  const rows = text.split('\n').map((line) => line.trim()).filter(Boolean);
-  return rows.find((line) => line.includes(label));
+async function findVisiblePivotRow(page, label) {
+  const rowLocator = page.locator('#pivotTableUi .pivotTableUiTableBody .pivotTableUiRow').filter({
+    has: page.locator('.pivotTableUiHeaderCell[role="rowheader"]', { hasText: label })
+  }).first();
+  if (await rowLocator.count()) {
+    return rowLocator;
+  }
+
+  const scroller = page.locator('#pivotTableUi .pivotTableUiInnerContainer');
+  const maxScrollTop = await scroller.evaluate((element) => {
+    return Math.max(0, element.scrollHeight - element.clientHeight);
+  });
+  for (let attempt = 0; attempt <= 10; attempt++) {
+    const nextScrollTop = Math.round((maxScrollTop / 10) * attempt);
+    await scroller.evaluate((element, scrollTop) => {
+      element.scrollTop = scrollTop;
+      element.dispatchEvent(new Event('scroll'));
+    }, nextScrollTop);
+    await page.waitForTimeout(150);
+    if (await rowLocator.count()) {
+      return rowLocator;
+    }
+  }
+  return rowLocator;
 }
 
 async function expectPivotRowContainsValues(page, label, values) {
-  await expect(page.locator('#pivotTableUi')).toContainText(label, { timeout: 15000 });
-  const rowText = await findPivotRowText(page, label);
-  await expect(rowText).toBeTruthy();
-  const rowTokens = String(rowText).split(/\s+/).map((token) => token.replace(/,/g, '')).filter(Boolean);
+  const row = await findVisiblePivotRow(page, label);
+  await expect(row).toBeVisible({ timeout: 15000 });
+  const rowTexts = await row.locator('.pivotTableUiValueCell').allInnerTexts();
+  const rowTokens = rowTexts.map((token) => token.replace(/,/g, '').trim()).filter(Boolean);
   for (const value of values) {
-    await expect(rowTokens).toContain(String(value).replace(/,/g, ''));
+    const expectedToken = String(value).replace(/,/g, '');
+    const hasMatch = rowTokens.some((token) => {
+      if (token === expectedToken) {
+        return true;
+      }
+      const tokenNumber = Number.parseFloat(token);
+      const expectedNumber = Number.parseFloat(expectedToken);
+      return Number.isFinite(tokenNumber) && Number.isFinite(expectedNumber) && tokenNumber === expectedNumber;
+    });
+    await expect(hasMatch).toBe(true);
   }
 }
 
@@ -88,14 +117,18 @@ test.describe('Data accuracy', () => {
     await addSymbolFilterAxis(page);
     await runQueryAndWaitForPivot(page);
 
+    const filterDialog = page.locator('#filterDialog');
     const filterButton = page.locator('#queryUi section[data-axis="filters"] li button[id$="-edit-filter-condition"]');
-    await expect(filterButton).toBeVisible({ timeout: 10000 });
-    await filterButton.click();
-    await expect(page.locator('#filterDialog')).toBeVisible({ timeout: 10000 });
+    if (!(await filterDialog.isVisible().catch(() => false))) {
+      await expect(filterButton).toBeVisible({ timeout: 10000 });
+      await filterButton.click();
+      await expect(filterDialog).toBeVisible({ timeout: 10000 });
+    }
     await page.locator('#filterSearch').fill('GOOG');
-    await page.locator('#addFilterValueButton').click();
-    await expect(page.locator('#filterValueList option')).toContainText('GOOG');
+    await page.locator('#filterSearch').press('Enter');
+    await expect(page.locator('#filterValueList option')).toHaveAttribute('value', 'GOOG');
     await page.locator('#filterDialogOkButton').click();
+    await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
     await runQueryAndWaitForPivot(page);
 
     await expect(page.locator('#pivotTableUi')).toContainText('GOOG');

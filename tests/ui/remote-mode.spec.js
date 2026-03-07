@@ -55,7 +55,6 @@ test.describe('Remote mode UI', () => {
     await page.route('**/query/picklist', (route) => route.fulfill({ status: 200, body: JSON.stringify({ total_count: 3, values: [{ value: 'AAPL', label: 'AAPL' }], paging: { limit: 100, offset: 0, returned: 1 } }) }));
 
     await waitForAppReady(page);
-    await page.locator('#uploader').click();
     await expect(page.locator('#addRemoteDatasource')).toBeVisible({ timeout: 10000 });
     await page.locator('#addRemoteDatasource').click();
     await expect(page.locator('#remoteDatasourceBaseUrl')).toBeVisible({ timeout: 5000 });
@@ -63,7 +62,7 @@ test.describe('Remote mode UI', () => {
     await page.locator('#remoteDatasourceDatasetId').fill('trades_v1');
     await page.locator('#promptDialogAcceptButton').click();
     await expect(page.locator('details[data-grouptype="remote"]')).toBeVisible({ timeout: 15000 });
-    await page.locator('details[data-grouptype="remote"] summary').click();
+    await page.locator('details[data-grouptype="remote"]').first().locator('summary').click();
     await page.locator('details[data-grouptype="remote"] .analyzeActionButton').first().click();
     await expect(page.locator('#attributeUi')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#attributeUi details[data-column_name="symbol"]')).toBeVisible({ timeout: 10000 });

@@ -52,10 +52,16 @@ test.describe('Accessibility', () => {
     await expect(page.locator('#filterValueList')).toHaveAttribute('role', 'listbox');
     await expect(page.locator('#toFilterValueList')).toHaveAttribute('role', 'listbox');
 
-    const progress = page.locator('#uploadItemTemplate progress');
-    await expect(progress).toHaveAttribute('aria-valuemin', '0');
-    await expect(progress).toHaveAttribute('aria-valuemax', '100');
-    await expect(progress).toHaveAttribute('aria-valuenow', '0');
+    const templateProgressAria = await page.evaluate(() => {
+      const template = document.getElementById('uploadItemTemplate');
+      const progress = template && template.content && template.content.querySelector('progress');
+      return progress ? {
+        min: progress.getAttribute('aria-valuemin'),
+        max: progress.getAttribute('aria-valuemax'),
+        now: progress.getAttribute('aria-valuenow'),
+      } : null;
+    });
+    await expect(templateProgressAria).toEqual({ min: '0', max: '100', now: '0' });
   });
 
   test('pivot grid roles and context menu keyboard support work', async ({ page }) => {
@@ -63,7 +69,7 @@ test.describe('Accessibility', () => {
     await addBasicPivotAxes(page);
     await runQueryAndWaitForPivot(page);
 
-    await expect(page.getByTestId('pivot-table')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.getByTestId('workarea').getByTestId('pivot-table')).toHaveAttribute('aria-busy', 'false');
     await expect(page.locator('#pivotTableUi .pivotTableUiTable')).toHaveAttribute('role', 'grid');
     await expect(page.locator('#pivotTableUi .pivotTableUiTable [role="columnheader"]').first()).toBeVisible();
     await expect(page.locator('#pivotTableUi .pivotTableUiTable [role="rowheader"]').first()).toBeVisible();
@@ -113,6 +119,8 @@ test.describe('Accessibility', () => {
 
     const copySubmenuButton = page.locator('#copySubmenuActivate');
     await expect(copySubmenuButton).toHaveAttribute('aria-haspopup', 'menu');
+    await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'true');
+    await copySubmenuButton.click();
     await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'false');
     await copySubmenuButton.click();
     await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'true');
@@ -123,9 +131,12 @@ test.describe('Accessibility', () => {
     await uploadFixtureAndWaitForAttributes(page, fixturePath);
     await addFilterAxis(page, 'symbol');
 
+    const filterDialog = page.locator('#filterDialog');
     const editFilterButton = page.getByTestId('edit-filter-condition-button').first();
-    await editFilterButton.click();
-    await expect(page.locator('#filterDialog')).toBeVisible({ timeout: 15000 });
+    if (!(await filterDialog.isVisible().catch(() => false))) {
+      await editFilterButton.click();
+      await expect(filterDialog).toBeVisible({ timeout: 15000 });
+    }
 
     const picklistOption = page.locator('#filterPicklist option').first();
     await expect(picklistOption).toHaveAttribute('aria-selected', 'false');

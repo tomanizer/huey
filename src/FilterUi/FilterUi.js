@@ -229,6 +229,8 @@ export class FilterDialog {
     this.#initSearchQueryHandler();
     this.#initAddFilterValueButton();
     this.#getValuePicklist().addEventListener('change', this.#updateAllListAriaSelected.bind(this));
+    this.#getValuePicklist().addEventListener('click', this.#updateAllListAriaSelected.bind(this));
+    this.#getValuePicklist().addEventListener('mousedown', this.#syncSelectedOptionFromPointerEvent.bind(this));
     this.#updateAllListAriaSelected();
   }
 
@@ -240,6 +242,8 @@ export class FilterDialog {
   #initFilterValuesList(){
     const filterValuesList = this.#getFilterValuesList();
     filterValuesList.addEventListener('change', this.#handleFilterValuesListChange.bind(this));
+    filterValuesList.addEventListener('click', this.#updateAllListAriaSelected.bind(this));
+    filterValuesList.addEventListener('mousedown', this.#syncSelectedOptionFromPointerEvent.bind(this));
     filterValuesList.addEventListener('keydown', this.#handleFilterValuesListKeyDown.bind(this));
   }
 
@@ -247,6 +251,8 @@ export class FilterDialog {
     const toFilterValuesList = this.#getToFilterValuesList();
 
     toFilterValuesList.addEventListener('change', this.#handleToFilterValuesListChange.bind(this));
+    toFilterValuesList.addEventListener('click', this.#updateAllListAriaSelected.bind(this));
+    toFilterValuesList.addEventListener('mousedown', this.#syncSelectedOptionFromPointerEvent.bind(this));
     toFilterValuesList.addEventListener('keydown', this.#handleFilterValuesListKeyDown.bind(this));
 
     // When the filterType is set to a range type (BETWEEN/NOTBETWEEN), the two value lists share a scrollbar.
@@ -262,6 +268,18 @@ export class FilterDialog {
     for (let i = 0; i < options.length; i++) {
       const option = options[i];
       option.setAttribute('aria-selected', String(option.selected));
+    }
+  }
+
+  #syncSelectedOptionFromPointerEvent(event){
+    const target = event.target;
+    if (!(target instanceof HTMLOptionElement)) {
+      return;
+    }
+    target.selected = true;
+    const selectControl = target.parentElement;
+    if (selectControl instanceof HTMLSelectElement) {
+      this.#updateListAriaSelected(selectControl);
     }
   }
 
@@ -580,6 +598,7 @@ export class FilterDialog {
       "role": "option",
       "aria-selected": "false"
     });
+    optionElement.textContent = valueObject.label;
     if (valueObject.isSqlNull){
       optionElement.setAttribute('data-sql-null', true);
     }
