@@ -159,14 +159,19 @@ def test_query_cells_no_windows_cap_enforced(client: TestClient, monkeypatch: py
 
 
 def test_query_cells_row_window_only_cap_enforced(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Row window only (no column window) with result exceeding cap -> 400."""
+    """Row window only (no column window), unbounded column axis exceeds cap -> 400.
+
+    rows.count=1 is within the cap (1), but the unbounded date column axis produces
+    2 distinct dates across the range, so 1 row × 2 dates = 2 cells > cap=1. The
+    post-execution hard cap must fire, not the pre-flight check.
+    """
     settings = get_settings()
     monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
     body = {
         "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
         "query": {
-            "rows": {"start_index": 0, "count": 2},
+            "rows": {"start_index": 0, "count": 1},
             "axes": {
                 "rows": [{"field": "symbol"}],
                 "columns": [{"field": "date"}],
@@ -180,14 +185,19 @@ def test_query_cells_row_window_only_cap_enforced(client: TestClient, monkeypatc
 
 
 def test_query_cells_col_window_only_cap_enforced(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Column window only (no row window) with result exceeding cap -> 400."""
+    """Column window only (no row window), unbounded row axis exceeds cap -> 400.
+
+    columns.count=1 is within the cap (1), but the unbounded symbol row axis has
+    5 distinct values for the single date, so 5 rows × 1 date = 5 cells > cap=1.
+    The post-execution hard cap must fire, not the pre-flight check.
+    """
     settings = get_settings()
     monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {
-            "columns": {"start_index": 0, "count": 2},
+            "columns": {"start_index": 0, "count": 1},
             "axes": {
                 "rows": [{"field": "symbol"}],
                 "columns": [{"field": "date"}],

@@ -263,14 +263,16 @@ async def post_query_cells(
                     "dataset_id": body.dataset_id,
                     "endpoint": "cells",
                     "cap": effective_max,
-                    "result_count": len(rows),
+                    "returned_count": len(rows),
+                    "min_result_count": effective_max + 1,
                 },
             )
             raise CellsWindowTooLargeError(
                 "Cells query result exceeds maximum cells per response",
                 {
                     "max_cells_per_response": effective_max,
-                    "result_count": len(rows),
+                    "returned_count": len(rows),
+                    "min_result_count": effective_max + 1,
                 },
             )
         cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
