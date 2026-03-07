@@ -115,6 +115,8 @@ async function addAggregateMeasure(page, columnName, aggregator) {
 
 async function runQueryAndWaitForPivot(page) {
   const runButton = page.locator('#runQueryButton');
+  const pivot = page.locator('#pivotTableUi');
+  const needsUpdateBefore = await pivot.getAttribute('data-needs-update');
   await expect(runButton).toBeAttached({ timeout: 15000 });
   if (await runButton.isVisible()) {
     await runButton.evaluate((button) => {
@@ -125,8 +127,10 @@ async function runQueryAndWaitForPivot(page) {
     await expect(autoRun).toBeChecked({ timeout: 5000 });
   }
 
-  const pivot = page.locator('#pivotTableUi');
   await expect(pivot).toBeVisible({ timeout: 60000 });
+  if (needsUpdateBefore === 'true') {
+    await expect(pivot).toHaveAttribute('data-needs-update', 'false', { timeout: 60000 });
+  }
   await expect(pivot).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
   await expect(page.locator('#pivotTableUi .pivotTableUiValueCell').first()).toBeVisible({ timeout: 60000 });
   return pivot;
