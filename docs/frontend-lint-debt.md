@@ -5,7 +5,7 @@ Huey's frontend lint currently runs with a warning budget to stop debt from grow
 ## Current budget
 
 - Command: `npm run lint:js`
-- Enforced maximum warnings: **47**
+- Source of truth: `package.json` → `scripts.lint:js`
 - CI entry point: `.github/workflows/query-service.yml` → `frontend-lint`
 
 This budget must only move downward. If a change reduces warnings, lower the budget in `package.json` in the same pull request.
@@ -27,7 +27,7 @@ Prefer low-risk mechanical fixes first:
 
 ## Milestones
 
-- [x] Set an initial enforced budget at 47 warnings
+- [x] Set an initial enforced budget in `package.json`
 - [x] Reduce warnings in `src/PivotTableUi/PivotTableUi.js`
 - [ ] Lower the budget to 40 warnings
 - [ ] Lower the budget to 30 warnings
