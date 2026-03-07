@@ -25,6 +25,12 @@ import { Theme } from '../Theme/Theme.js';
 
 
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
+const duckDbVersionAvatarUrl = `data:image/svg+xml,${encodeURIComponent([
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">',
+  '<circle cx="8" cy="8" r="8" fill="#f7b32b"/>',
+  '<path d="M4 5.5h4.1c2.15 0 3.9 1.12 3.9 2.5s-1.75 2.5-3.9 2.5H4V5.5Zm1.5 1.5V9h2.6c1.25 0 2.4-.46 2.4-1s-1.15-1-2.4-1H5.5Z" fill="#111827"/>',
+  '</svg>'
+].join(''))}`;
 window.Theme = Theme;
 
 export function getDuckDbLogLevel(duckdb){
@@ -89,22 +95,11 @@ export function initDuckdbVersion(){
     
     const duckdbAvatar = byId('duckdb-version-specific-avatar');
     if (duckdbAvatar) {
-      if (window.crossOriginIsolated) {
+      duckdbAvatar.hidden = false;
+      duckdbAvatar.onerror = () => {
         duckdbAvatar.hidden = true;
-      }
-      else {
-        const duckdbVersionParts = /v(\d+)\.(\d+)\.(\d+)/.exec(version);
-        if (duckdbVersionParts) {
-          duckdbAvatar.hidden = false;
-          duckdbAvatar.onerror = () => {
-            duckdbAvatar.hidden = true;
-          };
-          duckdbAvatar.src = `https://duckdb.org/images/release-icons/${duckdbVersionParts[1]}.${duckdbVersionParts[2]}.0.svg`;
-        }
-        else {
-          duckdbAvatar.hidden = true;
-        }
-      }
+      };
+      duckdbAvatar.src = duckDbVersionAvatarUrl;
     }
   })
   .catch((err) => {
