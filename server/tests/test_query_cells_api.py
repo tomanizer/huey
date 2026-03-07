@@ -135,6 +135,91 @@ def test_query_cells_window_too_large_returns_error(client: TestClient, monkeypa
     assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
 
 
+def test_query_cells_no_windows_cap_enforced(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No windows + grouped result exceeding cap -> 400 CELLS_WINDOW_TOO_LARGE."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            },
+        },
+    }
+    r = client.post("/query/cells", json=body)
+    assert r.status_code == 400
+    data = r.json()
+    assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
+    assert "max_cells_per_response" in data["details"]
+    assert data["details"]["max_cells_per_response"] == 1
+
+
+def test_query_cells_row_window_only_cap_enforced(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Row window only (no column window) with result exceeding cap -> 400."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "rows": {"start_index": 0, "count": 2},
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [{"field": "date"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            },
+        },
+    }
+    r = client.post("/query/cells", json=body)
+    assert r.status_code == 400
+    assert r.json()["code"] == "CELLS_WINDOW_TOO_LARGE"
+
+
+def test_query_cells_col_window_only_cap_enforced(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Column window only (no row window) with result exceeding cap -> 400."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "columns": {"start_index": 0, "count": 2},
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [{"field": "date"}],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            },
+        },
+    }
+    r = client.post("/query/cells", json=body)
+    assert r.status_code == 400
+    assert r.json()["code"] == "CELLS_WINDOW_TOO_LARGE"
+
+
+def test_query_cells_within_cap_succeeds(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Small result within cap succeeds even when windows are omitted."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "max_cells_per_response", 10000, raising=False)
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            },
+        },
+    }
+    r = client.post("/query/cells", json=body)
+    assert r.status_code == 200
+    assert len(r.json()["cells"]) > 0
+
+
 def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
     """Regression guard: /query/cells must call execute_sql_async exactly once per request."""
     call_count = {"n": 0}
