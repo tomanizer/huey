@@ -8,6 +8,8 @@ focus on happy-path / business-logic tests only.
 import pytest
 from fastapi.testclient import TestClient
 
+from server.config import get_settings
+
 QUERY_ENDPOINTS = ["/query/tuples", "/query/cells", "/query/picklist"]
 ALL_POST_ENDPOINTS = [*QUERY_ENDPOINTS, "/export"]
 
@@ -22,6 +24,26 @@ def _body(**query_overrides):
     """Build a valid base body with query overrides."""
     body = {**_BASE_BODY, "query": {**_BASE_BODY["query"], **query_overrides}}
     return body
+
+
+def _valid_body_for(endpoint: str) -> dict:
+    if endpoint == "/query/tuples":
+        return _body(fields=[{"field": "symbol"}], paging={"limit": 10, "offset": 0})
+    if endpoint == "/query/cells":
+        return _body(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            }
+        )
+    if endpoint == "/query/picklist":
+        return _body(field="symbol", paging={"limit": 10, "offset": 0})
+    return {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"format": "csv"},
+    }
 
 
 @pytest.mark.parametrize("endpoint", ALL_POST_ENDPOINTS)
@@ -118,6 +140,34 @@ class TestCommonValidation:
             "query": {},
         })
         assert r.status_code == 422
+
+    def test_date_range_at_span_limit(self, monkeypatch, client: TestClient, endpoint: str) -> None:
+        monkeypatch.setenv("QUERYSERVICE_MAX_DATE_RANGE_DAYS", "2")
+        get_settings.cache_clear()
+        try:
+            body = _valid_body_for(endpoint)
+            body["date_range"] = {"type": "range", "start": "2026-03-01", "end": "2026-03-02"}
+            r = client.post(endpoint, json=body)
+        finally:
+            get_settings.cache_clear()
+        assert r.status_code < 400
+
+    def test_date_range_over_span_limit_has_details(
+        self, monkeypatch, client: TestClient, endpoint: str
+    ) -> None:
+        monkeypatch.setenv("QUERYSERVICE_MAX_DATE_RANGE_DAYS", "2")
+        get_settings.cache_clear()
+        try:
+            request_body = _valid_body_for(endpoint)
+            request_body["date_range"] = {"type": "range", "start": "2026-03-01", "end": "2026-03-03"}
+            r = client.post(endpoint, json=request_body)
+        finally:
+            get_settings.cache_clear()
+        assert r.status_code == 422
+        resp_body = r.json()
+        assert resp_body["code"] == "VALIDATION_ERROR"
+        assert resp_body["details"]["errors"][0]["ctx"] == {"requested_days": 3, "max_days": 2}
+        assert "exceeds configured max of 2" in resp_body["details"]["errors"][0]["msg"]
 
     def test_not_json(self, client: TestClient, endpoint: str) -> None:
         r = client.post(endpoint, content="not json", headers={"Content-Type": "application/json"})

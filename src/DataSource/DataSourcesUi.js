@@ -24,6 +24,7 @@ export class DataSourcesUi extends EventEmitter {
 
   #id = undefined;
   #datasources = {};
+  #datasourceLoadPromises = new Map();
 
   constructor(id){
     super(['change']);
@@ -333,6 +334,15 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   async #loadDatabaseDatasource(databaseDatasource){
+    const datasourceId = databaseDatasource.getId();
+    const datasourceTreeNode = byId(datasourceId);
+    if (!datasourceTreeNode) {
+      return;
+    }
+    if (datasourceTreeNode.getAttribute('data-tree-load-state') === 'loaded') {
+      return;
+    }
+
     const catalogName = databaseDatasource.getFileNameWithoutExtension();
     const connection = getConnection();
     const sql = `
@@ -343,11 +353,12 @@ export class DataSourcesUi extends EventEmitter {
       ORDER BY table_schema, table_name
     `;
     const statement = await connection.prepare(sql);
-    const result = await statement.query(catalogName);
-    statement.close();
-
-    const datasourceId = databaseDatasource.getId();
-    const datasourceTreeNode = byId(datasourceId);
+    let result;
+    try {
+      result = await statement.query(catalogName);
+    } finally {
+      statement.close();
+    }
 
     const schemaNodes = {};
     for (let i = 0; i < result.numRows; i++){
@@ -355,12 +366,12 @@ export class DataSourcesUi extends EventEmitter {
 
       const row = result.get(i);
       const schemaName = row.table_schema;
-      let schemaNode = schemaNodes[schemaName];
+      let schemaNode = schemaNodes[schemaName] || byId(datasourceId + ':' + schemaName);
       if (schemaNode === undefined) {
         schemaNode = instantiateTemplate('dataSourceSchemaNode', datasourceId + ':' + schemaName);
         schemaNode.setAttribute('title', schemaName);
         schemaNode.setAttribute('data-catalog-name', catalogName);
-        schemaNode.setAttribute('data-schema-name', catalogName);
+        schemaNode.setAttribute('data-schema-name', schemaName);
         schemaNode.querySelector('span.label').textContent = schemaName;
         schemaNodes[schemaName] = schemaNode;
         datasourceTreeNode.appendChild(schemaNode);
@@ -389,22 +400,65 @@ export class DataSourcesUi extends EventEmitter {
         this.#addDatasource(datasource);
       }
 
-      const tableNode = this.#createDatasourceNode(datasource);
-      schemaNode.appendChild(tableNode);
+      let tableNode = byId(tableDatasourceId);
+      if (!tableNode) {
+        tableNode = this.#createDatasourceNode(datasource);
+        schemaNode.appendChild(tableNode);
+      }
     }
   }
 
   async #loadDatasource(datasource) {
-    switch (datasource.getType()){
-      case DuckDbDataSource.types.FILE:
-        // noop, files can't be expanded.
-        break;
-      case DuckDbDataSource.types.DUCKDB:
-      case DuckDbDataSource.types.SQLITE:
-        this.#loadDatabaseDatasource(datasource);
-        break;
-      default:
-        console.error(`Don't know how to load datasource ${datasource.getId()} of type ${datasource.getType()}`);
+    const datasourceId = datasource.getId();
+    const datasourceTreeNode = byId(datasourceId);
+    if (datasourceTreeNode && datasourceTreeNode.getAttribute('data-tree-load-state') === 'loaded') {
+      return;
+    }
+
+    const loadPromise = this.#datasourceLoadPromises.get(datasourceId);
+    if (loadPromise) {
+      return loadPromise;
+    }
+
+    let nextLoadPromise;
+    try {
+      switch (datasource.getType()){
+        case DuckDbDataSource.types.FILE:
+          // noop, files can't be expanded.
+          break;
+        case DuckDbDataSource.types.DUCKDB:
+        case DuckDbDataSource.types.SQLITE:
+          nextLoadPromise = this.#loadDatabaseDatasource(datasource);
+          break;
+        default:
+          console.error(`Don't know how to load datasource ${datasource.getId()} of type ${datasource.getType()}`);
+      }
+
+      if (!nextLoadPromise) {
+        return;
+      }
+
+      this.#datasourceLoadPromises.set(datasourceId, nextLoadPromise);
+      if (datasourceTreeNode) {
+        datasourceTreeNode.setAttribute('data-tree-load-state', 'loading');
+        datasourceTreeNode.removeAttribute('data-tree-load-error');
+      }
+      await nextLoadPromise;
+      if (datasourceTreeNode) {
+        datasourceTreeNode.setAttribute('data-tree-load-state', 'loaded');
+      }
+    } catch (error) {
+      if (datasourceTreeNode) {
+        datasourceTreeNode.setAttribute('data-tree-load-state', 'error');
+        datasourceTreeNode.setAttribute('data-tree-load-error', 'true');
+      }
+      console.error('Failed to load datasource tree.', error);
+      showErrorDialog({
+        title: 'Failed to load datasource',
+        description: error?.message || String(error)
+      });
+    } finally {
+      this.#datasourceLoadPromises.delete(datasourceId);
     }
   }
 

@@ -3,6 +3,9 @@ import { SqlQueryGenerator } from './SqlQueryGenerator.js';
 import { QueryAxisItem } from '../QueryModel/QueryModel.js';
 import { RemoteQueryAdapter } from '../DataSource/remote/RemoteQueryAdapter.js';
 
+const JSON_OBJECT_BRACES_SIZE = 2;
+const JSON_OBJECT_KEY_VALUE_SEPARATOR_SIZE = 1;
+
 export class TupleSet extends DataSetComponent {
 
   static groupingIdAlias = '__huey_grouping_id';
@@ -77,6 +80,8 @@ export class TupleSet extends DataSetComponent {
 
   #tuples = [];
   #tupleValueFields = [];
+  #tupleSerializedSizes = new Map();
+  #tupleCacheEntrySizeTotal = 0;
 
   #tupleCount = undefined;
   #pageSize = 50;
@@ -189,6 +194,8 @@ export class TupleSet extends DataSetComponent {
   clear(){
     this.#tuples = [];
     this.#tupleCount = undefined;
+    this.#tupleSerializedSizes.clear();
+    this.#tupleCacheEntrySizeTotal = 0;
     this.#tupleAccessTimestamps.clear();
     this.#accessCounter = 0;
   }
@@ -204,7 +211,36 @@ export class TupleSet extends DataSetComponent {
 
   #removeTuple(index){
     this.#tuples[index] = undefined;
+    const tupleSerializedSize = this.#tupleSerializedSizes.get(index);
+    if (tupleSerializedSize !== undefined) {
+      this.#tupleCacheEntrySizeTotal -= tupleSerializedSize;
+      this.#tupleSerializedSizes.delete(index);
+    }
     this.#tupleAccessTimestamps.delete(index);
+  }
+
+  static #cacheSizeJsonReplacer(_key, value){
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    return value;
+  }
+
+  #getTupleSerializedSize(index, tuple){
+    const keySize = JSON.stringify(String(index)).length;
+    const valueSize = JSON.stringify(tuple, TupleSet.#cacheSizeJsonReplacer).length;
+    return keySize + JSON_OBJECT_KEY_VALUE_SEPARATOR_SIZE + valueSize;
+  }
+
+  #storeTuple(index, tuple){
+    const existingTupleSerializedSize = this.#tupleSerializedSizes.get(index);
+    if (existingTupleSerializedSize !== undefined) {
+      this.#tupleCacheEntrySizeTotal -= existingTupleSerializedSize;
+    }
+    this.#tuples[index] = tuple;
+    const tupleSerializedSize = this.#getTupleSerializedSize(index, tuple);
+    this.#tupleSerializedSizes.set(index, tupleSerializedSize);
+    this.#tupleCacheEntrySizeTotal += tupleSerializedSize;
   }
 
   #getMaxCacheEntries(){
@@ -232,16 +268,12 @@ export class TupleSet extends DataSetComponent {
   }
 
   get cacheSize(){
-    const tuples = {};
-    this.#tupleAccessTimestamps.forEach((value, index) => {
-      tuples[index] = this.#tuples[index];
-    });
-    return JSON.stringify(tuples, (key, value) => {
-      if (typeof value === 'bigint') {
-        return value.toString();
-      }
-      return value;
-    }).length;
+    const numCachedTuples = this.#tupleSerializedSizes.size;
+    if (numCachedTuples === 0) {
+      return JSON_OBJECT_BRACES_SIZE;
+    }
+    const entrySeparatorCount = numCachedTuples - 1;
+    return JSON_OBJECT_BRACES_SIZE + this.#tupleCacheEntrySizeTotal + entrySeparatorCount;
   }
 
   #enforceCacheLimits(){
@@ -323,8 +355,6 @@ export class TupleSet extends DataSetComponent {
       fieldCount += 1;
     }
 
-    const tuples = this.#tuples;
-
     // if the offset is 0 we should have included an expression that computes the total count as last
     if (offset === 0) {
       if (numRows === 0){
@@ -359,7 +389,7 @@ export class TupleSet extends DataSetComponent {
         values[j - fieldOffset] = value;
       }
 
-      tuples[offset + i] = tuple;
+      this.#storeTuple(offset + i, tuple);
       this.#touchTuple(offset + i);
     }
     this.#enforceCacheLimits();

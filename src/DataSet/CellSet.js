@@ -32,7 +32,9 @@ export class CellSet extends DataSetComponent {
 
   #tupleSets = [];
   #cellAccessTimestamps = new Map();
+  #cellSerializedSizes = new Map();
   #accessCounter = 0;
+  #cacheSize = CellSet.#emptyCacheSize;
 
   static datasetRelationName = '__data';
   static #tupleDataRelationName = '__huey_tuples';
@@ -40,6 +42,8 @@ export class CellSet extends DataSetComponent {
   static #countStarExpressionAlias = '__huey_count_star';
   static #defaultMaxCacheEntries = 10000;
   static #defaultMaxCacheSizeMb = 50;
+  static #emptyCacheSize = JSON.stringify({}).length;
+  static #serializedEntrySeparatorSize = 1;
 
   constructor(queryModel, tupleSets, settings){
     super(queryModel, settings);
@@ -50,7 +54,9 @@ export class CellSet extends DataSetComponent {
     this.#cells = [];
     this.#cellValueFields = {};
     this.#cellAccessTimestamps.clear();
+    this.#cellSerializedSizes.clear();
     this.#accessCounter = 0;
+    this.#cacheSize = CellSet.#emptyCacheSize;
   }
 
   clearCache(){
@@ -63,6 +69,16 @@ export class CellSet extends DataSetComponent {
   }
 
   #removeCell(cellIndex){
+    const serializedSize = this.#cellSerializedSizes.get(cellIndex);
+    if (serializedSize !== undefined) {
+      if (this.#cellSerializedSizes.size === 1) {
+        this.#cacheSize = CellSet.#emptyCacheSize;
+      }
+      else {
+        this.#cacheSize -= serializedSize - CellSet.#serializedEntrySeparatorSize;
+      }
+      this.#cellSerializedSizes.delete(cellIndex);
+    }
     this.#cells[cellIndex] = undefined;
     this.#cellAccessTimestamps.delete(cellIndex);
   }
@@ -92,16 +108,33 @@ export class CellSet extends DataSetComponent {
   }
 
   get cacheSize(){
-    const cells = {};
-    this.#cellAccessTimestamps.forEach((value, index) => {
-      cells[index] = this.#cells[index];
-    });
-    return JSON.stringify(cells, (key, value) => {
-      if (typeof value === 'bigint') {
-        return value.toString();
-      }
-      return value;
-    }).length;
+    return this.#cacheSize;
+  }
+
+  static #cacheSizeJsonReplacer(key, value){
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    return value;
+  }
+
+  #updateCellCacheSize(cellIndex){
+    const cell = this.#cells[cellIndex];
+    const serializedSize = JSON.stringify(
+      {[cellIndex]: cell},
+      CellSet.#cacheSizeJsonReplacer
+    ).length;
+    const currentSerializedSize = this.#cellSerializedSizes.get(cellIndex);
+    if (currentSerializedSize !== undefined) {
+      this.#cacheSize += serializedSize - currentSerializedSize;
+    }
+    else if (this.#cellSerializedSizes.size === 0) {
+      this.#cacheSize = serializedSize;
+    }
+    else {
+      this.#cacheSize += serializedSize - CellSet.#serializedEntrySeparatorSize;
+    }
+    this.#cellSerializedSizes.set(cellIndex, serializedSize);
   }
 
   #enforceCacheLimits(){
@@ -122,7 +155,7 @@ export class CellSet extends DataSetComponent {
         break;
       }
       this.#removeCell(oldestCellIndex);
-      currentCacheSize = this.cacheSize;
+      currentCacheSize = this.#cacheSize;
     }
   }
 
@@ -601,6 +634,7 @@ export class CellSet extends DataSetComponent {
         }
       }
       cells[cellIndex] = cell;
+      this.#updateCellCacheSize(cellIndex);
     }
     this.#enforceCacheLimits();
     return cells;
