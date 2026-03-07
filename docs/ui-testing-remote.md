@@ -34,6 +34,8 @@ npx playwright install chromium
 npm run test:ui
 ```
 
+(CI uses the same policy explicitly via `PLAYWRIGHT_PROJECTS=chromium`, so only Chromium is installed and executed in the e2e job. Local runs without `PLAYWRIGHT_PROJECTS` keep all configured browser projects.)
+
 (The smoke test starts a static server on port 8765 and runs one test that loads the app and checks the main UI is visible.)
 
 The smoke test opens the app and checks that the main UI (e.g. datasource area, toolbar) is present. Full remote flows (schema, tuples, picklist) are covered by manual testing and backend integration tests.

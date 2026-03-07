@@ -7,6 +7,20 @@ const localProjects = [
   { name: 'webkit', use: { ...devices['Desktop Safari'] } },
 ];
 
+const requestedProjectNames = process.env.PLAYWRIGHT_PROJECTS
+  ? process.env.PLAYWRIGHT_PROJECTS.split(',').map((project) => project.trim()).filter(Boolean)
+  : null;
+const defaultProjects = process.env.CI ? ['chromium'] : localProjects.map((project) => project.name);
+const selectedProjectNames = requestedProjectNames && requestedProjectNames.length ? requestedProjectNames : defaultProjects;
+const selectedProjects = localProjects.filter((project) => selectedProjectNames.includes(project.name));
+
+if (!selectedProjects.length) {
+  throw new Error(
+    `No valid Playwright projects selected from PLAYWRIGHT_PROJECTS=${process.env.PLAYWRIGHT_PROJECTS}. `
+    + `Available projects: ${localProjects.map((project) => project.name).join(', ')}`
+  );
+}
+
 module.exports = defineConfig({
   testDir: 'tests/ui',
   outputDir: 'test-results/playwright-output',
@@ -30,8 +44,7 @@ module.exports = defineConfig({
     baseURL: 'http://127.0.0.1:8765',
     trace: 'on-first-retry',
   },
-  // CI installs Chromium only; keep full cross-browser coverage available for local runs.
-  projects: process.env.CI ? localProjects.filter((p) => p.name === 'chromium') : localProjects,
+  projects: selectedProjects,
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
     url: 'http://127.0.0.1:8765',

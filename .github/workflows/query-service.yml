@@ -123,6 +123,8 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_PROJECTS: chromium
     steps:
       - uses: actions/checkout@v4
 
@@ -137,8 +139,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright (Chromium)
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers for CI matrix
+        run: npx playwright install --with-deps $PLAYWRIGHT_PROJECTS
 
       - name: Run Playwright UI tests
         run: npm run test:ui
