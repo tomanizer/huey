@@ -1,6 +1,12 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test');
 
+const localProjects = [
+  { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+  { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+];
+
 module.exports = defineConfig({
   testDir: 'tests/ui',
   outputDir: 'test-results/playwright-output',
@@ -24,11 +30,8 @@ module.exports = defineConfig({
     baseURL: 'http://127.0.0.1:8765',
     trace: 'on-first-retry',
   },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-  ],
+  // CI installs Chromium only; keep full cross-browser coverage available for local runs.
+  projects: process.env.CI ? localProjects.filter((p) => p.name === 'chromium') : localProjects,
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
     url: 'http://127.0.0.1:8765',

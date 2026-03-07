@@ -48,6 +48,7 @@ When Playwright UI tests are present (see `docs/ui-testing-remote.md`), `npm run
 - `timeout: 120000` per test to reduce false negatives on slower machines.
 - `retries: 1` in CI (`0` locally) to balance flake mitigation and signal quality.
 - `expect.timeout: 10000` for explicit, bounded element/state waits.
+- Browser scope: CI runs `chromium` only; local runs keep `chromium`, `firefox`, and `webkit` projects.
 
 ### CI reporting
 

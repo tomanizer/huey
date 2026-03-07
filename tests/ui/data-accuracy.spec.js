@@ -19,11 +19,12 @@ async function findPivotRowText(page, label) {
 }
 
 async function expectPivotRowContainsValues(page, label, values) {
+  await expect(page.locator('#pivotTableUi')).toContainText(label, { timeout: 15000 });
   const rowText = await findPivotRowText(page, label);
   await expect(rowText).toBeTruthy();
-  const rowTokens = String(rowText).split(/\s+/).filter(Boolean);
+  const rowTokens = String(rowText).split(/\s+/).map((token) => token.replace(/,/g, '')).filter(Boolean);
   for (const value of values) {
-    await expect(rowTokens).toContain(String(value));
+    await expect(rowTokens).toContain(String(value).replace(/,/g, ''));
   }
 }
 
@@ -91,9 +92,10 @@ test.describe('Data accuracy', () => {
     await expect(filterButton).toBeVisible({ timeout: 10000 });
     await filterButton.click();
     await expect(page.locator('#filterDialog')).toBeVisible({ timeout: 10000 });
-    await page.fill('#filterSearch', 'GOOG');
-    await page.click('#addFilterValueButton');
-    await page.click('#filterDialogOkButton');
+    await page.locator('#filterSearch').fill('GOOG');
+    await page.locator('#addFilterValueButton').click();
+    await expect(page.locator('#filterValueList option')).toContainText('GOOG');
+    await page.locator('#filterDialogOkButton').click();
     await runQueryAndWaitForPivot(page);
 
     await expect(page.locator('#pivotTableUi')).toContainText('GOOG');

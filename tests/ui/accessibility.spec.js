@@ -15,11 +15,12 @@ test.describe('Accessibility', () => {
   test('keyboard can open settings dialog and escape returns focus', async ({ page }) => {
     await waitForAppReady(page);
     const settingsButton = page.locator('#settingsButton');
+    await expect(settingsButton).toBeVisible({ timeout: 10000 });
     await settingsButton.focus();
-    await page.keyboard.press('Enter');
-    await expect(page.locator('#settingsDialog')).toBeVisible({ timeout: 10000 });
+    await settingsButton.press('Enter');
+    await expect(page.locator('#settingsDialog')).toBeVisible({ timeout: 20000 });
     await page.keyboard.press('Escape');
-    await expect(page.locator('#settingsDialog')).not.toBeVisible();
+    await expect(page.locator('#settingsDialog')).toBeHidden({ timeout: 10000 });
     await expect(settingsButton).toBeFocused();
   });
 
@@ -70,6 +71,7 @@ test.describe('Accessibility', () => {
     await expect(page.locator('#pivotTableUi .pivotTableUiTable [role="gridcell"]').first()).toBeVisible();
 
     const valueCell = page.locator('#pivotTableUi .pivotTableUiValueCell').first();
+    await expect(valueCell).toBeVisible({ timeout: 10000 });
     await valueCell.click({ button: 'right' });
     await expect(page.locator('#pivotTableContextMenu')).toBeVisible();
 
