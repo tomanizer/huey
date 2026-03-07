@@ -82,7 +82,7 @@ def raise_date_range_validation_error(exc: DateRangeSpanLimitError) -> None:
             {
                 "loc": ["body", "date_range"],
                 "msg": str(exc),
-                "type": "value_error.date_range_too_large",
+                "type": "date_range_too_large",
                 "ctx": {
                     "requested_days": exc.requested_days,
                     "max_days": exc.max_days,
