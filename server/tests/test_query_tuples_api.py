@@ -130,6 +130,36 @@ def test_query_tuples_paging_offset_limit_one(client: TestClient) -> None:
         assert data1["items"] != data2["items"]
 
 
+def test_query_tuples_cursor_paging(client: TestClient) -> None:
+    first_page = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 2, "offset": 0}},
+    }
+    first_response = client.post("/query/tuples", json=first_page)
+    assert first_response.status_code == 200
+    first_data = first_response.json()
+    assert first_data["paging"]["next_cursor"] is not None
+
+    second_page = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "fields": [{"field": "symbol", "sort": "ASC"}],
+            "paging": {"limit": 2, "cursor": first_data["paging"]["next_cursor"]},
+        },
+    }
+    second_response = client.post("/query/tuples", json=second_page)
+    assert second_response.status_code == 200
+    second_data = second_response.json()
+    assert second_data["total_count"] == first_data["total_count"]
+    assert second_data["paging"]["offset"] == 0
+    first_symbols = [item["values"][0] for item in first_data["items"]]
+    second_symbols = [item["values"][0] for item in second_data["items"]]
+    assert first_symbols[-1] < second_symbols[0]
+    assert set(first_symbols).isdisjoint(second_symbols)
+
+
 def test_query_tuples_empty_page_reports_total(client: TestClient) -> None:
     body = {
         "dataset_id": "trades_v1",
@@ -142,6 +172,22 @@ def test_query_tuples_empty_page_reports_total(client: TestClient) -> None:
     assert data["items"] == []
     assert data["paging"]["returned"] == 0
     assert data["total_count"] == 5
+
+
+def test_query_tuples_invalid_cursor_returns_422(client: TestClient) -> None:
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "fields": [{"field": "symbol", "sort": "ASC"}],
+            "paging": {"limit": 2, "cursor": "not-a-valid-cursor"},
+        },
+    }
+    r = client.post("/query/tuples", json=body)
+    assert r.status_code == 422
+    data = r.json()
+    assert data["code"] == "VALIDATION_ERROR"
+    assert data["details"]["errors"][0]["loc"] == ["body", "query", "paging", "cursor"]
 
 
 def test_query_tuples_sort_desc(client: TestClient) -> None:

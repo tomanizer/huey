@@ -2,8 +2,12 @@
 Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
 """
 
+import base64
+import binascii
+import json
 import logging
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Response
 
@@ -12,7 +16,7 @@ from server.auth import require_api_key
 from server.cache import build_cache_key, get_query_cache
 from server.config import get_settings
 from server.engine import QueryCancelHandle, db_manager
-from server.errors import CellsWindowTooLargeError, DatasetNotFoundError
+from server.errors import CellsWindowTooLargeError, DatasetNotFoundError, ValidationAppError
 from server.models import (
     CellsResponse,
     PagingResponse,
@@ -37,6 +41,43 @@ from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
+
+
+def _cursor_validation_error() -> ValidationAppError:
+    return ValidationAppError(
+        [
+            {
+                "loc": ["body", "query", "paging", "cursor"],
+                "msg": "Invalid cursor",
+                "type": "value_error.cursor",
+            }
+        ]
+    )
+
+
+def _encode_cursor(values: list[Any], total_count: int | None = None) -> str:
+    payload: dict[str, Any] = {"values": values}
+    if total_count is not None:
+        payload["total_count"] = total_count
+    return base64.b64encode(json.dumps(payload, separators=(",", ":")).encode("utf-8")).decode("ascii")
+
+
+def _decode_cursor(cursor: str) -> dict[str, Any]:
+    try:
+        decoded = base64.b64decode(cursor.encode("ascii"), validate=True).decode("utf-8")
+        payload = json.loads(decoded)
+    except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, binascii.Error) as exc:
+        raise _cursor_validation_error() from exc
+
+    if isinstance(payload, list):
+        return {"values": payload, "total_count": None}
+    if not isinstance(payload, dict) or not isinstance(payload.get("values"), list):
+        raise _cursor_validation_error()
+
+    total_count = payload.get("total_count")
+    if total_count is not None and not isinstance(total_count, int):
+        raise _cursor_validation_error()
+    return {"values": payload["values"], "total_count": total_count}
 
 
 def _apply_client_request_id(body, request: Request) -> None:
@@ -84,6 +125,7 @@ async def post_query_tuples(
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging or PagingSpec(limit=settings.tuples_default_limit, offset=0)
+    cursor_payload = _decode_cursor(paging.cursor) if paging.cursor else None
 
     cache_status = "disabled"
     cache_source = "compute"
@@ -92,7 +134,13 @@ async def post_query_tuples(
 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
-        sql, params = build_tuples_sql(body.dataset_id, body.query, body.date_range, schema_fields)
+        sql, params = build_tuples_sql(
+            body.dataset_id,
+            body.query,
+            body.date_range,
+            schema_fields,
+            cursor_values=cursor_payload["values"] if cursor_payload else None,
+        )
 
         async def _run_query():
             return await db_manager.execute_sql_async(
@@ -103,14 +151,21 @@ async def post_query_tuples(
             )
 
         rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
-        if rows:
+        if cursor_payload:
+            has_more = len(rows) > paging.limit
+            page_rows = rows[: paging.limit]
+            total_count = cursor_payload.get("total_count")
+            items = [{"values": list(row)} for row in page_rows]
+        elif rows:
+            has_more = paging.offset + len(rows) < int(rows[0][-1])
             total_count = int(rows[0][-1])
             items = [{"values": list(row[:-1])} for row in rows]
         else:
+            has_more = False
             total_count = 0
             items = []
 
-        if total_count == 0 and paging.offset > 0:
+        if total_count is None or (total_count == 0 and not cursor_payload and paging.offset > 0):
             count_sql, count_params = build_tuples_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
             count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
@@ -122,12 +177,21 @@ async def post_query_tuples(
             if count_rows:
                 total_count = int(count_rows[0][0])
 
+        next_cursor = None
+        if has_more and items:
+            next_cursor = _encode_cursor(items[-1]["values"], total_count=total_count)
+
         duration_ms = (time.perf_counter() - start) * 1000
         return {
             "response": {
                 "total_count": total_count,
                 "items": items,
-                "paging": {"limit": paging.limit, "offset": paging.offset, "returned": len(items)},
+                "paging": {
+                    "limit": paging.limit,
+                    "offset": 0 if cursor_payload else paging.offset,
+                    "returned": len(items),
+                    "next_cursor": next_cursor,
+                },
             },
             "duration_ms": duration_ms,
             "row_count": len(items),
@@ -344,6 +408,7 @@ async def post_query_picklist(
 
     schema_fields = datasets.get_schema_field_names(body.dataset_id)
     paging = body.query.paging or PagingSpec(limit=settings.picklist_default_limit, offset=0)
+    cursor_payload = _decode_cursor(paging.cursor) if paging.cursor else None
 
     cache_status = "disabled"
     cache_source = "compute"
@@ -353,7 +418,13 @@ async def post_query_picklist(
 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
-        sql, params = build_picklist_sql(body.dataset_id, body.query, body.date_range, schema_fields)
+        sql, params = build_picklist_sql(
+            body.dataset_id,
+            body.query,
+            body.date_range,
+            schema_fields,
+            cursor_values=cursor_payload["values"] if cursor_payload else None,
+        )
 
         async def _run_query():
             return await db_manager.execute_sql_async(
@@ -364,14 +435,21 @@ async def post_query_picklist(
             )
 
         rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
-        if rows:
+        if cursor_payload:
+            has_more = len(rows) > paging.limit
+            page_rows = rows[: paging.limit]
+            total_count = cursor_payload.get("total_count")
+            values = [{"value": str(row[0]), "label": str(row[0])} for row in page_rows]
+        elif rows:
+            has_more = paging.offset + len(rows) < int(rows[0][-1])
             total_count = int(rows[0][-1])
             values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
         else:
+            has_more = False
             total_count = 0
             values = []
 
-        if total_count == 0 and paging.offset > 0:
+        if total_count is None or (total_count == 0 and not cursor_payload and paging.offset > 0):
             count_sql, count_params = build_picklist_count_sql(body.dataset_id, body.query, body.date_range, schema_fields)
             count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
@@ -383,12 +461,21 @@ async def post_query_picklist(
             if count_rows:
                 total_count = int(count_rows[0][0])
 
+        next_cursor = None
+        if has_more and values:
+            next_cursor = _encode_cursor([values[-1]["value"]], total_count=total_count)
+
         duration_ms = (time.perf_counter() - start) * 1000
         return {
             "response": {
                 "total_count": total_count,
                 "values": values,
-                "paging": {"limit": paging.limit, "offset": paging.offset, "returned": len(values)},
+                "paging": {
+                    "limit": paging.limit,
+                    "offset": 0 if cursor_payload else paging.offset,
+                    "returned": len(values),
+                    "next_cursor": next_cursor,
+                },
             },
             "duration_ms": duration_ms,
             "row_count": len(values),

@@ -144,6 +144,7 @@ Request body fields:
 - `query.paging` (optional):
   - `limit` (`1..10000`, default from config)
   - `offset` (`>=0`)
+  - `cursor` (opaque base64-encoded cursor from a previous response; when present, keyset pagination is used and `offset` is ignored)
 
 Request example:
 
@@ -165,9 +166,20 @@ Success `200` example:
 {
   "total_count": 2,
   "items": [{"values": ["AAPL"]}, {"values": ["GOOG"]}],
-  "paging": {"limit": 10, "offset": 0, "returned": 2}
+  "paging": {
+    "limit": 10,
+    "offset": 0,
+    "returned": 2,
+    "next_cursor": "eyJ2YWx1ZXMiOlsiR09PRyJdLCJ0b3RhbF9jb3VudCI6Mn0="
+  }
 }
 ```
+
+Notes:
+
+- Offset pagination remains supported for backwards compatibility.
+- For large datasets, prefer `query.paging.cursor` from the previous page instead of deep `offset` values.
+- Offset pagination is deprecated for large datasets and may be removed in a future version.
 
 Error statuses:
 
@@ -248,7 +260,10 @@ Request body fields:
 - `query.field` (string)
 - `query.search` (string, optional; `*` is translated to SQL `%` wildcard)
 - `query.filters` (optional)
-- `query.paging` (optional)
+- `query.paging` (optional):
+  - `limit` (`1..10000`, default from config)
+  - `offset` (`>=0`)
+  - `cursor` (opaque base64-encoded cursor from a previous response; when present, keyset pagination is used and `offset` is ignored)
 
 Request example:
 
@@ -270,9 +285,20 @@ Success `200` example:
 {
   "total_count": 2,
   "values": [{"value": "AAPL", "label": "AAPL"}, {"value": "AMZN", "label": "AMZN"}],
-  "paging": {"limit": 10, "offset": 0, "returned": 2}
+  "paging": {
+    "limit": 10,
+    "offset": 0,
+    "returned": 2,
+    "next_cursor": "eyJ2YWx1ZXMiOlsiQU1aTiJdLCJ0b3RhbF9jb3VudCI6Mn0="
+  }
 }
 ```
+
+Notes:
+
+- Offset pagination remains supported for backwards compatibility.
+- For large datasets, prefer `query.paging.cursor` from the previous page instead of deep `offset` values.
+- Offset pagination is deprecated for large datasets and may be removed in a future version.
 
 Error statuses:
 

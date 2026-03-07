@@ -1,5 +1,8 @@
 """Unit tests for SQL query builder."""
 
+import base64
+import json
+
 import pytest
 
 from server.errors import ValidationAppError
@@ -126,6 +129,18 @@ class TestBuildTuplesSql:
         assert '"date"' in sql
         assert '"symbol"' in sql
         assert "COUNT(*) OVER()" in sql
+
+    def test_cursor_uses_keyset_pagination(self) -> None:
+        query = TuplesQueryBody(
+            fields=[TupleFieldSpec(field="symbol", sort="ASC")],
+            paging=PagingSpec(limit=10, offset=100, cursor=base64.b64encode(json.dumps(["GOOG"]).encode()).decode()),
+        )
+        sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS, cursor_values=["GOOG"])
+        assert "COUNT(*) OVER()" not in sql
+        assert "OFFSET" not in sql
+        assert 'WHERE ("symbol" > ?)' in sql
+        assert "LIMIT 11" in sql
+        assert params[-1] == "GOOG"
 
     def test_date_clause_skipped_when_relation_disables_time_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         query = TuplesQueryBody(fields=[TupleFieldSpec(field="symbol")])
@@ -298,6 +313,18 @@ class TestBuildPicklistSql:
         sql, params = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "NOT IN" in sql
         assert "TSLA" in params
+
+    def test_cursor_uses_keyset_pagination(self) -> None:
+        query = PicklistQueryBody(
+            field="symbol",
+            paging=PagingSpec(limit=25, offset=50, cursor=base64.b64encode(json.dumps(["GOOG"]).encode()).decode()),
+        )
+        sql, params = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS, cursor_values=["GOOG"])
+        assert "COUNT(*) OVER()" not in sql
+        assert "OFFSET" not in sql
+        assert "WHERE (value > ?)" in sql
+        assert "LIMIT 26" in sql
+        assert params[-1] == "GOOG"
 
 
 class TestBuildPicklistCountSql:

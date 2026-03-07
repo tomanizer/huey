@@ -138,11 +138,48 @@ def _build_filter_clauses(
     return clauses
 
 
+def _invalid_cursor_error() -> ValidationAppError:
+    return ValidationAppError(
+        [
+            {
+                "loc": ["body", "query", "paging", "cursor"],
+                "msg": "Cursor does not match the query sort fields",
+                "type": "value_error.cursor",
+            }
+        ]
+    )
+
+
+def _build_keyset_clause(
+    sort_columns: list[tuple[str, str]],
+    cursor_values: list[Any] | None,
+    params: list[Any],
+) -> str:
+    if cursor_values is None:
+        return ""
+    if len(cursor_values) != len(sort_columns):
+        raise _invalid_cursor_error()
+
+    keyset_parts = []
+    for idx, (column, direction) in enumerate(sort_columns):
+        clause_parts = []
+        for prev_idx in range(idx):
+            prev_column, _ = sort_columns[prev_idx]
+            clause_parts.append(f"{prev_column} IS NOT DISTINCT FROM ?")
+            params.append(cursor_values[prev_idx])
+        operator = ">" if direction == "ASC" else "<"
+        clause_parts.append(f"{column} {operator} ?")
+        params.append(cursor_values[idx])
+        keyset_parts.append("(" + " AND ".join(clause_parts) + ")")
+    return " WHERE " + " OR ".join(keyset_parts)
+
+
 def build_tuples_sql(
     dataset_id: str,
     query: TuplesQueryBody,
     date_range: DateRange,
     schema_fields: set[str],
+    cursor_values: list[Any] | None = None,
 ) -> tuple[str, list[Any]]:
     """
     Generate SQL for a tuples query: distinct dimension values for one axis.
@@ -184,21 +221,28 @@ def build_tuples_sql(
     group_clause = " GROUP BY " + ", ".join(select_cols)
 
     order_parts = []
+    sort_columns = []
     for f in fields:
         col = _quote(f.field)
-        order_parts.append(f"{col} {f.sort or 'ASC'}")
+        direction = f.sort or "ASC"
+        order_parts.append(f"{col} {direction}")
+        sort_columns.append((col, direction))
     order_clause = (" ORDER BY " + ", ".join(order_parts)) if order_parts else ""
 
     paging = query.paging
     limit = paging.limit if paging else 200
     offset = paging.offset if paging else 0
-    limit_clause = f" LIMIT {limit} OFFSET {offset}"
 
     base_sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}"
-    sql_body = (
-        f"SELECT {select_clause}, COUNT(*) OVER() AS __count__ "
-        f"FROM ({base_sql}) AS grouped{order_clause}{limit_clause}"
-    )
+    if cursor_values is not None:
+        cursor_where = _build_keyset_clause(sort_columns, cursor_values, params)
+        sql_body = f"SELECT {select_clause} FROM ({base_sql}) AS grouped{cursor_where}{order_clause} LIMIT {limit + 1}"
+    else:
+        limit_clause = f" LIMIT {limit} OFFSET {offset}"
+        sql_body = (
+            f"SELECT {select_clause}, COUNT(*) OVER() AS __count__ "
+            f"FROM ({base_sql}) AS grouped{order_clause}{limit_clause}"
+        )
     sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 
@@ -370,6 +414,7 @@ def build_picklist_sql(
     query: PicklistQueryBody,
     date_range: DateRange,
     schema_fields: set[str],
+    cursor_values: list[Any] | None = None,
 ) -> tuple[str, list[Any]]:
     """
     Generate SQL for a picklist query: distinct values for a single field.
@@ -410,10 +455,14 @@ def build_picklist_sql(
     offset = paging.offset if paging else 0
 
     base_sql = f"SELECT DISTINCT {col} AS value FROM {table}{where_clause}"
-    sql_body = (
-        f"SELECT value, COUNT(*) OVER() AS __count__ "
-        f"FROM ({base_sql}) AS distinct_values ORDER BY value LIMIT {limit} OFFSET {offset}"
-    )
+    if cursor_values is not None:
+        cursor_where = _build_keyset_clause([("value", "ASC")], cursor_values, params)
+        sql_body = f"SELECT value FROM ({base_sql}) AS distinct_values{cursor_where} ORDER BY value LIMIT {limit + 1}"
+    else:
+        sql_body = (
+            f"SELECT value, COUNT(*) OVER() AS __count__ "
+            f"FROM ({base_sql}) AS distinct_values ORDER BY value LIMIT {limit} OFFSET {offset}"
+        )
     sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 

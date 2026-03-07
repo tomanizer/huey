@@ -103,6 +103,7 @@ class PagingSpec(BaseModel):
 
     limit: int = Field(default=100, ge=1, le=MAX_PAGE_LIMIT)
     offset: int = Field(default=0, ge=0)
+    cursor: str | None = None
 
 
 class WindowSpec(BaseModel):
@@ -118,6 +119,7 @@ class PagingResponse(BaseModel):
     limit: int
     offset: int
     returned: int
+    next_cursor: str | None = None
 
 
 # --- Axes models ---
