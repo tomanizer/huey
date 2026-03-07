@@ -132,6 +132,7 @@ describe('DataSet cache limits', () => {
     tupleSet.setPageSize(2);
 
     await tupleSet.getTuples(2, 0);
+    // Re-access tuple 0 so tuple 1 becomes the least recently used entry.
     expect(tupleSet.getTupleSync(0)).toBeDefined();
     tupleSet.setPageSize(1);
 
