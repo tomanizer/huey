@@ -61,6 +61,18 @@ export default defineConfig({
           functions: 80,
           lines: 58,
         },
+        'src/QueryModel/QuerySerializer.js': {
+          statements: 85,
+          lines: 85,
+        },
+        'src/QueryModel/QueryModelConstants.js': {
+          statements: 100,
+          lines: 100,
+        },
+        'src/AttributeUi/AttributeRegistry.js': {
+          statements: 80,
+          lines: 80,
+        },
       },
     },
   },
