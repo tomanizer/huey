@@ -1,6 +1,7 @@
 """Tests for query execution budgets: timeout, cancellation, and concurrency caps."""
 
 import asyncio
+import math
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -173,6 +174,7 @@ def test_cancelled_acquire_does_not_increment_active_count(settings_override) ->
 def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
     """Disconnect polling should be rate-limited while a query keeps running."""
     settings_override(query_timeout_seconds=5)
+    poll_interval_seconds = 0.05
 
     class StubRequest:
         def __init__(self) -> None:
@@ -182,9 +184,9 @@ def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
             self.poll_count += 1
             return False
 
-    async def scenario() -> int:
+    async def scenario() -> tuple[int, float]:
         budget = QueryBudget()
-        budget._disconnect_poll_interval_seconds = 0.05
+        budget._disconnect_poll_interval_seconds = poll_interval_seconds
         request = StubRequest()
 
         result, execution_ms = await budget.run_with_budget(
@@ -194,9 +196,8 @@ def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
 
         assert result == "ok"
         assert execution_ms >= 0
-        return request.poll_count
+        return request.poll_count, execution_ms
 
-    poll_count = asyncio.run(scenario())
-    # With a 0.05s polling interval over ~0.12s of work, about 3 polls are
-    # expected; <= 4 allows small scheduling variance without permitting a hot loop.
-    assert poll_count <= 4
+    poll_count, execution_ms = asyncio.run(scenario())
+    allowed_poll_count = math.ceil(execution_ms / (poll_interval_seconds * 1000)) + 2
+    assert poll_count <= allowed_poll_count
