@@ -7,6 +7,7 @@ export class Settings extends EventEmitter {
   static localStorageKey = 'settings';
 
   #id = undefined;
+  #lastTrigger = undefined;
 
   static #settingsTemplate = {
     datasourceSettings: {
@@ -428,7 +429,7 @@ export class Settings extends EventEmitter {
   }
 
   #initDialog(){
-    const _settingsDialog = this.#getDialog();
+    const settingsDialog = this.#getDialog();
 
     byId('settingsDialogOkButton').addEventListener('click', (event) =>{
       event.cancelBubble = true;
@@ -446,7 +447,17 @@ export class Settings extends EventEmitter {
     });
 
     byId('settingsButton').addEventListener('click', () =>{
+      this.#lastTrigger = byId('settingsButton');
       this.#updateDialogFromSettings();
+    });
+
+    settingsDialog.addEventListener('toggle', (event) => {
+      if (event.newState !== 'closed') {
+        return;
+      }
+      if (this.#lastTrigger && typeof this.#lastTrigger.focus === 'function') {
+        this.#lastTrigger.focus();
+      }
     });
   }
 

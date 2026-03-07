@@ -52,10 +52,16 @@ test.describe('Accessibility', () => {
     await expect(page.locator('#filterValueList')).toHaveAttribute('role', 'listbox');
     await expect(page.locator('#toFilterValueList')).toHaveAttribute('role', 'listbox');
 
-    const progress = page.locator('#uploadItemTemplate progress');
-    await expect(progress).toHaveAttribute('aria-valuemin', '0');
-    await expect(progress).toHaveAttribute('aria-valuemax', '100');
-    await expect(progress).toHaveAttribute('aria-valuenow', '0');
+    const templateProgressAria = await page.evaluate(() => {
+      const template = document.getElementById('uploadItemTemplate');
+      const progress = template && template.content && template.content.querySelector('progress');
+      return progress ? {
+        min: progress.getAttribute('aria-valuemin'),
+        max: progress.getAttribute('aria-valuemax'),
+        now: progress.getAttribute('aria-valuenow'),
+      } : null;
+    });
+    await expect(templateProgressAria).toEqual({ min: '0', max: '100', now: '0' });
   });
 
   test('pivot grid roles and context menu keyboard support work', async ({ page }) => {
