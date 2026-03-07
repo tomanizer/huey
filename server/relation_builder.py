@@ -16,7 +16,14 @@ from typing import Any, Iterable
 from server import datasets
 from server.config import get_settings
 from server.errors import DatasetConfigError, PartitionConfigError, PartitionNotFoundError
-from server.models import DateRange, DateRangeRange, DateRangeSingle
+from server.models import (
+    DateRange,
+    DateRangeRange,
+    DateRangeSingle,
+    DateRangeSpanLimitError,
+    raise_date_range_validation_error,
+    validate_date_range_span,
+)
 from server.s3 import build_partition_path
 from server.utils import quote_identifier
 
@@ -35,6 +42,10 @@ class BaseRelation:
 
 
 def _dates_for_range(date_range: DateRange) -> list[str]:
+    try:
+        validate_date_range_span(date_range, get_settings().max_date_range_days)
+    except DateRangeSpanLimitError as exc:
+        raise_date_range_validation_error(exc)
     if isinstance(date_range, DateRangeSingle):
         return [date_range.date]
     if isinstance(date_range, DateRangeRange):

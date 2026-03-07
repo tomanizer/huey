@@ -9,6 +9,10 @@ from datetime import date
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic_core import PydanticCustomError
+
+from server.config import get_settings
+from server.errors import ValidationAppError
 
 FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
 SortDirection = Literal["ASC", "DESC"]
@@ -28,6 +32,64 @@ def _parse_iso_date(value: str) -> str:
     if parsed.isoformat() != value:
         raise ValueError("Invalid date, use real YYYY-MM-DD date")
     return value
+
+
+class DateRangeSpanLimitError(ValueError):
+    """Raised when an inclusive date range exceeds the configured span limit."""
+
+    def __init__(self, requested_days: int, max_days: int) -> None:
+        self.requested_days = requested_days
+        self.max_days = max_days
+        super().__init__(
+            f"Date range spans {requested_days} day(s), exceeds configured max of {max_days}"
+        )
+
+
+def date_range_span_days(date_range: Any) -> int | None:
+    """Return inclusive day span for a date_range payload or model."""
+    dtype = getattr(date_range, "type", None)
+    if dtype is None and isinstance(date_range, dict):
+        dtype = date_range.get("type")
+
+    if dtype == "single":
+        value = getattr(date_range, "date", None) if not isinstance(date_range, dict) else date_range.get("date")
+        return 1 if isinstance(value, str) and value else None
+
+    if dtype == "range":
+        start = getattr(date_range, "start", None) if not isinstance(date_range, dict) else date_range.get("start")
+        end = getattr(date_range, "end", None) if not isinstance(date_range, dict) else date_range.get("end")
+        if not (isinstance(start, str) and isinstance(end, str) and start and end):
+            return None
+        start_date = date.fromisoformat(start)
+        end_date = date.fromisoformat(end)
+        return (end_date - start_date).days + 1
+
+    return None
+
+
+def validate_date_range_span(date_range: Any, max_days: int) -> int | None:
+    """Validate the inclusive span of a date range against a configured max."""
+    requested_days = date_range_span_days(date_range)
+    if requested_days is not None and requested_days > max_days:
+        raise DateRangeSpanLimitError(requested_days, max_days)
+    return requested_days
+
+
+def raise_date_range_validation_error(exc: DateRangeSpanLimitError) -> None:
+    """Raise a standard 422 ValidationAppError for an oversized date range."""
+    raise ValidationAppError(
+        [
+            {
+                "loc": ["body", "date_range"],
+                "msg": str(exc),
+                "type": "value_error.date_range_too_large",
+                "ctx": {
+                    "requested_days": exc.requested_days,
+                    "max_days": exc.max_days,
+                },
+            }
+        ]
+    ) from exc
 
 
 # --- Date range (envelope) ---
@@ -62,6 +124,14 @@ class DateRangeRange(BaseModel):
         """Validate that the range start is not after the end."""
         if date.fromisoformat(self.start) > date.fromisoformat(self.end):
             raise ValueError("Date range start must be <= end")
+        try:
+            validate_date_range_span(self, get_settings().max_date_range_days)
+        except DateRangeSpanLimitError as exc:
+            raise PydanticCustomError(
+                "date_range_too_large",
+                "Date range spans {requested_days} day(s), exceeds configured max of {max_days}",
+                {"requested_days": exc.requested_days, "max_days": exc.max_days},
+            ) from exc
         return self
 
 

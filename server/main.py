@@ -15,6 +15,7 @@ from server.runtime import ensure_supported_python
 ensure_supported_python()
 
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -138,6 +139,8 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
             "msg": err.get("msg", ""),
             "type": err.get("type", ""),
         }
+        if "ctx" in err:
+            entry["ctx"] = jsonable_encoder(err["ctx"])
         clean_errors.append(entry)
     body = ErrorResponse(
         code="VALIDATION_ERROR",

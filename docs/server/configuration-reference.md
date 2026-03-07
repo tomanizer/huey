@@ -44,6 +44,12 @@ Example: `QUERYSERVICE_PORT=8000` maps to `port` setting.
 | `QUERYSERVICE_PICKLIST_DEFAULT_LIMIT` | `100` | int | Default picklist page size |
 | `QUERYSERVICE_MAX_CELLS_PER_RESPONSE` | `10000` | int | Max cells payload bound |
 | `QUERYSERVICE_MAX_AXIS_CARDINALITY` | `5000` | int | Max axis cardinality/window |
+| `QUERYSERVICE_MAX_DATE_RANGE_DAYS` | `366` | int | Inclusive max accepted `date_range` span before validation rejects request |
+
+`QUERYSERVICE_MAX_DATE_RANGE_DAYS` is enforced before partition-path expansion and
+cache token date-scope expansion. Raise it only when you intentionally need larger
+historical windows and have confirmed the backing partition layout, metadata size,
+and cache behavior can tolerate the extra planning work.
 
 ## Authentication and Rate Limiting
 
