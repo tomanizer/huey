@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     # Cells/query limits
     max_cells_per_response: int = 10000
     max_axis_cardinality: int = 5000
+    max_date_range_days: int = Field(default=366, ge=1)
 
     # Fetch batch size for query endpoints (fetchmany chunk size)
     query_fetchmany_batch_size: int = Field(default=1000, ge=1)
