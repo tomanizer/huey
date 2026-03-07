@@ -685,14 +685,14 @@ export class PivotTableUi extends EventEmitter {
           tupleValue = tuple.values[j];
           if (hideRepeatingAxisValues && prevTuple && (repeatingValuesIndex === undefined || repeatingValuesIndex === j - 1)){
             const prevTupleValue = prevTuple.values[j];
-            if ( 
+            if (
               tupleValue !== null && tupleValue === prevTupleValue ||
-              tupleValue === null && prevTupleValue === null && 
+              tupleValue === null && prevTupleValue === null &&
               isTotalsMember ===  PivotTableUi.#isTotalsMember(
-                this.#getTupleGroupingId(prevTupleValue), 
-                totalsItemsIndices, 
+                this.#getTupleGroupingId(prevTuple),
+                totalsItemsIndices,
                 queryAxisItem ? j : numRows - 1
-              ) 
+              )
             ){
               repeatingValuesIndex = j;
             }
@@ -859,14 +859,14 @@ export class PivotTableUi extends EventEmitter {
 
           if (hideRepeatingAxisValues && prevTuple && (repeatingValuesIndex === undefined || repeatingValuesIndex === j - 1)){
             const prevTupleValue = prevTuple.values[j];
-            if ( 
+            if (
               tupleValue !== null && tupleValue === prevTupleValue ||
-              tupleValue === null && prevTupleValue === null &&  
+              tupleValue === null && prevTupleValue === null &&
               isTotalsMember ===  PivotTableUi.#isTotalsMember(
-                this.#getTupleGroupingId(prevTupleValue), 
-                totalsItemsIndices, 
+                this.#getTupleGroupingId(prevTuple),
+                totalsItemsIndices,
                 queryAxisItem ? j : numRows - 1
-              ) 
+              )
             ){
               repeatingValuesIndex = j;
             }
@@ -2072,7 +2072,8 @@ export class PivotTableUi extends EventEmitter {
       console.warn('updateVerticalSizer: no sizeInfo');
       return;
     }
-    const physicalRowHeight = sizeInfo.rows.height / sizeInfo.rows.rowCount;
+    const rowCount = sizeInfo.rows.rowCount;
+    const physicalRowHeight = rowCount > 0 ? sizeInfo.rows.height / rowCount : 0;
     const requiredHeight = physicalRowHeight * numberOfPhysicalTuples;
     const totalHeight = sizeInfo.headers.height + requiredHeight;
     this.#setVerticalSize(totalHeight);
