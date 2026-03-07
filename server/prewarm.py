@@ -54,7 +54,7 @@ def _select_prewarm_date(dataset_id: str) -> tuple[str, str]:
             return datetime.date.fromisoformat(str(configured_date)).isoformat(), "configured"
         except ValueError:
             logger.warning(
-                "Invalid configured prewarm date '%s'; falling back to date mode",
+                "Invalid configured prewarm date '%s'; ignoring it and falling back to the configured date mode",
                 configured_date,
                 extra={"dataset_id": dataset_id, "configured_date": configured_date},
             )
@@ -64,6 +64,10 @@ def _select_prewarm_date(dataset_id: str) -> tuple[str, str]:
         latest_date = _latest_partition_date(get_partition_metadata(dataset_id))
         if latest_date:
             return latest_date, mode
+        logger.info(
+            "No partition metadata available for prewarm; falling back to today's date",
+            extra={"dataset_id": dataset_id, "date_mode": mode},
+        )
         return datetime.date.today().isoformat(), "today_fallback"
     if mode != "today":
         logger.warning(
