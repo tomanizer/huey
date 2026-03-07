@@ -1,10 +1,12 @@
 """Tests for DuckDB engine integration and DuckDBManager."""
 
+import asyncio
 import os
 
+import duckdb
 import pytest
 
-from server.engine import DuckDBManager, get_connection
+from server.engine import DuckDBManager, QueryCancelHandle, get_connection
 from server.errors import DatasetUnavailableError
 
 
@@ -185,6 +187,33 @@ class TestDuckDBManager:
                 batch_size=2,
             )
             assert rows == [[i] for i in range(7)]
+        finally:
+            mgr.shutdown()
+
+    @pytest.mark.anyio
+    async def test_cancel_handle_interrupts_only_target_query(self) -> None:
+        mgr = DuckDBManager()
+        mgr.initialize()
+        try:
+            first_handle = QueryCancelHandle()
+            second_handle = QueryCancelHandle()
+            row_count = 100_000_000
+            expected_sum = row_count * (row_count - 1) // 2
+
+            slow_query = f"SELECT sum(i) FROM range({row_count}) t(i)"
+            first_task = asyncio.create_task(
+                mgr.execute_sql_async(slow_query, cancel_handle=first_handle)
+            )
+            second_task = asyncio.create_task(
+                mgr.execute_sql_async(slow_query, cancel_handle=second_handle)
+            )
+
+            await asyncio.sleep(0.1)
+            first_handle.cancel()
+
+            with pytest.raises(duckdb.InterruptException, match="Interrupted"):
+                await first_task
+            assert await second_task == [[expected_sum]]
         finally:
             mgr.shutdown()
 

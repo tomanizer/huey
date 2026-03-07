@@ -33,30 +33,30 @@ def is_missing_table_error(exc: Exception) -> bool:
 class QueryCancelHandle:
     """Thread-safe per-query cancellation handle.
 
-    Register the active DuckDB cursor before query execution and call
-    ``cancel()`` to interrupt only that cursor's query, without affecting
-    other concurrent queries on the shared connection.
+    Register the active DuckDB execution connection before query execution and
+    call ``cancel()`` to interrupt only that query, without affecting other
+    concurrent work.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._cursor: duckdb.DuckDBPyConnection | None = None
+        self._connection: duckdb.DuckDBPyConnection | None = None
 
-    def _set_cursor(self, cursor: duckdb.DuckDBPyConnection) -> None:
+    def _set_connection(self, connection: duckdb.DuckDBPyConnection) -> None:
         with self._lock:
-            self._cursor = cursor
+            self._connection = connection
 
-    def _clear_cursor(self) -> None:
+    def _clear_connection(self) -> None:
         with self._lock:
-            self._cursor = None
+            self._connection = None
 
     def cancel(self) -> None:
-        """Interrupt the active DuckDB cursor for this query only."""
+        """Interrupt the active DuckDB connection for this query only."""
         with self._lock:
-            cur = self._cursor
-        if cur is not None:
+            conn = self._connection
+        if conn is not None:
             try:
-                cur.interrupt()
+                conn.interrupt()
             except Exception:
                 pass
 
@@ -169,6 +169,30 @@ class DuckDBManager:
         finally:
             cur.close()
 
+    @contextmanager
+    def query_connection(
+        self, *, isolated: bool = False
+    ) -> Generator[duckdb.DuckDBPyConnection, None, None]:
+        """Yield a DuckDB execution handle for one query.
+
+        When *isolated* is True, a duplicated connection is returned so that
+        ``interrupt()`` only targets that query's work while still sharing the
+        same underlying database state as the primary connection.
+        """
+        if self._conn is None:
+            raise RuntimeError("DuckDBManager not initialized — call initialize() first")
+        if not isolated:
+            with self.cursor() as cur:
+                yield cur
+            return
+
+        with self._lock:
+            conn = self._conn.duplicate()
+        try:
+            yield conn
+        finally:
+            conn.close()
+
     def execute_sql(
         self,
         sql: str,
@@ -220,13 +244,14 @@ class DuckDBManager:
         result buffer in one call, reducing peak memory pressure for large
         result sets while preserving the same list-of-lists return contract.
 
-        When *cancel_handle* is provided the active cursor is registered on it
-        so that an external caller can interrupt only this query's cursor,
-        leaving other concurrent queries unaffected.
+        When *cancel_handle* is provided the query executes on a duplicated
+        connection that shares the same database state as the primary
+        connection. This keeps cancellation scoped to the target query instead
+        of interrupting unrelated concurrent requests.
         """
-        with self.cursor() as cur:
+        with self.query_connection(isolated=cancel_handle is not None) as cur:
             if cancel_handle is not None:
-                cancel_handle._set_cursor(cur)
+                cancel_handle._set_connection(cur)
             try:
                 if parameters:
                     cur.execute(sql, parameters)
@@ -245,7 +270,7 @@ class DuckDBManager:
                 raise
             finally:
                 if cancel_handle is not None:
-                    cancel_handle._clear_cursor()
+                    cancel_handle._clear_connection()
 
     async def execute_sql_fetchmany_async(
         self,
