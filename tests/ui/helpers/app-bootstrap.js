@@ -12,7 +12,9 @@ async function waitForAppReady(page) {
   await expect(page.locator('body')).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
   await expect(page.locator('#layout')).toBeVisible({ timeout: 60000 });
   await expect(page.locator('#uploader')).toBeAttached({ timeout: 20000 });
-  await expect(page.locator('#runQueryButton')).toBeVisible({ timeout: 30000 });
+  // Autorun may be enabled by persisted settings, in which case the manual
+  // run button remains in the DOM but is intentionally hidden.
+  await expect(page.locator('#runQueryButton')).toBeAttached({ timeout: 30000 });
 }
 
 async function uploadFixtureAndWaitForAttributes(page, fixturePath) {
