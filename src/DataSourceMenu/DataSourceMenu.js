@@ -90,7 +90,7 @@ export class DataSourceMenu {
       this.#update();
       return;
     }
-    const oldDatasourceId = oldQueryModelState.datasource;
+    const oldDatasourceId = oldQueryModelState.datasourceId;
     if (newDatassourceId === oldDatasourceId) {
       //  it hasn't changed. We shouldn't need to #update the menu
       return;
