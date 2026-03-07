@@ -39,19 +39,22 @@ import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
  * @property {Object.<string, {size?: number, unit?: string}>} [sampling]
  */
 
-import { QueryAxisItem, _setQueryModelRef } from './QueryAxisItem.js';
+import { QueryAxisItem } from './QueryAxisItem.js';
 import { QueryAxis } from './QueryAxis.js';
+import { AXIS_FILTERS, AXIS_ROWS, AXIS_COLUMNS, AXIS_CELLS } from './QueryModelConstants.js';
+import { serializeQueryModel } from './QuerySerializer.js';
 
 // Re-export for backward compatibility — consumers can still import from this file
 export { QueryAxisItem } from './QueryAxisItem.js';
 export { QueryAxis } from './QueryAxis.js';
+export { AXIS_FILTERS, AXIS_ROWS, AXIS_COLUMNS, AXIS_CELLS } from './QueryModelConstants.js';
 
 export class QueryModel extends EventEmitter {
 
-  static AXIS_FILTERS = 'filters';
-  static AXIS_ROWS = 'rows';
-  static AXIS_COLUMNS = 'columns';
-  static AXIS_CELLS = 'cells';
+  static AXIS_FILTERS = AXIS_FILTERS;
+  static AXIS_ROWS = AXIS_ROWS;
+  static AXIS_COLUMNS = AXIS_COLUMNS;
+  static AXIS_CELLS = AXIS_CELLS;
 
   static #defaultConfig = {};
 
@@ -917,59 +920,7 @@ export class QueryModel extends EventEmitter {
    * @returns {QueryModelState|null}
    */
   getState(options){
-    const datasource = this.getDatasource();
-    if (!datasource) {
-      return null;
-    }
-    const datasourceId = datasource.getId();
-
-    const queryModelObject = {
-      datasourceId: datasourceId,
-      cellsHeaders: this.getCellHeadersAxis(),
-      axes: {},
-      sampling: this.#sampling
-    };
-
-    const axisIds = this.getAxisIds().sort();
-    let hasItems = false;
-    axisIds.forEach((axisId) =>{
-      const axis = this.getQueryAxis(axisId);
-      const items = axis.getItems();
-      if (items.length === 0) {
-        return '';
-      }
-      hasItems = true;
-      queryModelObject.axes[axisId] = items.map((axisItem) =>{
-        const strippedItem = {columnName: axisItem.columnName};
-        strippedItem.columnType = axisItem.columnType;
-        if (axisItem.memberExpressionPath){
-          strippedItem.memberExpressionPath = axisItem.memberExpressionPath;
-        }
-        if (axisItem.derivation) {
-          strippedItem.derivation = axisItem.derivation;
-        }
-        if (axisItem.aggregator){
-          strippedItem.aggregator = axisItem.aggregator;
-        }
-        if (axisItem.includeTotals === true) {
-          strippedItem.includeTotals = true;
-        }
-
-        if (axisId === QueryModel.AXIS_FILTERS && axisItem.filter){
-          strippedItem.filter = axisItem.filter;
-        }
-
-        if (options && options.includeItemIndices){
-          strippedItem.index = axisItem.index;
-        }
-
-        return strippedItem;
-      });
-    });
-    if (!hasItems){
-      return null;
-    }
-    return queryModelObject;
+    return serializeQueryModel(this, options);
   }
 
   get #autoUpdate(){
@@ -1094,9 +1045,6 @@ export class QueryModel extends EventEmitter {
   }
 
 }
-
-// Set forward reference so QueryAxisItem can check AXIS_FILTERS
-_setQueryModelRef(QueryModel);
 
 export let queryModel;
 export function initQueryModel(){

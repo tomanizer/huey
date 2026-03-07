@@ -1,4 +1,14 @@
-import { AttributeUi } from '../AttributeUi/AttributeUi.js';
+import {
+  aggregators,
+  getDerivationInfo,
+  getAggregatorInfo,
+  getQueryAxisItemDataType,
+  hashDerivations,
+  dateFields,
+  timeFields,
+  textDerivations,
+  uuidDerivations,
+} from '../AttributeUi/AttributeRegistry.js';
 import { FilterDialog } from '../FilterUi/FilterUi.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import {
@@ -14,17 +24,14 @@ import {
   getMapEntryType,
   getMedianReturnDataTypeForArgumentDataType,
 } from '../util/sql/SQLHelper.js';
-
-// Forward reference — set by QueryModel.js to avoid circular dependency
-let _QueryModel = null;
-export function _setQueryModelRef(ref) { _QueryModel = ref; }
+import { AXIS_FILTERS } from './QueryModelConstants.js';
 
 export class QueryAxisItem {
 
   static createFormatter(axisItem){
     let dataType = QueryAxisItem.getQueryAxisItemDataType(axisItem);
     if (axisItem.aggregator) {
-      const aggregatorInfo = AttributeUi.aggregators[axisItem.aggregator];
+      const aggregatorInfo = aggregators[axisItem.aggregator];
       if (aggregatorInfo.createFormatter){
         return aggregatorInfo.createFormatter(axisItem);
       }
@@ -42,7 +49,7 @@ export class QueryAxisItem {
     }
     else
     if (axisItem.derivation){
-      const derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
+      const derivationInfo = getDerivationInfo(axisItem.derivation);
       if (derivationInfo.createFormatter) {
         return derivationInfo.createFormatter(axisItem);
       }
@@ -73,7 +80,7 @@ export class QueryAxisItem {
 
   static createParser(axisItem){
     if (axisItem.derivation){
-      const derivationInfo = AttributeUi.getDerivationInfo(axisItem.derivation);
+      const derivationInfo = getDerivationInfo(axisItem.derivation);
       if (derivationInfo.createParser) {
         return derivationInfo.createParser(axisItem);
       }
@@ -115,7 +122,7 @@ export class QueryAxisItem {
 
     caption = QueryAxisItem.createCaptionForQueryAxisItem(axisItem);
 
-    if (axisItem.axis === _QueryModel?.AXIS_FILTERS) {
+    if (axisItem.axis === AXIS_FILTERS) {
       let filterItemCaption = `: No filters set.`;
       const filter = axisItem.filter;
       if (filter) {
@@ -184,7 +191,7 @@ export class QueryAxisItem {
   }
 
   static getDerivationCaption(derivation) {
-    const derivationInfo = AttributeUi.getDerivationInfo(derivation);
+    const derivationInfo = getDerivationInfo(derivation);
     if (!derivationInfo) {
       return derivation;
     }
@@ -201,22 +208,22 @@ export class QueryAxisItem {
       dataTypeInfo === getDataTypeInfo('MAP') ||
       dataTypeInfo === getDataTypeInfo('STRUCT')
     );
-    const hashDerivations = Object.assign({}, AttributeUi.hashDerivations);
+    const localHashDerivations = Object.assign({}, hashDerivations);
     if (objectType) {
-      Object.keys(hashDerivations).forEach((hashDerivationKey) => {
-        const hashDerivation = hashDerivations[hashDerivationKey];
+      Object.keys(localHashDerivations).forEach((hashDerivationKey) => {
+        const hashDerivation = localHashDerivations[hashDerivationKey];
         if (hashDerivation.forString) {
-          delete hashDerivations[hashDerivationKey];
+          delete localHashDerivations[hashDerivationKey];
         }
       });
     }
     return Object.assign(
       {},
-      dataTypeInfo.hasDateFields ? AttributeUi.dateFields : undefined,
-      dataTypeInfo.hasTimeFields ? AttributeUi.timeFields : undefined,
-      stringType ? AttributeUi.textDerivations : undefined,
-      dataTypeInfo.hasUUIDDerivations ? AttributeUi.uuidDerivations : undefined,
-      (stringType || objectType) ? hashDerivations : undefined
+      dataTypeInfo.hasDateFields ? dateFields : undefined,
+      dataTypeInfo.hasTimeFields ? timeFields : undefined,
+      stringType ? textDerivations : undefined,
+      dataTypeInfo.hasUUIDDerivations ? uuidDerivations : undefined,
+      (stringType || objectType) ? localHashDerivations : undefined
     );
   }
 
@@ -273,7 +280,7 @@ export class QueryAxisItem {
     }
 
     const aggregator = item.aggregator;
-    const aggregatorInfo = AttributeUi.aggregators[aggregator];
+    const aggregatorInfo = aggregators[aggregator];
     const expressionTemplate = aggregatorInfo.expressionTemplate;
     columnExpression = extrapolateColumnExpression(expressionTemplate, columnExpression);
     return columnExpression;
@@ -283,7 +290,7 @@ export class QueryAxisItem {
     let columnExpression = QueryAxisItem.getSqlForColumnExpression(item, alias, sqlOptions);
 
     const derivation = item.derivation;
-    const derivationInfo = AttributeUi.getDerivationInfo(derivation);
+    const derivationInfo = getDerivationInfo(derivation);
     const derivationExpressionTemplate = derivationInfo.expressionTemplate;
     columnExpression = extrapolateColumnExpression(derivationExpressionTemplate, columnExpression);
 
@@ -306,88 +313,9 @@ export class QueryAxisItem {
     return sqlExpression;
   }
 
+  // Delegates to AttributeRegistry.getQueryAxisItemDataType — kept for backward compat.
   static getQueryAxisItemDataType(queryAxisItem){
-    const columnType = queryAxisItem.columnType;
-    let dataType = columnType;
-
-    /*
-      see https://github.com/rpbouman/huey/issues/505
-      If items have a member expression path, then we first need to unwrap that and get the type of the path.
-      Once we have that, we can evaluate type hints like hasElementDataType, hasKeyArrayDataType, preservesColumnType
-    */
-    if (queryAxisItem.memberExpressionPath) {
-      const memberExpressionPath = queryAxisItem.memberExpressionPath;
-      dataType = getMemberExpressionType(columnType, memberExpressionPath);
-      if (memberExpressionPath[memberExpressionPath.length - 1].endsWith('()')){
-        return dataType;
-      }
-    }
-
-    let derivationInfo;
-    const derivation = queryAxisItem.derivation;
-    if (derivation) {
-      derivationInfo = AttributeUi.getDerivationInfo(derivation);
-      if (derivationInfo.columnType) {
-        dataType = derivationInfo.columnType;
-      }
-      else
-      if (derivationInfo.hasElementDataType){
-        dataType = getArrayElementType(dataType);
-      }
-      else
-      if (derivationInfo.hasKeyDataType || derivationInfo.hasKeyArrayDataType){
-        dataType = getMemberExpressionType(dataType, 'key');
-        if (derivationInfo.hasKeyArrayDataType){
-          dataType = getArrayType(dataType);
-        }
-      }
-      else
-      if (derivationInfo.hasValueDataType || derivationInfo.hasValueArrayDataType){
-        dataType = getArrayElementType(dataType);
-        dataType = getMemberExpressionType(dataType, 'value');
-        if (derivationInfo.hasValueArrayDataType) {
-          dataType = getArrayType(dataType);
-        }
-      }
-      else
-      if (derivationInfo.hasEntryDataType || derivationInfo.hasEntryArrayDataType){
-        dataType = getMapEntryType(dataType);
-        if (derivationInfo.hasEntryArrayDataType) {
-          dataType = getArrayType(dataType);
-        }
-      }
-      else
-      if (derivation === 'median'){
-        dataType = getArrayElementType(dataType);
-        dataType = getMedianReturnDataTypeForArgumentDataType(dataType);
-      }
-      else
-      if (!derivationInfo.preservesColumnType){
-        console.warn(`Item ${QueryAxisItem.getIdForQueryAxisItem(queryAxisItem)} has derivation "${derivation}" which does not preserve column type and no column type set.`);
-      }
-    }
-
-    let aggregatorInfo;
-    const aggregator = queryAxisItem.aggregator;
-    if (aggregator) {
-      aggregatorInfo = AttributeUi.getAggregatorInfo(aggregator);
-      if (aggregatorInfo.columnType) {
-        dataType = aggregatorInfo.columnType;
-      }
-      else
-      if (aggregatorInfo.preservesColumnType){
-        // noop
-      }
-      else
-      if (aggregatorInfo && typeof aggregatorInfo.getReturnDataTypeForArgumentDataType === 'function'){
-        dataType = aggregatorInfo.getReturnDataTypeForArgumentDataType(dataType);
-      }
-      else {
-        dataType = undefined;
-      }
-    }
-
-    return dataType;
+    return getQueryAxisItemDataType(queryAxisItem);
   }
 
   // includeDisabledItems: if true then return all values, if not true then exclude values that have enabled===false;
