@@ -26,7 +26,7 @@ export class PivotTableScroller {
 
   async handleInnerContainerScrolled(_event, count){
     if (count !== undefined) {
-      return count === 0 ? undefined : undefined;
+      return;
     }
     if (this.#pivotTableUi.hasPendingModelChange() || this.#pivotTableUi.getBusy()) {
       return;

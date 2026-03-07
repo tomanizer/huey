@@ -89,7 +89,7 @@ export class PivotTableRenderer {
     const label = getChildWithClassName(cellElement, 'pivotTableUiCellLabel');
     if (!cell || !cellsAxisItem){
       label.title = '';
-      return label.textContant = '';
+      return label.textContent = '';
     }
 
     const values = cell.values;

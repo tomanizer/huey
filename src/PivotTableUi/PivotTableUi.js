@@ -322,7 +322,7 @@ export class PivotTableUi extends EventEmitter {
     if (settings && typeof settings.getSettings === 'function'){
       settings = settings.getSettings('querySettings');
     }
-    return settings.autoRun !== undefined ? settings.autoRun : false;
+    return settings.autoRunQuery !== undefined ? settings.autoRunQuery : false;
   }
 
   hasPendingModelChange(){
