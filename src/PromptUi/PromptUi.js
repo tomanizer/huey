@@ -14,6 +14,7 @@ export class PromptUi {
         dialog.returnValue = 'accept';
         // firefox seems to forget the returnValue
         dialog.setAttribute('data-returnValue', dialog.returnValue);
+        dialog.close(dialog.returnValue);
       });
     }
 
@@ -27,6 +28,7 @@ export class PromptUi {
         dialog.returnValue = 'reject';
         // firefox seems to forget the returnValue
         dialog.setAttribute('data-returnValue', dialog.returnValue);
+        dialog.close(dialog.returnValue);
       });
     }
 

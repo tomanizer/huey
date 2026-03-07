@@ -449,6 +449,10 @@ export class Settings extends EventEmitter {
     byId('settingsButton').addEventListener('click', () =>{
       this.#lastTrigger = byId('settingsButton');
       this.#updateDialogFromSettings();
+      const dialog = this.#getDialog();
+      if (!dialog.open) {
+        dialog.showModal();
+      }
     });
 
     settingsDialog.addEventListener('toggle', (event) => {
