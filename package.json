@@ -16,6 +16,7 @@
     "test:coverage": "vitest run --coverage",
     "pretest:ui": "node scripts/check-node-version.js",
     "test:ui":   "playwright test",
+    "test:ui:remote-live": "PLAYWRIGHT_REMOTE_LIVE=1 playwright test tests/ui/remote-live.spec.js",
     "lint:js":   "eslint src/"
   },
   "devDependencies": {

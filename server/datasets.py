@@ -607,6 +607,9 @@ def load_sample_data(db_manager: DuckDBManager) -> None:
         if not dataset_id or not fields:
             logger.warning("Skipping dataset entry with missing id or fields")
             continue
+        if ds.get("seed_sample_data") is False:
+            logger.info("Skipping sample data for %s (seed_sample_data=false)", dataset_id)
+            continue
 
         valid_fields = [f for f in fields if isinstance(f, dict) and f.get("name")]
         if not valid_fields:

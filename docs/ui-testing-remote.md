@@ -39,3 +39,15 @@ npm run test:ui
 (The smoke test starts a static server on port 8765 and runs one test that loads the app and checks the main UI is visible.)
 
 The smoke test opens the app and checks that the main UI (e.g. datasource area, toolbar) is present. Full remote flows (schema, tuples, picklist) are covered by manual testing and backend integration tests.
+
+## Automated live backend suite (Playwright + QueryService)
+
+This suite starts a real QueryService instance and a real Huey frontend, then exercises remote datasource registration, schema loading, tuples/cells fetching, picklist loading, and live error envelopes.
+
+From repo root:
+
+```bash
+npm ci && python -m pip install -r server/requirements.txt && npx playwright install chromium && PLAYWRIGHT_PROJECTS=chromium npm run test:ui:remote-live
+```
+
+The suite uses `tests/ui/fixtures/queryservice-live-datasets.yaml` so `trades_v1` is seeded for happy-path assertions while `trades_unavailable_v1` keeps only schema metadata and reliably returns a real `409 DATASET_UNAVAILABLE` query error.

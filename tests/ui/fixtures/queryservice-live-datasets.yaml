@@ -1,0 +1,25 @@
+datasets:
+  - dataset_id: trades_v1
+    fields:
+      - name: date
+        type: date
+        is_dimension: true
+      - name: symbol
+        type: string
+        is_dimension: true
+      - name: volume
+        type: int64
+        is_measure: true
+
+  - dataset_id: trades_unavailable_v1
+    seed_sample_data: false
+    fields:
+      - name: date
+        type: date
+        is_dimension: true
+      - name: symbol
+        type: string
+        is_dimension: true
+      - name: volume
+        type: int64
+        is_measure: true

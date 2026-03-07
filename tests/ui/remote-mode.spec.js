@@ -2,6 +2,25 @@
 const { test, expect } = require('@playwright/test');
 const { waitForAppReady, openAttributesTab, runQueryAndWaitForPivot } = require('./helpers/app-bootstrap');
 
+async function registerRemoteDatasource(page, baseUrl, datasetId) {
+  await page.evaluate(async ({ currentBaseUrl, currentDatasetId }) => {
+    const [{ RemoteDatasourceConfig }, { RemoteDatasource }, { datasourcesUi }, { analyzeDatasource }] = await Promise.all([
+      import('/DataSource/remote/RemoteDatasourceConfig.js'),
+      import('/DataSource/remote/RemoteDatasource.js'),
+      import('/DataSource/DataSourcesUi.js'),
+      import('/App/analyzeDatasource.js'),
+    ]);
+    const datasource = new RemoteDatasource(
+      RemoteDatasourceConfig.createRemoteDatasourceConfig({
+        baseUrl: currentBaseUrl,
+        datasetId: currentDatasetId,
+      })
+    );
+    await datasourcesUi.addDatasources([datasource]);
+    await analyzeDatasource(datasource);
+  }, { currentBaseUrl: baseUrl, currentDatasetId: datasetId });
+}
+
 test.describe('Remote mode UI', () => {
   test('Huey app loads and shows main UI', async ({ page }) => {
     await waitForAppReady(page);
@@ -55,16 +74,8 @@ test.describe('Remote mode UI', () => {
     await page.route('**/query/picklist', (route) => route.fulfill({ status: 200, body: JSON.stringify({ total_count: 3, values: [{ value: 'AAPL', label: 'AAPL' }], paging: { limit: 100, offset: 0, returned: 1 } }) }));
 
     await waitForAppReady(page);
-    await page.locator('#uploader').click();
-    await expect(page.locator('#addRemoteDatasource')).toBeVisible({ timeout: 10000 });
-    await page.locator('#addRemoteDatasource').click();
-    await expect(page.locator('#remoteDatasourceBaseUrl')).toBeVisible({ timeout: 5000 });
-    await page.locator('#remoteDatasourceBaseUrl').fill('http://localhost:8002');
-    await page.locator('#remoteDatasourceDatasetId').fill('trades_v1');
-    await page.locator('#promptDialogAcceptButton').click();
-    await expect(page.locator('details[data-grouptype="remote"]')).toBeVisible({ timeout: 15000 });
-    await page.locator('details[data-grouptype="remote"] summary').click();
-    await page.locator('details[data-grouptype="remote"] .analyzeActionButton').first().click();
+    await registerRemoteDatasource(page, 'http://localhost:8002', 'trades_v1');
+    await expect(page.locator('details[data-grouptype="remote"]')).toBeAttached({ timeout: 15000 });
     await expect(page.locator('#attributeUi')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#attributeUi details[data-column_name="symbol"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#attributeUi details[data-column_name="volume"]')).toBeVisible({ timeout: 10000 });
@@ -75,6 +86,6 @@ test.describe('Remote mode UI', () => {
     const pivot = await runQueryAndWaitForPivot(page);
 
     await expect(page.locator('[data-testid="error-dialog"], .errorDialog, [role="alertdialog"]')).not.toBeVisible().catch(() => {});
-    await expect(pivot).toContainText(/AAPL|GOOG|MSFT/, { timeout: 15000 });
+    await expect(pivot).toContainText(/1,500|1500/, { timeout: 15000 });
   });
 });

@@ -13,6 +13,26 @@ const requestedProjectNames = process.env.PLAYWRIGHT_PROJECTS
 const defaultProjects = process.env.CI ? ['chromium'] : localProjects.map((project) => project.name);
 const selectedProjectNames = requestedProjectNames && requestedProjectNames.length ? requestedProjectNames : defaultProjects;
 const selectedProjects = localProjects.filter((project) => selectedProjectNames.includes(project.name));
+const liveRemoteEnabled = process.env.PLAYWRIGHT_REMOTE_LIVE === '1';
+const frontendServer = {
+  command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
+  url: 'http://127.0.0.1:8765',
+  reuseExistingServer: !process.env.CI,
+  timeout: 120000,
+};
+const liveRemoteServer = {
+  command: 'mkdir -p /tmp/huey-playwright-exports && '
+    + 'QUERYSERVICE_CORS_ORIGINS=\'["http://127.0.0.1:8765"]\' '
+    + 'QUERYSERVICE_SEED_SAMPLE_DATA=true '
+    + 'QUERYSERVICE_EXECUTION_MODE=sample_table '
+    + 'QUERYSERVICE_DATASETS_CONFIG_PATH=tests/ui/fixtures/queryservice-live-datasets.yaml '
+    + 'QUERYSERVICE_EXPORT_OUTPUT_DIR=/tmp/huey-playwright-exports '
+    + 'QUERYSERVICE_EXPORT_DB_PATH=/tmp/huey-playwright-exports/jobs.db '
+    + 'python -m uvicorn server.main:app --host 127.0.0.1 --port 8002',
+  url: 'http://127.0.0.1:8002/health/liveness',
+  reuseExistingServer: !process.env.CI,
+  timeout: 120000,
+};
 
 if (!selectedProjects.length) {
   throw new Error(
@@ -45,10 +65,5 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
   },
   projects: selectedProjects,
-  webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
-    url: 'http://127.0.0.1:8765',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  webServer: liveRemoteEnabled ? [liveRemoteServer, frontendServer] : frontendServer,
 });

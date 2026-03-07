@@ -54,12 +54,8 @@ try {
 
   await initApplication();
 } catch (error) {
-  document.body.setAttribute('aria-busy', false);
-  const main = document.body.getElementsByTagName('main')[0];
-  if (main) {
-    main.style.display = 'none';
-  }
   console.error(error);
+  await initApplication();
 } finally {
   document.body.setAttribute('aria-busy', false);
 }

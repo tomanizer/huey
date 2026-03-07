@@ -212,3 +212,38 @@ datasets:
             assert rows[0][0] == 8
         finally:
             Path(path).unlink()
+
+    def test_skips_dataset_with_seed_sample_data_opt_out(self, fresh_db: DuckDBManager) -> None:
+        config_yaml = """
+datasets:
+  - dataset_id: seeded_ds
+    fields:
+      - name: id
+        type: int64
+  - dataset_id: skipped_ds
+    seed_sample_data: false
+    fields:
+      - name: id
+        type: int64
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(config_yaml)
+            path = f.name
+        try:
+            with patch("server.datasets.get_settings") as mock_settings:
+                mock_settings.return_value = type("S", (), {
+                    "datasets_config_path": path,
+                    "seed_sample_data": True,
+                })()
+                load_sample_data(fresh_db)
+
+            seeded_tables = fresh_db.execute_sql(
+                "SELECT count(*) FROM information_schema.tables WHERE table_name = 'seeded_ds'"
+            )
+            skipped_tables = fresh_db.execute_sql(
+                "SELECT count(*) FROM information_schema.tables WHERE table_name = 'skipped_ds'"
+            )
+            assert seeded_tables[0][0] == 1
+            assert skipped_tables[0][0] == 0
+        finally:
+            Path(path).unlink()
