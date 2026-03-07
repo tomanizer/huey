@@ -4,6 +4,15 @@ All application settings are read from environment variables prefixed with `QUER
 
 Example: `QUERYSERVICE_PORT=8000` maps to `port` setting.
 
+## Security: Managing Credentials
+
+> **Never commit credentials or secrets to the repository.**
+>
+> - Copy `.env.example` from the repo root to `.env` and populate it with real values for local development.
+> - `.env` and `.env.*` are listed in `.gitignore` and will not be tracked by Git (except the safe `.env.example` template).
+> - For sensitive settings such as `QUERYSERVICE_API_KEYS` or AWS credentials, prefer your platform's secrets manager (e.g., AWS Secrets Manager, GitHub Actions secrets, Vault) over plain environment files.
+> - Run `git check-ignore -v .env .secrets` to confirm your local secret files are ignored before pushing.
+
 ## Core Server
 
 | Variable | Default | Type | Purpose |
