@@ -43,7 +43,7 @@ try {
   );
   const worker = new Worker(workerUrl);
   const loglevel = getDuckDbLogLevel(duckdb);
-  console.log(
+  console.warn(
     `Creating DuckDb Console Logger with level ${loglevel} (${duckdb.getLogLevelLabel(loglevel)}).`
   );
   const logger = new duckdb.ConsoleLogger(loglevel);

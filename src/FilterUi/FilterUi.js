@@ -317,6 +317,11 @@ export class FilterDialog {
         if (count === undefined) {
           this.#updatePicklist();
         }
+        else {
+          // Clear the picklist immediately on input so stale values can't be
+          // selected before the debounced query completes (fixes #381).
+          this.clearValuePicklist();
+        }
       },
       this,
       this.#getSearchAutoQueryTimeout.bind(this)

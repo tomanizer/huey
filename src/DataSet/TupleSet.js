@@ -85,8 +85,9 @@ export class TupleSet extends DataSetComponent {
 
   #tupleCount = undefined;
   #pageSize = 50;
-  #tupleAccessTimestamps = new Map();
-  #accessCounter = 0;
+  // Insertion-ordered map of index -> true; entries at the front are LRU.
+  // Touching a tuple deletes and re-inserts it to move it to the MRU end.
+  #tupleAccessOrder = new Map();
 
   constructor(queryModel, axisId, settings){
     super(queryModel, settings);
@@ -196,8 +197,7 @@ export class TupleSet extends DataSetComponent {
     this.#tupleCount = undefined;
     this.#tupleSerializedSizes.clear();
     this.#tupleCacheEntrySizeTotal = 0;
-    this.#tupleAccessTimestamps.clear();
-    this.#accessCounter = 0;
+    this.#tupleAccessOrder.clear();
   }
 
   clearCache(){
@@ -205,8 +205,9 @@ export class TupleSet extends DataSetComponent {
   }
 
   #touchTuple(index){
-    this.#accessCounter += 1;
-    this.#tupleAccessTimestamps.set(index, this.#accessCounter);
+    // Delete then re-insert to move this index to the MRU end of the map.
+    this.#tupleAccessOrder.delete(index);
+    this.#tupleAccessOrder.set(index, true);
   }
 
   #removeTuple(index){
@@ -216,7 +217,7 @@ export class TupleSet extends DataSetComponent {
       this.#tupleCacheEntrySizeTotal -= tupleSerializedSize;
       this.#tupleSerializedSizes.delete(index);
     }
-    this.#tupleAccessTimestamps.delete(index);
+    this.#tupleAccessOrder.delete(index);
   }
 
   static #cacheSizeJsonReplacer(_key, value){
@@ -281,19 +282,13 @@ export class TupleSet extends DataSetComponent {
     const maxSizeBytes = this.#getMaxCacheSizeBytes();
     let currentCacheSize = this.cacheSize;
 
-    while (this.#tupleAccessTimestamps.size > maxEntries || currentCacheSize > maxSizeBytes){
-      let oldestIndex;
-      let oldestAccess = Infinity;
-      this.#tupleAccessTimestamps.forEach((access, index) =>{
-        if (access < oldestAccess) {
-          oldestAccess = access;
-          oldestIndex = index;
-        }
-      });
-      if (oldestIndex === undefined){
+    while (this.#tupleAccessOrder.size > maxEntries || currentCacheSize > maxSizeBytes){
+      // The first entry in the insertion-ordered map is the LRU item.
+      const lruEntry = this.#tupleAccessOrder.keys().next();
+      if (lruEntry.done){
         break;
       }
-      this.#removeTuple(oldestIndex);
+      this.#removeTuple(lruEntry.value);
       currentCacheSize = this.cacheSize;
     }
   }

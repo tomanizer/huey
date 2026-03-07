@@ -16,7 +16,7 @@
     "test:coverage": "vitest run --coverage",
     "pretest:ui": "node scripts/check-node-version.js",
     "test:ui":   "playwright test",
-    "lint:js":   "eslint src/"
+    "lint:js":   "eslint src/ --max-warnings 47"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
