@@ -140,6 +140,7 @@ async function triggerUnhandledRejection(page, reason) {
     }
     const event = typeof PromiseRejectionEvent === 'function'
       ? new PromiseRejectionEvent('unhandledrejection', {
+          cancelable: true,
           promise: Promise.resolve(),
           reason: rejectionReason,
         })
