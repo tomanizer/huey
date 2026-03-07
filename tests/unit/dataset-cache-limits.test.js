@@ -170,7 +170,8 @@ describe('DataSet cache limits', () => {
       }
     };
 
-    const maxCacheSizeMb = 0.00007;
+    const maxCacheSizeBytes = 73;
+    const maxCacheSizeMb = maxCacheSizeBytes / (1024 * 1024);
     const tupleSet = new TupleSet(queryModel, 'rows', createSettings({
       tupleSetMaxCacheEntries: 10,
       tupleSetMaxCacheSizeMb: maxCacheSizeMb
@@ -182,7 +183,7 @@ describe('DataSet cache limits', () => {
     expect(tupleSet.getTupleSync(0)).toBeUndefined();
     expect(tupleSet.getTupleSync(1)).toBeUndefined();
     expect(tupleSet.getTupleSync(2)).toBeDefined();
-    expect(tupleSet.cacheSize).toBeLessThanOrEqual(maxCacheSizeMb * 1024 * 1024);
+    expect(tupleSet.cacheSize).toBeLessThanOrEqual(maxCacheSizeBytes);
   });
 
   test('CellSet evicts least-recently-used cells when entry limit is exceeded', async () => {

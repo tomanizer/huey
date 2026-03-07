@@ -3,6 +3,9 @@ import { SqlQueryGenerator } from './SqlQueryGenerator.js';
 import { QueryAxisItem } from '../QueryModel/QueryModel.js';
 import { RemoteQueryAdapter } from '../DataSource/remote/RemoteQueryAdapter.js';
 
+const JSON_OBJECT_BRACES_SIZE = 2;
+const JSON_OBJECT_KEY_VALUE_SEPARATOR_SIZE = 1;
+
 export class TupleSet extends DataSetComponent {
 
   static groupingIdAlias = '__huey_grouping_id';
@@ -226,7 +229,7 @@ export class TupleSet extends DataSetComponent {
   #getTupleSerializedSize(index, tuple){
     const keySize = JSON.stringify(String(index)).length;
     const valueSize = JSON.stringify(tuple, TupleSet.#cacheSizeJsonReplacer).length;
-    return keySize + 1 + valueSize;
+    return keySize + JSON_OBJECT_KEY_VALUE_SEPARATOR_SIZE + valueSize;
   }
 
   #storeTuple(index, tuple){
@@ -267,9 +270,10 @@ export class TupleSet extends DataSetComponent {
   get cacheSize(){
     const numCachedTuples = this.#tupleSerializedSizes.size;
     if (numCachedTuples === 0) {
-      return 2;
+      return JSON_OBJECT_BRACES_SIZE;
     }
-    return 2 + this.#tupleCacheEntrySizeTotal + numCachedTuples - 1;
+    const entrySeparatorCount = numCachedTuples - 1;
+    return JSON_OBJECT_BRACES_SIZE + this.#tupleCacheEntrySizeTotal + entrySeparatorCount;
   }
 
   #enforceCacheLimits(){
