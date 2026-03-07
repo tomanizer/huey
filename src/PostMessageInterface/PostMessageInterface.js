@@ -264,7 +264,7 @@ export class PostMessageInterface {
     }
   }
   
-  async #handleCreateDatasourceRequest(request, response){
+  #handleCreateDatasourceRequest(request, response){
     try {
       let body;
       let duckDbDataSource;
@@ -286,20 +286,26 @@ export class PostMessageInterface {
       }
       
       const datasources = [duckDbDataSource];
-      await datasourcesUi.addDatasources(datasources);
-      
-      if (body.selectForAnalysis === true){
-        analyzeDatasource(duckDbDataSource);
-      }
-      
-      response.status.code = PostMessageProtocol.STATUS_OK;
-      response.status.message = `Datasource '${duckDbDataSource.getId()}' created.`;
-      response.body = {
-        datasource: {
-          id: duckDbDataSource.getId(),
-          type: duckDbDataSource.getType()
+      return Promise.resolve(
+        datasourcesUi.addDatasources(datasources)
+      )
+      .then(() =>{
+        if (body.selectForAnalysis === true){
+          analyzeDatasource(duckDbDataSource);
         }
-      }
+        
+        response.status.code = PostMessageProtocol.STATUS_OK;
+        response.status.message = `Datasource '${duckDbDataSource.getId()}' created.`;
+        response.body = {
+          datasource: {
+            id: duckDbDataSource.getId(),
+            type: duckDbDataSource.getType()
+          }
+        };
+      })
+      .catch((error) =>{
+        this.#initInternalErrorResponse(error, response);
+      });
     }
     catch (error){
       this.#initInternalErrorResponse(error, response);
