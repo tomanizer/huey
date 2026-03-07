@@ -140,4 +140,53 @@ describe('CellSet clear and cache', () => {
     expect(cellSet.getCellValueFields()).toEqual({});
     expect(cellSet.cacheSize).toBe(2); // empty JSON '{}'
   });
+
+  test('records last and total query time for fetched cells', async () => {
+    const rowsAxisItems = [{ columnName: 'row_dim', columnType: 'VARCHAR' }];
+    const columnsAxisItems = [{ columnName: 'column_dim', columnType: 'VARCHAR' }];
+    const cellsAxisItems = [{ columnName: 'value', columnType: 'DOUBLE', aggregator: 'sum' }];
+    const connection = {
+      fetchCells() {
+        return {
+          cells: [{
+            row_index: 0,
+            column_index: 0,
+            values: {
+              2: 11
+            }
+          }]
+        };
+      },
+      getState() { return 'open'; },
+    };
+    const queryModel = {
+      getDatasource() {
+        return {
+          getType() { return 'remote'; },
+          getManagedConnection() { return connection; },
+        };
+      },
+      getRowsAxis() { return { getItems: () => rowsAxisItems }; },
+      getColumnsAxis() { return { getItems: () => columnsAxisItems }; },
+      getCellsAxis() { return { getItems: () => cellsAxisItems }; },
+      getFiltersAxis() { return { getItems: () => [] }; },
+    };
+    const rowsTupleSet = makeTupleSet(1, rowsAxisItems);
+    const columnsTupleSet = makeTupleSet(1, columnsAxisItems);
+    const cellSet = new CellSet(queryModel, [rowsTupleSet, columnsTupleSet], createSettings());
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(10)
+      .mockReturnValueOnce(18)
+      .mockReturnValueOnce(30)
+      .mockReturnValueOnce(35);
+
+    await cellSet.getCells([[0, 1], [0, 1]]);
+    expect(cellSet.getLastQueryTimeMs()).toBe(8);
+    expect(cellSet.getTotalQueryTimeMs()).toBe(8);
+
+    cellSet.clearCache();
+    await cellSet.getCells([[0, 1], [0, 1]]);
+    expect(cellSet.getLastQueryTimeMs()).toBe(5);
+    expect(cellSet.getTotalQueryTimeMs()).toBe(5);
+  });
 });

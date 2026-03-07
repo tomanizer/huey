@@ -35,6 +35,8 @@ export class CellSet extends DataSetComponent {
   #cellSerializedSizes = new Map();
   #accessCounter = 0;
   #cacheSize = CellSet.#emptyCacheSize;
+  #lastQueryTimeMs = undefined;
+  #totalQueryTimeMs = 0;
 
   static datasetRelationName = '__data';
   static #tupleDataRelationName = '__huey_tuples';
@@ -57,6 +59,8 @@ export class CellSet extends DataSetComponent {
     this.#cellSerializedSizes.clear();
     this.#accessCounter = 0;
     this.#cacheSize = CellSet.#emptyCacheSize;
+    this.#lastQueryTimeMs = undefined;
+    this.#totalQueryTimeMs = 0;
   }
 
   clearCache(){
@@ -164,6 +168,20 @@ export class CellSet extends DataSetComponent {
    */
   getCellValueFields(){
     return this.#cellValueFields;
+  }
+
+  getLastQueryTimeMs() {
+    return this.#lastQueryTimeMs;
+  }
+
+  getTotalQueryTimeMs() {
+    return this.#totalQueryTimeMs;
+  }
+
+  #recordQueryTime(startTime) {
+    const queryTimeMs = Math.round(performance.now() - startTime);
+    this.#lastQueryTimeMs = queryTimeMs;
+    this.#totalQueryTimeMs += queryTimeMs;
   }
 
   /**
@@ -589,7 +607,9 @@ export class CellSet extends DataSetComponent {
       const measureAliases = query.axes && query.axes.measures ? query.axes.measures.map((measure) => { return measure.alias; }) : [];
       const dateRange = RemoteQueryAdapter.getDateRange(queryModel);
       const connection = await this.getManagedConnection();
+      const startTime = performance.now();
       const apiResponse = await connection.fetchCells(dateRange, query);
+      this.#recordQueryTime(startTime);
       const resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases, measureValueOffset);
       return resultSet;
     }
@@ -600,7 +620,9 @@ export class CellSet extends DataSetComponent {
       cellsAxisItemsToFetch
     );
     const connection = await this.getManagedConnection();
+    const startTime = performance.now();
     const resultSet = await connection.query(sql);
+    this.#recordQueryTime(startTime);
     return resultSet;
   }
 

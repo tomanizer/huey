@@ -45,6 +45,7 @@ vi.mock('../../src/App/analyzeDatasource.js', () => ({
 }));
 
 import { PostMessageInterface, initPostMessageInterface } from '../../src/PostMessageInterface/PostMessageInterface.js';
+import { PostMessageProtocol } from '../../src/PostMessageInterface/PostMessageProtocol.js';
 
 describe('PostMessageInterface security hardening', () => {
   beforeAll(() => {
@@ -139,6 +140,28 @@ describe('PostMessageInterface security hardening', () => {
 
     expect(opener.postMessage).toHaveBeenCalledTimes(1);
     const [, options] = opener.postMessage.mock.calls[0];
+    expect(options.targetOrigin).toBe('http://trusted.test');
+    expect(options.targetOrigin).not.toBe('*');
+  });
+
+  test('sendMessage uses trusted target origin for performance events', () => {
+    const opener = { postMessage: vi.fn() };
+    vi.stubGlobal('opener', opener);
+    vi.spyOn(PostMessageInterface, 'getTargetOriginForHostingWindow').mockReturnValue('http://trusted.test');
+
+    window.postMessageInterface.sendMessage({
+      messageType: PostMessageProtocol.EVENT_PERFORMANCE,
+      body: {
+        queryTimeMs: 12,
+        renderTimeMs: 7,
+        totalTimeMs: 19
+      }
+    });
+
+    expect(opener.postMessage).toHaveBeenCalledTimes(1);
+    const [message, options] = opener.postMessage.mock.calls[0];
+    expect(message.messageType).toBe('performance');
+    expect(message.body.totalTimeMs).toBe(19);
     expect(options.targetOrigin).toBe('http://trusted.test');
     expect(options.targetOrigin).not.toBe('*');
   });

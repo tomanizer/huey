@@ -177,7 +177,8 @@ body {
       }
 
       > label[for=queryResultRowsInfo]:has( > output#queryResultRowsInfo:empty ),
-      > label[for=queryResultColumnsInfo]:has( > output#queryResultColumnsInfo:empty ) 
+      > label[for=queryResultColumnsInfo]:has( > output#queryResultColumnsInfo:empty ),
+      > label[for=queryPerformanceInfo]:has( > #queryPerformanceInfo[hidden] )
       {
         display: none;
       }
@@ -202,6 +203,14 @@ body {
         font-family: var( --huey-icon-font-family );
         font-size: var( --huey-icon-medium );
         content: var( --icon-table-row );
+      }
+
+      .performanceInfo {
+        font-size: 0.8em;
+        color: var( --huey-foreground-color-dimmed, #888 );
+        margin-left: 1em;
+        display: inline-flex;
+        gap: 0.75em;
       }
     }
     
@@ -248,5 +257,4 @@ body:has( #autoRunQuery:checked ) {
     }
   }
 }
-
 

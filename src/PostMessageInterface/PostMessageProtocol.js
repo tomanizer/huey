@@ -23,6 +23,9 @@ export class PostMessageProtocol {
   // )
   static REQUEST_MULTI = 'multi';
 
+  // one-way event sent by Huey to embedding applications with frontend performance metrics
+  static EVENT_PERFORMANCE = 'performance';
+
   // Values for messageType: response:
   
   static RESPONSE = 'response';

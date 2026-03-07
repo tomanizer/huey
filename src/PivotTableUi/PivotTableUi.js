@@ -443,6 +443,28 @@ export class PivotTableUi extends EventEmitter {
     return dom.getAttribute('aria-busy') === 'true';
   }
 
+  #getTotalQueryTimeMs() {
+    return [
+      this.#columnsTupleSet,
+      this.#rowsTupleSet,
+      this.#cellsSet
+    ].reduce((totalQueryTimeMs, dataSet) =>{
+      return totalQueryTimeMs + (dataSet.getTotalQueryTimeMs() || 0);
+    }, 0);
+  }
+
+  #updateLastMetrics(totalStartTime, initialQueryTimeMs) {
+    const totalTimeMs = Math.round(performance.now() - totalStartTime);
+    const queryTimeMs = Math.max(0, this.#getTotalQueryTimeMs() - initialQueryTimeMs);
+    this.#lastMetrics = {
+      queryTimeMs: queryTimeMs,
+      renderTimeMs: Math.max(0, totalTimeMs - queryTimeMs),
+      totalTimeMs: totalTimeMs,
+      rowCount: this.#rowsTupleSet.getTupleCountSync() || 0,
+      columnCount: this.#columnsTupleSet.getTupleCountSync() || 0
+    };
+  }
+
   #fireUpdatedSuccess(){
     const tupleCounts = {};
     tupleCounts[QueryModel.AXIS_ROWS] = this.#rowsTupleSet.getTupleCountSync();
@@ -471,8 +493,11 @@ export class PivotTableUi extends EventEmitter {
         return;
       }
       try {
+        const totalStart = performance.now();
+        const queryTimeStart = this.#getTotalQueryTimeMs();
         this.#setBusy(true);
         await this.#updateDataToScrollPosition();
+        this.#updateLastMetrics(totalStart, queryTimeStart);
         this.#fireUpdatedSuccess();
       }
       catch(error){
@@ -1807,6 +1832,7 @@ export class PivotTableUi extends EventEmitter {
       this.clear();
 
       const totalStart = performance.now();
+      const queryTimeStart = this.#getTotalQueryTimeMs();
 
       const columnsTupleSet = this.#columnsTupleSet;
       const rowsTupleSet = this.#rowsTupleSet;
@@ -1830,9 +1856,6 @@ export class PivotTableUi extends EventEmitter {
 
       const renderAxisPromisesResults = await Promise.all(renderAxisPromises);
 
-      const queryTimeMs = Math.round(performance.now() - totalStart);
-      const renderStart = performance.now();
-
       const columnTuples = renderAxisPromisesResults[0];
       this.#setHorizontalSize(0);
       this.#renderColumns(columnTuples);
@@ -1849,12 +1872,7 @@ export class PivotTableUi extends EventEmitter {
 
       await this.#updateDataToScrollPosition();
 
-      const renderTimeMs = Math.round(performance.now() - renderStart);
-      this.#lastMetrics = {
-        queryTimeMs: queryTimeMs,
-        renderTimeMs: renderTimeMs,
-        totalTimeMs: Math.round(performance.now() - totalStart)
-      };
+      this.#updateLastMetrics(totalStart, queryTimeStart);
 
       setTimeout(() =>{
         const columnsSizeInfo = this.#getColumnsAxisSizeInfo();

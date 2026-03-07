@@ -2095,7 +2095,10 @@
         </label>
 
         <label for="queryPerformanceInfo" title="Query and render performance timing.">
-          <output id="queryPerformanceInfo"/>
+          <span id="queryPerformanceInfo" class="performanceInfo" hidden>
+            <span id="queryTimeInfo" title="Query execution time"></span>
+            <span id="renderTimeInfo" title="Render time"></span>
+          </span>
         </label>
 
         <label for="aboutButton" title="About Huey...">

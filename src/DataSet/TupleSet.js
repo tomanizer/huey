@@ -87,6 +87,8 @@ export class TupleSet extends DataSetComponent {
   #pageSize = 50;
   #tupleAccessTimestamps = new Map();
   #accessCounter = 0;
+  #lastQueryTimeMs = undefined;
+  #totalQueryTimeMs = 0;
 
   constructor(queryModel, axisId, settings){
     super(queryModel, settings);
@@ -198,6 +200,8 @@ export class TupleSet extends DataSetComponent {
     this.#tupleCacheEntrySizeTotal = 0;
     this.#tupleAccessTimestamps.clear();
     this.#accessCounter = 0;
+    this.#lastQueryTimeMs = undefined;
+    this.#totalQueryTimeMs = 0;
   }
 
   clearCache(){
@@ -303,6 +307,20 @@ export class TupleSet extends DataSetComponent {
    */
   getTupleCountSync() {
     return this.#tupleCount;
+  }
+
+  getLastQueryTimeMs() {
+    return this.#lastQueryTimeMs;
+  }
+
+  getTotalQueryTimeMs() {
+    return this.#totalQueryTimeMs;
+  }
+
+  #recordQueryTime(startTime) {
+    const queryTimeMs = Math.round(performance.now() - startTime);
+    this.#lastQueryTimeMs = queryTimeMs;
+    this.#totalQueryTimeMs += queryTimeMs;
   }
 
   /**
@@ -458,12 +476,15 @@ export class TupleSet extends DataSetComponent {
       if (!query) return 0;
       const dateRange = RemoteQueryAdapter.getDateRange(queryModel);
       const connection = datasource.getManagedConnection();
+      const startTime = performance.now();
       let apiResponse;
       try {
         apiResponse = await connection.fetchTuples(dateRange, query);
       } catch (e) {
         console.error('Remote tuples fetch failed', e);
         throw e;
+      } finally {
+        this.#recordQueryTime(startTime);
       }
       if (connection.getState() === 'canceled') return 0;
       const axisItems = this.getQueryAxisItems();
@@ -478,8 +499,10 @@ export class TupleSet extends DataSetComponent {
     }
     axisSql = `${axisSql}\nLIMIT ${limit} OFFSET ${offset}`;
 
+    const startTime = performance.now();
     const connection = await this.getManagedConnection();
     const resultset = await connection.query(axisSql);
+    this.#recordQueryTime(startTime);
     const _rejects = await this.getQueryModel().getDatasource().getRejects();
     if (connection.getState() === 'canceled') {
       return 0;

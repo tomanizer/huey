@@ -166,6 +166,27 @@ describe('TupleSet core operations', () => {
     const tupleSet = new TupleSet(queryModel, 'columns', createSettings());
     expect(tupleSet.getQueryAxisId()).toBe('columns');
   });
+
+  test('records last and total query time for fetched tuples', async () => {
+    const datasource = makeRemoteDatasource(['A', 'B']);
+    const axisItems = [{ columnName: 'city', columnType: 'VARCHAR' }];
+    const queryModel = makeQueryModel(datasource, axisItems);
+    const tupleSet = new TupleSet(queryModel, 'rows', createSettings());
+    tupleSet.setPageSize(1);
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(112)
+      .mockReturnValueOnce(200)
+      .mockReturnValueOnce(207);
+
+    await tupleSet.getTuples(1, 0);
+    expect(tupleSet.getLastQueryTimeMs()).toBe(12);
+    expect(tupleSet.getTotalQueryTimeMs()).toBe(12);
+
+    await tupleSet.getTuples(1, 1);
+    expect(tupleSet.getLastQueryTimeMs()).toBe(7);
+    expect(tupleSet.getTotalQueryTimeMs()).toBe(19);
+  });
 });
 
 describe('TupleSet pagination', () => {

@@ -320,6 +320,22 @@ export class PostMessageInterface {
     }
     return undefined;
   }
+
+  sendMessage(message){
+    const hostingWindow = PostMessageInterface.getHostingWindow();
+    if (!hostingWindow) {
+      return false;
+    }
+
+    const targetOrigin = PostMessageInterface.getTargetOriginForHostingWindow();
+    if (!targetOrigin) {
+      console.warn('Could not determine trusted hosting window origin for postMessage.');
+      return false;
+    }
+
+    hostingWindow.postMessage(message, {targetOrigin: targetOrigin});
+    return true;
+  }
   
   sendReadyMessage(){
     if (!window.opener && window.parent === window) {
@@ -339,14 +355,13 @@ export class PostMessageInterface {
       }, params);
     }
     
-    const hostingWindow = PostMessageInterface.getHostingWindow();
     const targetOrigin = PostMessageInterface.getTargetOriginForHostingWindow();
     if (!targetOrigin) {
       console.warn('Could not determine trusted hosting window origin for ready message. Configure postMessageOrigins or use a trusted referrer origin.');
       return;
     }
     
-    hostingWindow.postMessage({
+    this.sendMessage({
       status: {
         code: PostMessageProtocol.STATUS_READY,
         message: 'Huey PostMessageInterface ready for requests.',
@@ -355,7 +370,7 @@ export class PostMessageInterface {
       body: {
         params: params
       }
-    }, {targetOrigin: targetOrigin});
+    });
   }
   
 }

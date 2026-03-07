@@ -20,6 +20,7 @@ import { initSessionCloner } from '../SessionCloner/SessionCloner.js';
 import { initQuickQueryMenu } from '../QuickQueryMenu/QuickQueryMenu.js';
 import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
 import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
+import { PostMessageProtocol } from '../PostMessageInterface/PostMessageProtocol.js';
 import { getConnection, setReservedWords } from '../DataSource/duckdb/database.js';
 import { Theme } from '../Theme/Theme.js';
 
@@ -189,7 +190,7 @@ export function initApplication(){
   }, null, 50);
 
   const tupleNumberFormatter = createNumberFormatter(0).format;
-  pivotTableUi.addEventListener('updated', async (e) =>{
+  pivotTableUi.addEventListener('updated', (e) =>{
     const eventData = e.eventData;
     const status = eventData.status;
     
@@ -225,18 +226,40 @@ export function initApplication(){
     byId('queryResultColumnsInfo').textContent = numColumnsTuples;
 
     const metrics = eventData.metrics;
+    const queryPerformanceInfo = byId('queryPerformanceInfo');
+    const queryTimeInfo = byId('queryTimeInfo');
+    const renderTimeInfo = byId('renderTimeInfo');
     if (metrics) {
-      byId('queryPerformanceInfo').textContent = `Query: ${metrics.queryTimeMs}ms | Render: ${metrics.renderTimeMs}ms`;
+      queryTimeInfo.textContent = `Query: ${metrics.queryTimeMs}ms`;
+      renderTimeInfo.textContent = `Render: ${metrics.renderTimeMs}ms`;
+      queryPerformanceInfo.hidden = false;
+      if (postMessageInterface && typeof postMessageInterface.sendMessage === 'function') {
+        postMessageInterface.sendMessage({
+          messageType: PostMessageProtocol.EVENT_PERFORMANCE,
+          body: {
+            queryTimeMs: metrics.queryTimeMs,
+            renderTimeMs: metrics.renderTimeMs,
+            totalTimeMs: metrics.totalTimeMs,
+            rowCount: metrics.rowCount,
+            columnCount: metrics.columnCount
+          }
+        });
+      }
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        // eslint-disable-next-line no-console
         console.log('[Performance]', {
           query: metrics.queryTimeMs + 'ms',
           render: metrics.renderTimeMs + 'ms',
           total: metrics.totalTimeMs + 'ms',
+          rows: metrics.rowCount,
+          columns: metrics.columnCount,
         });
       }
     }
     else {
-      byId('queryPerformanceInfo').textContent = '';
+      queryTimeInfo.textContent = '';
+      renderTimeInfo.textContent = '';
+      queryPerformanceInfo.hidden = true;
     }
   });
 
