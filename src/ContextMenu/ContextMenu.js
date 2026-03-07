@@ -84,6 +84,23 @@ export class ContextMenu {
         return;
       }
       popoverTargetDom.hidePopover();
+      menuItem.setAttribute('aria-expanded', 'false');
+    });
+    menuItem.addEventListener('click', (event) =>{
+      event.preventDefault();
+      if (!popoverTargetDom) {
+        return;
+      }
+      const itemBoundingRect = item.getBoundingClientRect();
+      if (popoverTargetDom.matches(':popover-open')) {
+        popoverTargetDom.hidePopover();
+        menuItem.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      popoverTargetDom.showPopover();
+      popoverTargetDom.style.left = (itemBoundingRect.x + itemBoundingRect.width) + 'px';
+      popoverTargetDom.style.top = itemBoundingRect.y + 'px';
+      menuItem.setAttribute('aria-expanded', 'true');
     });
   }
   
