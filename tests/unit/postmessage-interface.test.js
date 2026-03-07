@@ -228,6 +228,7 @@ describe('PostMessageInterface security hardening', () => {
     }));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
+
     const [response] = source.postMessage.mock.calls[0];
     expect(response.status.code).toBe('Ok');
     expect(response.body.datasource).toEqual({ id: 'test-ds-id', type: 'file' });

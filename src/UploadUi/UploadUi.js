@@ -54,7 +54,7 @@ export class UploadUi {
     });
   }
 
-  async #cancelUploads(){
+  #cancelUploads(){
     this.#cancelPendingUploads = true;
   }
 
