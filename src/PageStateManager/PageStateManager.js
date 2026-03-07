@@ -1,4 +1,4 @@
-import { byId } from '../util/dom/dom.js';
+import { byId, escapeHtmlText } from '../util/dom/dom.js';
 import { Routing } from '../Routing/Routing.js';
 import { Internationalization } from '../Internationalization/Internationalization.js';
 import { PromptUi } from '../PromptUi/PromptUi.js';
@@ -12,6 +12,16 @@ import { attributeUi } from '../AttributeUi/AttributeUi.js';
 import { analyzeDatasource } from '../App/analyzeDatasource.js';
 
 export class PageStateManager {
+
+  static #escapePromptText(text) {
+    return escapeHtmlText(String(text));
+  }
+
+  static #formatColumnForPrompt(columnName, columnType) {
+    const name = String(columnName);
+    const type = columnType ? String(columnType) : '';
+    return `${name}${type ? ` ${type}` : ''}`;
+  }
 
   constructor(){
     this.#initPopStateHandler();
@@ -83,10 +93,10 @@ export class PageStateManager {
           labelText: Internationalization.getText('Browse for a new Datasource')
         });
         title = 'Incompatible Datasource';
-        message = Internationalization.getText(
+        message = PageStateManager.#escapePromptText(Internationalization.getText(
           'The requested {1} {2} isn\'t compatible with your query.', 
           desiredDatasourceIdParts.type, desiredDatasourceIdParts.localId
-        );
+        ));
         
         if (newDatasources && newDatasources.length) {
           const mismatchedColumns = [];
@@ -112,16 +122,21 @@ export class PageStateManager {
           }
           const mismatchedColumnsString = mismatchedColumns.map((mismatchedColumnName) =>{
             const columnDef = referencedColumns[mismatchedColumnName];
-            return `${mismatchedColumnName} ${columnDef.columnType}`;
+            return PageStateManager.#formatColumnForPrompt(
+              mismatchedColumnName,
+              columnDef ? columnDef.columnType : undefined
+            );
           }).join(', ');
-          message += '\n' + Internationalization.getText('Missing or unmatched columns: {1}', mismatchedColumnsString);
+          message += '<br/>' + PageStateManager.#escapePromptText(
+            Internationalization.getText('Missing or unmatched columns: {1}', mismatchedColumnsString)
+          );
         }
       }
       else {
-        message = Internationalization.getText(
+        message = PageStateManager.#escapePromptText(Internationalization.getText(
           'The requested {1} {2} doesn\'t exist.', 
           desiredDatasourceIdParts.type, desiredDatasourceIdParts.localId
-        );
+        ));
         openNewDatasourceItem = DataSourceMenu.getDatasourceMenuItemHTML({
           datasourceType: desiredDatasourceIdParts.type,
           value: -1,
@@ -135,14 +150,17 @@ export class PageStateManager {
       let datasourceType;
       const compatibleDatasourceIds = compatibleDatasources ? Object.keys(compatibleDatasources) : [];
       if (compatibleDatasourceIds.length) {
-        message += '<br/>' + Internationalization.getText('Choose any of the compatible datasources instead, or browse for a new one:');
+        message += '<br/>' + PageStateManager.#escapePromptText(
+          Internationalization.getText('Choose any of the compatible datasources instead, or browse for a new one:')
+        );
         list += compatibleDatasourceIds.map((compatibleDatasourceId, index) =>{
           const compatibleDatasource = compatibleDatasources[compatibleDatasourceId];
           datasourceType = compatibleDatasource.getType();
+          let fileNameParts;
           switch (datasourceType) {
             case DuckDbDataSource.types.FILE:
               const fileName = compatibleDatasource.getFileName();
-              const _fileNameParts = DuckDbDataSource.getFileNameParts(fileName);
+              fileNameParts = DuckDbDataSource.getFileNameParts(fileName);
               break;
             default:
           }
@@ -175,7 +193,7 @@ export class PageStateManager {
             if (compatibleDatasources) {
               const promptUi = byId('promptUi');
               const radio = promptUi.querySelector('input[name=compatibleDatasources]:checked');
-              const chosenOption = parseInt(radio.value, 10);
+              const chosenOption = radio ? parseInt(radio.value, 10) : -1;
               if (chosenOption !== -1) {
                 const compatibleDatasourceId = radio ? compatibleDatasourceIds[chosenOption] : null;
                 const compatibleDatasource = compatibleDatasources[compatibleDatasourceId];

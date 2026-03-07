@@ -343,11 +343,18 @@ export class DataSourcesUi extends EventEmitter {
       ORDER BY table_schema, table_name
     `;
     const statement = await connection.prepare(sql);
-    const result = await statement.query(catalogName);
-    statement.close();
+    let result;
+    try {
+      result = await statement.query(catalogName);
+    } finally {
+      statement.close();
+    }
 
     const datasourceId = databaseDatasource.getId();
     const datasourceTreeNode = byId(datasourceId);
+    if (!datasourceTreeNode) {
+      return;
+    }
 
     const schemaNodes = {};
     for (let i = 0; i < result.numRows; i++){
@@ -360,7 +367,7 @@ export class DataSourcesUi extends EventEmitter {
         schemaNode = instantiateTemplate('dataSourceSchemaNode', datasourceId + ':' + schemaName);
         schemaNode.setAttribute('title', schemaName);
         schemaNode.setAttribute('data-catalog-name', catalogName);
-        schemaNode.setAttribute('data-schema-name', catalogName);
+        schemaNode.setAttribute('data-schema-name', schemaName);
         schemaNode.querySelector('span.label').textContent = schemaName;
         schemaNodes[schemaName] = schemaNode;
         datasourceTreeNode.appendChild(schemaNode);
@@ -395,16 +402,24 @@ export class DataSourcesUi extends EventEmitter {
   }
 
   async #loadDatasource(datasource) {
-    switch (datasource.getType()){
-      case DuckDbDataSource.types.FILE:
-        // noop, files can't be expanded.
-        break;
-      case DuckDbDataSource.types.DUCKDB:
-      case DuckDbDataSource.types.SQLITE:
-        this.#loadDatabaseDatasource(datasource);
-        break;
-      default:
-        console.error(`Don't know how to load datasource ${datasource.getId()} of type ${datasource.getType()}`);
+    try {
+      switch (datasource.getType()){
+        case DuckDbDataSource.types.FILE:
+          // noop, files can't be expanded.
+          break;
+        case DuckDbDataSource.types.DUCKDB:
+        case DuckDbDataSource.types.SQLITE:
+          await this.#loadDatabaseDatasource(datasource);
+          break;
+        default:
+          console.error(`Don't know how to load datasource ${datasource.getId()} of type ${datasource.getType()}`);
+      }
+    } catch (error) {
+      console.error('Failed to load datasource tree.', error);
+      showErrorDialog({
+        title: 'Failed to load datasource',
+        description: error?.message || String(error)
+      });
     }
   }
 
