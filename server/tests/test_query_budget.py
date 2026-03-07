@@ -114,8 +114,10 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
     client: TestClient, settings_override, monkeypatch
 ) -> None:
     """Timing out one request should not cause unrelated concurrent requests to fail."""
+    timeout_seconds = 0.2
+    slow_query_delay_seconds = timeout_seconds + 0.8
     settings_override(
-        query_timeout_seconds=0.2,
+        query_timeout_seconds=timeout_seconds,
         max_concurrent_queries=2,
         max_query_queue_depth=1,
     )
@@ -137,7 +139,7 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
 
         if call_number == 1:
             first_started.set()
-            await asyncio.sleep(1)
+            await asyncio.sleep(slow_query_delay_seconds)
             return [[-1]]
 
         return await original_execute(

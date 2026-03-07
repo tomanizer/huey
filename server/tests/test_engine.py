@@ -208,7 +208,7 @@ class TestDuckDBManager:
                 mgr.execute_sql_async(slow_query, cancel_handle=second_handle)
             )
 
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.1)
             first_handle.cancel()
 
             with pytest.raises(duckdb.InterruptException, match="Interrupted"):
