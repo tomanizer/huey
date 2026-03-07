@@ -102,6 +102,16 @@ jobs:
       - name: Run frontend unit tests
         run: npm run test:unit
 
+      - name: Run frontend coverage
+        run: npm run test:coverage
+
+      - name: Upload frontend coverage artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: coverage/
+
   frontend-lint:
     runs-on: ubuntu-latest
     steps:

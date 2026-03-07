@@ -181,4 +181,56 @@ describe('PostMessageInterface security hardening', () => {
     expect(response.status.code).toBe('Ok');
     expect(analyzeDatasource).toHaveBeenCalledTimes(1);
   });
+
+  test('setRoute request forwards route into the page state manager', async () => {
+    const { pageStateManager } = await import('../../src/PageStateManager/PageStateManager.js');
+    const source = { postMessage: vi.fn() };
+
+    window.dispatchEvent(new MessageEvent('message', {
+      origin: 'http://trusted.test',
+      source,
+      data: {
+        messageType: 'setRoute',
+        requestId: 'req-route',
+        body: {
+          route: '#/datasource/sales',
+        },
+      },
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(pageStateManager.setPageState).toHaveBeenCalledWith('#/datasource/sales');
+    expect(source.postMessage.mock.calls[0][0].status.code).toBe('Ok');
+  });
+
+  test('createDatasource without selectForAnalysis skips analyzeDatasource and returns datasource metadata', async () => {
+    const { DuckDbDataSource } = await import('../../src/DataSource/duckdb/DuckDbDataSource.js');
+    const { datasourcesUi } = await import('../../src/DataSource/DataSourcesUi.js');
+    const { analyzeDatasource } = await import('../../src/App/analyzeDatasource.js');
+
+    const mockInstance = { getId: vi.fn().mockReturnValue('test-ds-id'), getType: vi.fn().mockReturnValue('file') };
+    vi.mocked(DuckDbDataSource).mockImplementation(() => mockInstance);
+    vi.mocked(datasourcesUi.addDatasources).mockResolvedValue(undefined);
+    vi.mocked(analyzeDatasource).mockImplementation(() => {});
+
+    const source = { postMessage: vi.fn() };
+    window.dispatchEvent(new MessageEvent('message', {
+      origin: 'http://trusted.test',
+      source,
+      data: {
+        messageType: 'createDatasource',
+        requestId: 'req-create',
+        body: {
+          datasourceConfig: { type: 'file' },
+          selectForAnalysis: false,
+        },
+      },
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const [response] = source.postMessage.mock.calls[0];
+    expect(response.status.code).toBe('Ok');
+    expect(response.body.datasource).toEqual({ id: 'test-ds-id', type: 'file' });
+    expect(analyzeDatasource).not.toHaveBeenCalled();
+  });
 });
