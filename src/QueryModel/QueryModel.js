@@ -67,6 +67,7 @@ export class QueryModel extends EventEmitter {
   #datasource = undefined;
   #datasourcesUi = undefined;
   #sampling = undefined;
+  #boundDestroyDatasourceHandler = this.#destroyDatasourceHandler.bind(this);
 
   /**
    * @param {{settings?: Object, datasourcesUi?: Object}} [config]
@@ -212,7 +213,7 @@ export class QueryModel extends EventEmitter {
     this.fireEvent('beforechange', eventData);
 
     if (oldDatasource) {
-      this.#datasource.removeEventListener('destroy', this.#destroyDatasourceHandler.bind(this));
+      oldDatasource.removeEventListener('destroy', this.#boundDestroyDatasourceHandler);
     }
 
     if (dontClear !== true) {
@@ -222,7 +223,7 @@ export class QueryModel extends EventEmitter {
     this.#datasource = datasource;
 
     if (datasource){
-      datasource.addEventListener('destroy', this.#destroyDatasourceHandler.bind(this));
+      datasource.addEventListener('destroy', this.#boundDestroyDatasourceHandler);
     }
 
     this.fireEvent('change', eventData);

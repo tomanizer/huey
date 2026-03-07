@@ -43,4 +43,16 @@ describe('PromptUi content rendering', () => {
     document.getElementById('promptUi').dispatchEvent(new Event('close'));
     await promptPromise;
   });
+
+  test('resets stale return values before showing a new prompt', async () => {
+    const { PromptUi } = await setupPromptUi();
+    const promptPromise = PromptUi.show({
+      title: 'Fresh prompt',
+      contents: 'Nothing selected yet'
+    });
+
+    document.getElementById('promptUi').dispatchEvent(new Event('close'));
+
+    await expect(promptPromise).resolves.toBe('');
+  });
 });

@@ -2,6 +2,8 @@
 import { QueryModel } from '../QueryModel/QueryModel.js';
 
 export class Routing {
+
+  static #maxRouteLength = 8192;
  
   static getQueryModelStateFromRoute(route){
     try {
@@ -41,6 +43,10 @@ export class Routing {
     const ascii = encodeURIComponent( json );
     const base64 = btoa( ascii ); 
     const route = base64;
+    if (route.length > Routing.#maxRouteLength) {
+      console.warn(`Route too large to store in location hash (${route.length} > ${Routing.#maxRouteLength}).`);
+      return undefined;
+    }
     return route;
   }
 

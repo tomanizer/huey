@@ -64,6 +64,7 @@ def test_tuples_cache_hit(monkeypatch, client: TestClient) -> None:
     r2 = client.post("/query/tuples", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
+    assert r1.json() == r2.json()
     assert call_count["n"] == 1
 
 
@@ -87,6 +88,38 @@ def test_picklist_cache_hit(monkeypatch, client: TestClient) -> None:
     r2 = client.post("/query/picklist", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
+    assert r1.json() == r2.json()
+    assert call_count["n"] == 1
+
+
+def test_cells_cache_hit(monkeypatch, client: TestClient) -> None:
+    _enable_cache(monkeypatch)
+    call_count = {"n": 0}
+    original = db_manager.execute_sql_async
+
+    async def counted(*args, **kwargs):
+        call_count["n"] += 1
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", counted)
+
+    body = {
+        "dataset_id": "trades_v1",
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "query": {
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            }
+        },
+    }
+    r1 = client.post("/query/cells", json=body)
+    r2 = client.post("/query/cells", json=body)
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.json()["cells"]
+    assert r1.json() == r2.json()
     assert call_count["n"] == 1
 
 
@@ -104,12 +137,19 @@ def test_cells_not_cached_when_too_large(monkeypatch, client: TestClient) -> Non
     body = {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {},
+        "query": {
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+            }
+        },
     }
     r1 = client.post("/query/cells", json=body)
     r2 = client.post("/query/cells", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
+    assert r1.json()["cells"]
     assert call_count["n"] == 2
 
 

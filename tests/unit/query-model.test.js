@@ -186,6 +186,29 @@ describe('QueryModel', () => {
     );
   });
 
+  test('setDatasource removes and reuses the same destroy listener', () => {
+    const datasource1 = {
+      getId: () => 'ds1',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const datasource2 = {
+      getId: () => 'ds2',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const model = createModel();
+
+    model.setDatasource(datasource1);
+    model.setDatasource(datasource2);
+
+    const addedListener = datasource1.addEventListener.mock.calls[0][1];
+    const removedListener = datasource1.removeEventListener.mock.calls[0][1];
+    expect(typeof addedListener).toBe('function');
+    expect(removedListener).toBe(addedListener);
+    expect(datasource2.addEventListener.mock.calls[0][1]).toBe(addedListener);
+  });
+
   test('compareStates detects added items', () => {
     const oldState = { axes: { rows: [] } };
     const newState = {
