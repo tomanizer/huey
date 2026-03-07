@@ -111,6 +111,8 @@ describe('QueryUi core interaction flows', () => {
 
     expect(model.getRowsAxis().getItems().map((item) => item.columnName)).toEqual(['city']);
     expect(model.getColumnsAxis().getItems().map((item) => item.columnName)).toEqual(['country']);
+    expect(document.querySelector('#queryUi-rows li span').textContent).toBe('city');
+    expect(document.querySelector('#queryUi-columns li span').textContent).toBe('country');
 
     document.querySelector('#queryUi-cells button[id$="-axis-primary-action"]').click();
     expect(model.getCellHeadersAxis()).toBe(QueryModel.AXIS_ROWS);

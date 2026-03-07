@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const tupleSetInstances = [];
 const cellSetInstances = [];
+const VARCHAR_TYPE_ID = 5;
+const DOUBLE_TYPE_ID = -12;
 
 vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
   settings: {
@@ -47,7 +49,7 @@ vi.mock('../../src/DataSet/TupleSet.js', () => {
       });
       this.getPageSize = vi.fn(() => this.pageSize);
       this.getTupleCountSync = vi.fn(() => (axisId === 'rows' ? 1 : 0));
-      this.getTupleValueFields = vi.fn(() => [{ name: 'country', type: { typeId: -12, toString: () => 'VARCHAR' } }]);
+      this.getTupleValueFields = vi.fn(() => [{ name: 'country', type: { typeId: VARCHAR_TYPE_ID, toString: () => 'VARCHAR' } }]);
       this.getQueryAxisItems = vi.fn(() => {
         if (axisId === 'rows') {
           return [{ axis: 'rows', columnName: 'country', columnType: 'VARCHAR' }];
@@ -76,7 +78,7 @@ vi.mock('../../src/DataSet/CellSet.js', () => {
       this.cancelPendingQuery = vi.fn().mockResolvedValue(undefined);
       this.clearCache = vi.fn();
       this.getCellIndex = vi.fn(() => 0);
-      this.getCellValueFields = vi.fn(() => ({ sales_sum: { type: { typeId: -12, toString: () => 'DOUBLE' } } }));
+      this.getCellValueFields = vi.fn(() => ({ sales_sum: { type: { typeId: DOUBLE_TYPE_ID, toString: () => 'DOUBLE' } } }));
       this.getCells = vi.fn(async () => ({
         0: {
           values: {
@@ -272,8 +274,7 @@ describe('PivotTableUi lifecycle flows', () => {
     });
 
     document.getElementById('cancelQueryButton').click();
-    await Promise.resolve();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(tupleSetInstances[0].cancelPendingQuery).toHaveBeenCalledTimes(1);
     expect(tupleSetInstances[1].cancelPendingQuery).toHaveBeenCalledTimes(1);

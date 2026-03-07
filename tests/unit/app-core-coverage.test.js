@@ -200,13 +200,13 @@ describe('App core initialization and query flows', () => {
     const duckdb = { LogLevel: { INFO: 1, DEBUG: 2 } };
 
     expect(module.getDuckDbLogLevel(duckdb)).toBe(2);
-    expect(module.duckDbRowToJSON({ toJSON: () => ({ count: 7n }) })).toContain('"count": 7');
+    expect(JSON.parse(module.duckDbRowToJSON({ toJSON: () => ({ count: 7n }) }))).toEqual({ count: 7 });
   });
 
   test('initDuckdbVersion populates version info and falls back gracefully on query errors', async () => {
     const success = await loadAppModule();
     success.module.initDuckdbVersion();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(document.getElementById('duckdbVersionLabel').textContent).toBe('DuckDB v1.2.3, API: wasm');
     expect(success.calls.setReservedWords).toHaveBeenCalledWith(['select', 'from']);
@@ -215,8 +215,7 @@ describe('App core initialization and query flows', () => {
       connectionQuery: vi.fn().mockRejectedValue(new Error('network failed')),
     });
     failure.module.initDuckdbVersion();
-    await Promise.resolve();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(document.getElementById('duckdbVersionLabel').textContent).toBe('DuckDB version unknown');
   });

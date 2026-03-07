@@ -36,6 +36,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const DOUBLE_TYPE_ID = -12;
+
 function createSettings(overrides) {
   const querySettings = Object.assign({
     cellSetMaxCacheEntries: 1000,
@@ -146,6 +148,6 @@ describe('CellSet cell fetching flows', () => {
     expect(fetchCells).toHaveBeenCalledTimes(1);
     expect(firstFetch[0].values[measureSql]).toBe(42);
     expect(secondFetch[0].values[measureSql]).toBe(42);
-    expect(cellSet.getCellValueFields()[measureSql].type.typeId).toBe(-12);
+    expect(cellSet.getCellValueFields()[measureSql].type.typeId).toBe(DOUBLE_TYPE_ID);
   });
 });
