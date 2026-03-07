@@ -36,6 +36,13 @@ Run tests:
 ./.venv-server/bin/pytest server/tests -q
 ```
 
+Run backend lint locally:
+
+```bash
+./.venv-server/bin/pip install ruff
+./.venv-server/bin/ruff check server/
+```
+
 ## Rate limiting behind reverse proxies
 
 When running behind nginx/Caddy/ALB/Cloudflare, set
