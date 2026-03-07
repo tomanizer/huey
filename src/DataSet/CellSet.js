@@ -34,7 +34,7 @@ export class CellSet extends DataSetComponent {
   #cellAccessTimestamps = new Map();
   #cellSerializedSizes = new Map();
   #accessCounter = 0;
-  #cacheSize = 2;
+  #cacheSize = CellSet.#emptyCacheSize;
 
   static datasetRelationName = '__data';
   static #tupleDataRelationName = '__huey_tuples';
@@ -42,6 +42,8 @@ export class CellSet extends DataSetComponent {
   static #countStarExpressionAlias = '__huey_count_star';
   static #defaultMaxCacheEntries = 10000;
   static #defaultMaxCacheSizeMb = 50;
+  static #emptyCacheSize = JSON.stringify({}).length;
+  static #serializedEntrySeparatorSize = 1;
 
   constructor(queryModel, tupleSets, settings){
     super(queryModel, settings);
@@ -54,7 +56,7 @@ export class CellSet extends DataSetComponent {
     this.#cellAccessTimestamps.clear();
     this.#cellSerializedSizes.clear();
     this.#accessCounter = 0;
-    this.#cacheSize = 2;
+    this.#cacheSize = CellSet.#emptyCacheSize;
   }
 
   clearCache(){
@@ -70,10 +72,10 @@ export class CellSet extends DataSetComponent {
     const serializedSize = this.#cellSerializedSizes.get(cellIndex);
     if (serializedSize !== undefined) {
       if (this.#cellSerializedSizes.size === 1) {
-        this.#cacheSize = 2;
+        this.#cacheSize = CellSet.#emptyCacheSize;
       }
       else {
-        this.#cacheSize -= serializedSize - 1;
+        this.#cacheSize -= serializedSize - CellSet.#serializedEntrySeparatorSize;
       }
       this.#cellSerializedSizes.delete(cellIndex);
     }
@@ -130,7 +132,7 @@ export class CellSet extends DataSetComponent {
       this.#cacheSize = serializedSize;
     }
     else {
-      this.#cacheSize += serializedSize - 1;
+      this.#cacheSize += serializedSize - CellSet.#serializedEntrySeparatorSize;
     }
     this.#cellSerializedSizes.set(cellIndex, serializedSize);
   }

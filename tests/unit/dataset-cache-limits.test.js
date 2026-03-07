@@ -315,6 +315,7 @@ describe('DataSet cache limits', () => {
     );
     await sizingCellSet.getCells([[0, 1], [0, 1]]);
     const singleCellCacheSize = sizingCellSet.cacheSize;
+    const smallerThanSingleCellCacheSizeMb = (singleCellCacheSize - 1) / (1024 * 1024);
 
     fetchCellsCallCount = 0;
     const cellSet = new CellSet(
@@ -322,7 +323,7 @@ describe('DataSet cache limits', () => {
       [rowsTupleSet, columnsTupleSet],
       createSettings({
         cellSetMaxCacheEntries: 10,
-        cellSetMaxCacheSizeMb: Math.max(1, singleCellCacheSize - 1) / (1024 * 1024)
+        cellSetMaxCacheSizeMb: smallerThanSingleCellCacheSizeMb
       })
     );
 
