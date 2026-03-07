@@ -1,6 +1,5 @@
 import { bufferEvents } from '../util/event/EventBuffer.js';
 import { getChildWithClassName } from '../util/dom/dom.js';
-import { TupleSet } from '../DataSet/TupleSet.js';
 import { QueryModel, QueryAxisItem } from '../QueryModel/QueryModel.js';
 import { getTotalsItemsIndices, isTotalsMember } from './PivotTableUiUtils.js';
 
