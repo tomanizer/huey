@@ -114,20 +114,37 @@ def test_queue_depth_rejects_overflow(
     assert second_result.json()["code"] == "TOO_MANY_QUERIES"
 
 
-def test_timeout_uses_per_query_cancel_not_global_interrupt(
+def test_timing_out_one_request_does_not_break_other_concurrent_requests(
     client: TestClient, settings_override, monkeypatch
 ) -> None:
-    """When a query times out the per-cursor cancel_fn is used; the global
-    db_manager.interrupt() must NOT be called, so other concurrent queries
-    on the shared connection are unaffected (#194)."""
-    settings_override(query_timeout_seconds=0.0001)
+    """Timing out one request should not cause unrelated concurrent requests to fail."""
+    timeout_seconds = 0.2
+    slow_query_delay_seconds = timeout_seconds + 0.8
+    settings_override(
+        query_timeout_seconds=timeout_seconds,
+        max_concurrent_queries=2,
+        max_query_queue_depth=1,
+    )
 
-    global_interrupt_called = {"called": False}
+    original_execute = db_manager.execute_sql_async
+    monkeypatch.setattr(
+        db_manager,
+        "interrupt",
+        lambda: pytest.fail("db_manager.interrupt() should not be used for query-scoped timeouts"),
+    )
+    first_started = threading.Event()
+    call_lock = threading.Lock()
+    call_count = {"value": 0}
 
-    def mock_global_interrupt() -> None:
-        global_interrupt_called["called"] = True
+    async def mock_execute(_sql, _params=None, *, dataset_id=None, cancel_handle=None):
+        with call_lock:
+            call_count["value"] += 1
+            call_number = call_count["value"]
 
-    monkeypatch.setattr(db_manager, "interrupt", mock_global_interrupt)
+        if call_number == 1:
+            first_started.set()
+            await asyncio.sleep(slow_query_delay_seconds)
+            return [[-1]]
 
     r = client.post("/query/cells", json=_cells_body())
     assert r.status_code == 504
@@ -245,3 +262,35 @@ def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
     poll_count, execution_ms = asyncio.run(scenario())
     allowed_poll_count = math.ceil(execution_ms / (poll_interval_seconds * 1000)) + 2
     assert poll_count <= allowed_poll_count
+        return await original_execute(
+            "SELECT 42 AS v",
+            None,
+            dataset_id=dataset_id,
+            cancel_handle=cancel_handle,
+        )
+
+    monkeypatch.setattr(db_manager, "execute_sql_async", mock_execute)
+
+    request_body = _cells_body()
+
+    first_client = None
+    second_client = None
+    try:
+        first_client = TestClient(client.app)
+        second_client = TestClient(client.app)
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            first = pool.submit(first_client.post, "/query/cells", json=request_body)
+            assert first_started.wait(timeout=5)
+            second_result = second_client.post("/query/cells", json=request_body)
+            first_result = first.result(timeout=10)
+    finally:
+        if first_client is not None:
+            first_client.close()
+        if second_client is not None:
+            second_client.close()
+
+    assert first_result.status_code == 504
+    assert first_result.json()["code"] == "QUERY_TIMEOUT"
+    assert second_result.status_code == 200
+    assert second_result.json()["cells"] == [{"row_index": 0, "values": {"0": 42}}]

@@ -2,15 +2,17 @@
 const { expect } = require('@playwright/test');
 
 async function openApp(page) {
-  await page.goto('/index.html');
+  const response = await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  expect(response, 'Expected the Huey app entrypoint to respond.').not.toBeNull();
+  expect(response && response.ok(), 'Expected the Huey app entrypoint to load successfully.').toBe(true);
 }
 
 async function waitForAppReady(page) {
   await openApp(page);
   await expect(page.locator('body')).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
-  await expect(page.locator('#layout')).toBeAttached({ timeout: 60000 });
-  await expect(page.locator('#layout menu[role="toolbar"] label[for="uploader"]')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('#layout')).toBeVisible({ timeout: 60000 });
   await expect(page.locator('#uploader')).toBeAttached({ timeout: 20000 });
+  await expect(page.locator('#runQueryButton')).toBeVisible({ timeout: 30000 });
 }
 
 async function uploadFixtureAndWaitForAttributes(page, fixturePath) {
@@ -79,41 +81,75 @@ async function addAggregateMeasure(page, columnName, aggregator) {
 
   const checkedMeasureInputs = columnNode.locator('label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"]:checked');
   const checkedCount = await checkedMeasureInputs.count();
+  const activeAggregators = [];
   for (let i = 0; i < checkedCount; i++) {
-    const checkedInput = checkedMeasureInputs.nth(i);
-    const activeAggregator = await checkedInput.getAttribute('data-aggregator');
+    const activeAggregator = await checkedMeasureInputs.nth(i).getAttribute('data-aggregator');
+    activeAggregators.push(activeAggregator);
+  }
+
+  for (const activeAggregator of activeAggregators) {
     if (activeAggregator !== aggregator) {
-      await checkedInput.click();
+      const checkedLabel = columnNode.locator(`label.attributeUiAxisButton[data-axis="cells"]:has(> input[type="checkbox"][data-aggregator="${activeAggregator}"])`).first();
+      await expect(checkedLabel).toBeVisible({ timeout: 15000 });
+      await checkedLabel.click();
     }
   }
 
-  const measureInput = columnNode.locator(`label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"][data-aggregator="${aggregator}"]`).first();
-  await expect(measureInput).toBeVisible({ timeout: 15000 });
+  const measureLabel = columnNode.locator(`label.attributeUiAxisButton[data-axis="cells"]:has(> input[type="checkbox"][data-aggregator="${aggregator}"])`).first();
+  await expect(measureLabel).toBeVisible({ timeout: 15000 });
+  const measureInput = measureLabel.locator(`input[type="checkbox"][data-aggregator="${aggregator}"]`).first();
   if (!(await measureInput.isChecked())) {
-    await measureInput.click();
+    await measureLabel.click();
   }
 }
 
 async function runQueryAndWaitForPivot(page) {
-  await page.evaluate(() => {
-    const runButton = document.getElementById('runQueryButton');
-    if (runButton) {
-      runButton.click();
-    }
-  });
-
-  await page.evaluate(() => {
-    return import('/PivotTableUi/PivotTableUi.js').then((module) => {
-      if (module.pivotTableUi && typeof module.pivotTableUi.updatePivotTableUi === 'function') {
-        module.pivotTableUi.updatePivotTableUi();
-      }
-    });
-  });
+  const runButton = page.locator('#runQueryButton');
+  await expect(runButton).toBeVisible({ timeout: 15000 });
+  await runButton.click();
 
   const pivot = page.locator('#pivotTableUi');
   await expect(pivot).toBeVisible({ timeout: 60000 });
   await expect(pivot).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
   return pivot;
+}
+
+async function triggerUnhandledRejection(page, reason) {
+  let payload;
+  if (typeof reason === 'string') {
+    payload = { type: 'string', value: reason };
+  } else if (reason instanceof Error) {
+    payload = { type: 'error', message: reason.message, name: reason.name || 'Error' };
+  } else if (reason && typeof reason === 'object' && 'message' in reason) {
+    payload = {
+      type: 'error',
+      message: String(reason.message),
+      name: typeof reason.name === 'string' ? reason.name : 'Error',
+    };
+  } else {
+    payload = { type: 'string', value: String(reason) };
+  }
+
+  await page.evaluate((rejection) => {
+    let rejectionReason;
+    if (rejection.type === 'error') {
+      rejectionReason = new Error(rejection.message);
+      rejectionReason.name = rejection.name;
+    } else {
+      rejectionReason = rejection.value;
+    }
+    const event = typeof PromiseRejectionEvent === 'function'
+      ? new PromiseRejectionEvent('unhandledrejection', {
+          cancelable: true,
+          promise: Promise.resolve(),
+          reason: rejectionReason,
+        })
+      : Object.assign(new Event('unhandledrejection', { cancelable: true }), {
+          promise: Promise.resolve(),
+          reason: rejectionReason,
+        });
+    window.dispatchEvent(event);
+  }, payload);
 }
 
 module.exports = {
@@ -125,4 +161,5 @@ module.exports = {
   addSymbolFilterAxis,
   addAggregateMeasure,
   runQueryAndWaitForPivot,
+  triggerUnhandledRejection,
 };

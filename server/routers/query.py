@@ -241,7 +241,10 @@ async def post_query_cells(
 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
-        sql, params = build_cells_sql(body.dataset_id, body.query, body.date_range, schema_fields)
+        effective_max = settings.max_cells_per_response
+        sql, params = build_cells_sql(
+            body.dataset_id, body.query, body.date_range, schema_fields, max_cells=effective_max + 1
+        )
 
         async def _run_query():
             return await db_manager.execute_sql_async(
@@ -253,6 +256,25 @@ async def post_query_cells(
 
         rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
         duration_ms = (time.perf_counter() - start) * 1000
+        if len(rows) > effective_max:
+            logger.warning(
+                "cells query cap exceeded",
+                extra={
+                    "dataset_id": body.dataset_id,
+                    "endpoint": "cells",
+                    "cap": effective_max,
+                    "returned_count": len(rows),
+                    "min_result_count": effective_max + 1,
+                },
+            )
+            raise CellsWindowTooLargeError(
+                "Cells query result exceeds maximum cells per response",
+                {
+                    "max_cells_per_response": effective_max,
+                    "returned_count": len(rows),
+                    "min_result_count": effective_max + 1,
+                },
+            )
         cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
         return {
             "response": {"cells": cells},

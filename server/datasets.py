@@ -20,6 +20,11 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from server.config import get_settings
 from server.engine import DuckDBManager
 from server.errors import DatasetConfigError
+from server.models import (
+    DateRangeSpanLimitError,
+    raise_date_range_validation_error,
+    validate_date_range_span,
+)
 from server.utils import quote_identifier
 
 logger = logging.getLogger("query_service.datasets")
@@ -157,6 +162,10 @@ def _canonical_json(obj: Any) -> str:
 def _dates_for_scope(date_range: Any) -> set[str] | None:
     if date_range is None:
         return None
+    try:
+        validate_date_range_span(date_range, get_settings().max_date_range_days)
+    except DateRangeSpanLimitError as exc:
+        raise_date_range_validation_error(exc)
     dtype = getattr(date_range, "type", None)
     if dtype is None and isinstance(date_range, dict):
         dtype = date_range.get("type")
