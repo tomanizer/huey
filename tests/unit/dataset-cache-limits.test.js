@@ -93,6 +93,54 @@ describe('DataSet cache limits', () => {
     expect(tupleSet.cacheSize).toBe(2);
   });
 
+  test('TupleSet updates LRU order when a cached tuple is read before eviction', async () => {
+    const allValues = ['A', 'B', 'C'];
+    const connection = {
+      fetchTuples(dateRange, query) {
+        const paging = query.paging || {};
+        const limit = paging.limit || allValues.length;
+        const offset = paging.offset || 0;
+        const items = allValues.slice(offset, offset + limit).map((value) => ({ values: [value] }));
+        return { items, total_count: allValues.length };
+      },
+      getState() {
+        return 'open';
+      }
+    };
+    const datasource = {
+      getType() {
+        return 'remote';
+      },
+      getManagedConnection() {
+        return connection;
+      }
+    };
+    const axisItems = [{ columnName: 'city', columnType: 'VARCHAR' }];
+    const queryModel = {
+      getDatasource() {
+        return datasource;
+      },
+      getQueryAxis() {
+        return { getItems: () => axisItems };
+      },
+      getFiltersAxis() {
+        return { getItems: () => [] };
+      }
+    };
+
+    const tupleSet = new TupleSet(queryModel, 'rows', createSettings({ tupleSetMaxCacheEntries: 2 }));
+    tupleSet.setPageSize(2);
+
+    await tupleSet.getTuples(2, 0);
+    expect(tupleSet.getTupleSync(0)).toBeDefined();
+
+    await tupleSet.getTuples(1, 2);
+
+    expect(tupleSet.getTupleSync(0)).toBeDefined();
+    expect(tupleSet.getTupleSync(1)).toBeUndefined();
+    expect(tupleSet.getTupleSync(2)).toBeDefined();
+  });
+
   test('TupleSet cache sizing handles BigInt tuple values without crashing', async () => {
     const connection = {
       fetchTuples(dateRange, query) {
