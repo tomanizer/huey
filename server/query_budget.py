@@ -38,6 +38,11 @@ class QueryBudget:
         )
 
     async def _run_cleanup_shielded(self, cleanup: Awaitable[None]) -> None:
+        """Finish critical cleanup even if the caller is cancelled.
+
+        Cancellation is re-raised only after the shielded cleanup coroutine has
+        completed so queue and slot counters cannot leak under lock contention.
+        """
         cleanup_task = asyncio.create_task(cleanup)
         try:
             await asyncio.shield(cleanup_task)
@@ -46,12 +51,24 @@ class QueryBudget:
             raise
 
     async def _finalize_acquire(self, acquired: bool) -> None:
+        """Update queued and active counters after an acquire attempt.
+
+        This must be executed through ``_run_cleanup_shielded()`` so
+        cancellation while waiting for ``_queue_lock`` cannot skip the counter
+        updates.
+        """
         async with self._queue_lock:
             self._waiting = max(0, self._waiting - 1)
             if acquired:
                 self._active += 1
 
     async def _release_slot(self) -> None:
+        """Drop the active count and release the semaphore for a held slot.
+
+        This must be executed through ``_run_cleanup_shielded()`` so
+        cancellation while waiting for ``_queue_lock`` cannot leak a held slot,
+        and semaphore release still happens even if counter cleanup fails.
+        """
         try:
             async with self._queue_lock:
                 self._active = max(0, self._active - 1)
