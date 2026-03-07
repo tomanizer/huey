@@ -13,6 +13,7 @@ const requestedProjectNames = process.env.PLAYWRIGHT_PROJECTS
 const defaultProjects = process.env.CI ? ['chromium'] : localProjects.map((project) => project.name);
 const selectedProjectNames = requestedProjectNames && requestedProjectNames.length ? requestedProjectNames : defaultProjects;
 const selectedProjects = localProjects.filter((project) => selectedProjectNames.includes(project.name));
+const reuseExistingServer = !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === '1';
 
 if (!selectedProjects.length) {
   throw new Error(
@@ -23,7 +24,6 @@ if (!selectedProjects.length) {
 
 module.exports = defineConfig({
   testDir: 'tests/ui',
-  outputDir: 'test-results/playwright-output',
   timeout: 120000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -46,9 +46,11 @@ module.exports = defineConfig({
   },
   projects: selectedProjects,
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
+    command: 'node scripts/playwright-web-server.cjs',
     url: 'http://127.0.0.1:8765',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    reuseExistingServer,
+    stdout: 'pipe',
+    stderr: 'pipe',
+    timeout: 180000,
   },
 });

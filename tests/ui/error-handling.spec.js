@@ -1,19 +1,17 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { waitForAppReady } = require('./helpers/app-bootstrap');
+const { waitForAppReady, triggerUnhandledRejection } = require('./helpers/app-bootstrap');
 
 test.describe('Error handling', () => {
-  test('renders error dialog for thrown errors', async ({ page }) => {
+  test('renders error dialog for unhandled promise rejections', async ({ page }) => {
     await waitForAppReady(page);
 
-    await page.evaluate(async () => {
-      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
-      showErrorDialog(new Error('Simulated failure for testing'));
-    });
+    await triggerUnhandledRejection(page, new Error('Simulated failure for testing'));
 
     const dialog = page.locator('#errorDialog');
     await expect(dialog).toBeVisible({ timeout: 5000 });
-    await expect(dialog.locator('#errorDialogTitle')).toContainText(/Simulated failure/);
+    await expect(dialog.locator('#errorDialogTitle')).toContainText(/Unexpected error/);
+    await expect(dialog.locator('#errorDialogDescription')).toContainText(/Simulated failure/);
 
     await page.click('#errorDialogOkButton');
     await expect(dialog).not.toBeVisible();
@@ -35,13 +33,7 @@ test.describe('Error handling', () => {
     await waitForAppReady(page);
     const longDescription = Array.from({ length: 40 }, (_, index) => `Error line ${index + 1}`).join('\n');
 
-    await page.evaluate(async (description) => {
-      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
-      showErrorDialog({
-        title: 'Long error details',
-        description,
-      });
-    }, longDescription);
+    await triggerUnhandledRejection(page, longDescription);
 
     const dialog = page.locator('#errorDialog');
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -55,16 +47,13 @@ test.describe('Error handling', () => {
   test('latest error message replaces previous error content', async ({ page }) => {
     await waitForAppReady(page);
 
-    await page.evaluate(async () => {
-      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
-      showErrorDialog(new Error('First message'));
-      showErrorDialog(new Error('Second message'));
-    });
+    await triggerUnhandledRejection(page, new Error('First message'));
+    await triggerUnhandledRejection(page, new Error('Second message'));
 
     const dialog = page.locator('#errorDialog');
     await expect(dialog).toBeVisible({ timeout: 5000 });
-    await expect(dialog.locator('#errorDialogTitle')).toContainText(/Second message/);
-    await expect(dialog.locator('#errorDialogTitle')).not.toContainText(/First message/);
+    await expect(dialog.locator('#errorDialogTitle')).toContainText(/Unexpected error/);
+    await expect(dialog.locator('#errorDialogDescription')).toContainText(/Second message/);
     await expect(dialog.locator('#errorDialogDescription')).not.toContainText(/First message/);
   });
 });
