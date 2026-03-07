@@ -70,6 +70,11 @@ async function addFilterAxis(page, columnName) {
   await expect(filterToggle).toBeVisible({ timeout: 15000 });
   await filterToggle.click();
   await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveCount(1, { timeout: 30000 });
+  const filterDialog = page.locator('#filterDialog');
+  if (await filterDialog.isVisible().catch(() => false)) {
+    await page.locator('#filterDialogCancelButton').click();
+    await expect(filterDialog).not.toBeVisible({ timeout: 10000 });
+  }
 }
 
 async function addAggregateMeasure(page, columnName, aggregator) {
@@ -112,7 +117,9 @@ async function runQueryAndWaitForPivot(page) {
   const runButton = page.locator('#runQueryButton');
   await expect(runButton).toBeAttached({ timeout: 15000 });
   if (await runButton.isVisible()) {
-    await runButton.click();
+    await runButton.evaluate((button) => {
+      button.click();
+    });
   } else {
     const autoRun = page.locator('#autoRunQuery');
     await expect(autoRun).toBeChecked({ timeout: 5000 });
