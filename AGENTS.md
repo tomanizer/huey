@@ -1,116 +1,47 @@
-# AGENTS.md
+# Repository Guidelines
 
-Guidance for coding agents working in this repository.
+## Project Structure & Module Organization
+Huey combines a Vite-based frontend with a FastAPI backend. Keep changes scoped to the area you touch.
 
-## 1) Project overview
+- `src/` — vanilla JS UI, datasource adapters, and query state modules.
+- `server/` — QueryService API, DuckDB engine, config, middleware, and backend tests.
+- `tests/unit/` — Vitest coverage for frontend modules.
+- `tests/ui/` — Playwright end-to-end UI coverage.
+- `docs/` — architecture notes plus backend references such as `docs/server/api-reference.md`.
 
-Huey is a browser-based analytics app with:
+## Build, Test, and Development Commands
+Install frontend dependencies from the repo root with `npm ci`.
 
-- **Frontend**: vanilla JS app under `src/`, built with Vite.
-- **Backend (QueryService)**: FastAPI + DuckDB service under `server/`.
+- `npm run dev` — start the Vite frontend locally.
+- `npm run build` — create a production frontend build.
+- `npm run lint:js` — run ESLint on `src/`.
+- `npm run test:unit` — run frontend unit tests with Vitest.
+- `npm run test:ui` — run Playwright UI tests.
+- `python3 -m venv .venv-server && ./.venv-server/bin/pip install -r server/requirements.txt` — set up the backend environment.
+- `./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000` — run the backend locally.
+- `./.venv-server/bin/pytest server/tests -q` — run backend tests.
 
-Primary docs:
+## Coding Style & Naming Conventions
+Match the existing style rather than introducing new patterns.
 
-- `README.md` (project overview)
-- `docs/server/README.md` (backend docs index)
-- `docs/server/api-reference.md` (backend API contracts)
+- Frontend: ES modules, vanilla JS, and component-style folders under `src/`; use PascalCase for UI module directories and files like `QuickQueryMenu/QuickQueryMenu.js`.
+- Backend: follow Python conventions with `snake_case` modules, FastAPI routers, and reusable utilities in `server/`.
+- Use existing linters and format naturally for the language; avoid broad refactors or unnecessary abstractions.
 
-## 2) Repository map
+## Testing Guidelines
+Add or update tests for behavior changes, especially API contracts and query flows.
 
-- `src/` – frontend app code (UI, datasource adapters, query model)
-- `server/` – backend API, engine, config, tests
-- `tests/unit/` – frontend unit tests (Vitest)
-- `tests/ui/` – Playwright UI tests
-- `docs/` – architecture, orchestration, and server docs
+- Frontend tests use Vitest in `tests/unit/`.
+- UI tests use Playwright in `tests/ui/`.
+- Backend tests live in `server/tests/` and use `pytest` with `test_*.py` naming.
+- Before finishing, run the suites relevant to your change and note anything skipped.
 
-## 3) Environment and setup
+## Commit & Pull Request Guidelines
+Recent history favors short, imperative commit subjects such as `Fix nested context menu keyboard navigation` or scoped series like `Phase 2: extract QueryModelConstants...`.
 
-From repo root:
+- Keep commit messages concise, specific, and action-oriented.
+- PRs should summarize the change, list validation performed, and link related issues.
+- Include screenshots or UI notes for visible frontend changes.
 
-```bash
-npm ci
-```
-
-Backend virtualenv (recommended for backend changes):
-
-```bash
-python3 -m venv .venv-server
-./.venv-server/bin/pip install -r server/requirements.txt
-```
-
-## 4) Common commands
-
-Frontend:
-
-```bash
-npm run dev
-npm run build
-npm run lint:js
-npm run test:unit
-npm run test:ui
-```
-
-Backend:
-
-```bash
-./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000
-./.venv-server/bin/pytest server/tests -q
-```
-
-## 5) Change rules for agents
-
-1. Keep changes tightly scoped to the task; avoid unrelated refactors.
-2. Preserve existing architecture and module boundaries.
-3. Prefer minimal, readable fixes over broad rewrites.
-4. Update docs when behavior, config, or API contracts change.
-5. Do not commit secrets or environment-specific credentials.
-
-## 6) Frontend guidance
-
-- Maintain current vanilla-JS style and existing component/module patterns.
-- Keep both local datasource flows and remote datasource flows working.
-- For query/state behavior, check interactions between:
-  - `src/QueryModel/`
-  - `src/DataSource/`
-  - `src/QueryUi/`
-
-## 7) Backend guidance
-
-- Keep API responses consistent with docs in `docs/server/`.
-- Reuse existing utilities/modules (errors, config, budgets, caching) before adding new abstractions.
-- Add or update tests in `server/tests/` for endpoint or behavior changes.
-
-## 8) Validation checklist (before finishing)
-
-Run what is relevant to your change:
-
-- `npm run lint:js`
-- `npm run test:unit`
-- `./.venv-server/bin/pytest server/tests -q`
-
-For UI-facing changes, run Playwright when feasible:
-
-- `npm run test:ui`
-
-If any suite cannot be run, clearly document what was skipped and why.
-
-## Cursor Cloud specific instructions
-
-These notes are for Cursor Cloud agents running in an auto-provisioned VM where the update script (managed by `SetupVmEnvironment`, not a file in the repo) has already installed dependencies.
-
-### Backend dev server
-
-The QueryService defaults to `/data/exports` for export storage, which doesn't exist in the Cloud VM. Override the export path when starting the backend:
-
-```bash
-PYTHONPATH=. QUERYSERVICE_EXPORT_OUTPUT_DIR=/tmp/huey-exports QUERYSERVICE_EXPORT_DB_PATH=/tmp/huey-exports/jobs.db \
-  .venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 8000
-```
-
-### Backend linting
-
-`ruff` is not in `server/requirements.txt`; install it in the venv (`pip install ruff`) before running `ruff check server/`. The VM update script handles this automatically.
-
-### Autorun Query
-
-When testing the frontend UI manually, the "Autorun Query" setting may be disabled by default. Enable it via Settings > Query tab, or click the play button in the toolbar after configuring a query.
+## Security & Configuration Tips
+Do not commit secrets or machine-specific settings. If backend behavior or responses change, update the corresponding docs in `docs/server/`. Reuse existing backend utilities for errors, caching, budgets, and config before adding new modules.
