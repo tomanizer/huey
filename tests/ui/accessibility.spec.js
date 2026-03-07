@@ -131,9 +131,12 @@ test.describe('Accessibility', () => {
     await uploadFixtureAndWaitForAttributes(page, fixturePath);
     await addFilterAxis(page, 'symbol');
 
+    const filterDialog = page.locator('#filterDialog');
     const editFilterButton = page.getByTestId('edit-filter-condition-button').first();
-    await editFilterButton.click();
-    await expect(page.locator('#filterDialog')).toBeVisible({ timeout: 15000 });
+    if (!(await filterDialog.isVisible().catch(() => false))) {
+      await editFilterButton.click();
+      await expect(filterDialog).toBeVisible({ timeout: 15000 });
+    }
 
     const picklistOption = page.locator('#filterPicklist option').first();
     await expect(picklistOption).toHaveAttribute('aria-selected', 'false');
