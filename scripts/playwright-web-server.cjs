@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const rootDir = process.cwd();
-const logPath = path.join(rootDir, 'playwright-results', 'test-results', 'webserver.log');
+const logPath = path.resolve(rootDir, process.env.PLAYWRIGHT_WEB_SERVER_LOG_PATH || 'playwright-results/webserver.log');
 
 fs.mkdirSync(path.dirname(logPath), { recursive: true });
 fs.writeFileSync(logPath, '');

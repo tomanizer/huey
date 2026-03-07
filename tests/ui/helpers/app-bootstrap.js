@@ -81,11 +81,15 @@ async function addAggregateMeasure(page, columnName, aggregator) {
 
   const checkedMeasureInputs = columnNode.locator('label.attributeUiAxisButton[data-axis="cells"] > input[type="checkbox"]:checked');
   const checkedCount = await checkedMeasureInputs.count();
+  const activeAggregators = [];
   for (let i = 0; i < checkedCount; i++) {
-    const checkedInput = checkedMeasureInputs.nth(i);
-    const activeAggregator = await checkedInput.getAttribute('data-aggregator');
+    const activeAggregator = await checkedMeasureInputs.nth(i).getAttribute('data-aggregator');
+    activeAggregators.push(activeAggregator);
+  }
+
+  for (const activeAggregator of activeAggregators) {
     if (activeAggregator !== aggregator) {
-      const checkedLabel = checkedInput.locator('xpath=..');
+      const checkedLabel = columnNode.locator(`label.attributeUiAxisButton[data-axis="cells"]:has(> input[type="checkbox"][data-aggregator="${activeAggregator}"])`).first();
       await expect(checkedLabel).toBeVisible({ timeout: 15000 });
       await checkedLabel.click();
     }
@@ -111,9 +115,20 @@ async function runQueryAndWaitForPivot(page) {
 }
 
 async function triggerUnhandledRejection(page, reason) {
-  const payload = typeof reason === 'string'
-    ? { type: 'string', value: reason }
-    : { type: 'error', message: reason.message, name: reason.name || 'Error' };
+  let payload;
+  if (typeof reason === 'string') {
+    payload = { type: 'string', value: reason };
+  } else if (reason instanceof Error) {
+    payload = { type: 'error', message: reason.message, name: reason.name || 'Error' };
+  } else if (reason && typeof reason === 'object' && 'message' in reason) {
+    payload = {
+      type: 'error',
+      message: String(reason.message),
+      name: typeof reason.name === 'string' ? reason.name : 'Error',
+    };
+  } else {
+    payload = { type: 'string', value: String(reason) };
+  }
 
   await page.evaluate((rejection) => {
     let rejectionReason;
