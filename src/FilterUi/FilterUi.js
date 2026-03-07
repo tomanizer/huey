@@ -229,6 +229,7 @@ export class FilterDialog {
     this.#initSearchQueryHandler();
     this.#initAddFilterValueButton();
     this.#getValuePicklist().addEventListener('change', this.#updateAllListAriaSelected.bind(this));
+    this.#getValuePicklist().addEventListener('click', this.#updateAllListAriaSelected.bind(this));
     this.#updateAllListAriaSelected();
   }
 
@@ -240,6 +241,7 @@ export class FilterDialog {
   #initFilterValuesList(){
     const filterValuesList = this.#getFilterValuesList();
     filterValuesList.addEventListener('change', this.#handleFilterValuesListChange.bind(this));
+    filterValuesList.addEventListener('click', this.#updateAllListAriaSelected.bind(this));
     filterValuesList.addEventListener('keydown', this.#handleFilterValuesListKeyDown.bind(this));
   }
 
@@ -247,6 +249,7 @@ export class FilterDialog {
     const toFilterValuesList = this.#getToFilterValuesList();
 
     toFilterValuesList.addEventListener('change', this.#handleToFilterValuesListChange.bind(this));
+    toFilterValuesList.addEventListener('click', this.#updateAllListAriaSelected.bind(this));
     toFilterValuesList.addEventListener('keydown', this.#handleFilterValuesListKeyDown.bind(this));
 
     // When the filterType is set to a range type (BETWEEN/NOTBETWEEN), the two value lists share a scrollbar.
