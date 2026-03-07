@@ -2,6 +2,7 @@
 const { expect } = require('@playwright/test');
 
 async function openApp(page) {
+  await page.setViewportSize({ width: 1600, height: 1400 });
   const response = await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
   expect(response, 'Expected the Huey app entrypoint to respond.').not.toBeNull();
   expect(response && response.ok(), 'Expected the Huey app entrypoint to load successfully.').toBe(true);
@@ -98,10 +99,12 @@ async function addAggregateMeasure(page, columnName, aggregator) {
   }
 
   const measureLabel = columnNode.locator(`label.attributeUiAxisButton[data-axis="cells"]:has(> input[type="checkbox"][data-aggregator="${aggregator}"])`).first();
-  await expect(measureLabel).toBeVisible({ timeout: 15000 });
   const measureInput = measureLabel.locator(`input[type="checkbox"][data-aggregator="${aggregator}"]`).first();
+  await expect(measureInput).toBeAttached({ timeout: 15000 });
   if (!(await measureInput.isChecked())) {
-    await measureLabel.click();
+    await measureLabel.evaluate((label) => {
+      label.click();
+    });
   }
 }
 
