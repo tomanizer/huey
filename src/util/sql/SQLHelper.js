@@ -8,6 +8,8 @@ import { getReservedWords } from '../../DataSource/duckdb/database.js';
  * @property {'spaceAfter'|'newlineAfter'|'newlineBefore'} [commaStyle]
  */
 
+// ─── Locale / Settings Utilities ──────────────────────────────────────────────
+
 /**
  * @param {string} columnType
  * @returns {string}
@@ -39,6 +41,8 @@ export function getLocales(){
  * @param {{scale: number}} type
  * @returns {string}
  */
+// ─── Formatters — Numbers ─────────────────────────────────────────────────────
+
 export function getArrowDecimalAsString(value, type){
   if (value === null) {
     return 'NULL';
@@ -140,6 +144,8 @@ export function createNumberFormatter(fractionDigits){
  * @param {boolean} [withTimeZone]
  * @returns {(value: *, field?: Object) => string}
  */
+// ─── Formatters — Timestamps and Dates ────────────────────────────────────────
+
 export function createTimestampFormatter(_withTimeZone){
   // we will receive the value as a javascript Number, representing the milliseconds since Epoch,
   // allowing us to use the value directly as argumnet to the Date constructor.
@@ -274,6 +280,8 @@ export function createLocalDateFormatter(){
     return dateFormatter.format(value);
   }
 }
+
+// ─── Formatters — Month and Day Names ────────────────────────────────────────
 
 export function createMonthNameList(modifier){
   const dateFormatter = createDateFormatter({
@@ -433,6 +441,8 @@ export function weekNumFormatter(weekNum){
   return weekNum;
 }
 
+// ─── Literal Writers ──────────────────────────────────────────────────────────
+
 // value: arrow value.
 // type: arrow type
 export function getDuckDbLiteralForValue(value, type){
@@ -559,6 +569,8 @@ export function getDuckDbLiteralForValue(value, type){
   }
   return literal;
 }
+
+// ─── Data Type Registry ───────────────────────────────────────────────────────
 
 export const dataTypes = {
   'DECIMAL': {
@@ -849,7 +861,10 @@ export const dataTypes = {
     hasDateFields: true,
     hasTimeFields: true,
     hasTimezone: true,
-    //TODO: find a way to pass thetime zone into the formatter
+    // Known limitation: timezone offset is not applied to the display formatter.
+    // The formatter always shows the local browser time. Fixing this requires
+    // threading the timezone string through to createTimestampFormatter.
+    // Tracked as a known gap; see also hasTimezone above.
     createFormatter: function(){
       return createTimestampFormatter(true);
     },
@@ -970,6 +985,8 @@ export function getDataTypeInfo(columnType){
  * @param {string} str
  * @returns {string}
  */
+// ─── String and Identifier Quoting ────────────────────────────────────────────
+
 export function quoteStringLiteral(str){
   return typeof str === 'string'  ? `'${str.replace(/'/g, "''")}'` : str; 
 }
@@ -1203,6 +1220,8 @@ export async function ensureDuckDbExtensionLoadedAndInstalled(extensionName, rep
  * @param {Object.<string, string|number|boolean>} options
  * @returns {string}
  */
+// ─── SQL Statement Builders ───────────────────────────────────────────────────
+
 export function getCopyToStatement(selectStatement, fileName, options){
   const optionsString = Object
   .keys(options)
@@ -1278,6 +1297,8 @@ export function getSqlValuesClause(valueLiterals, tableAlias, columnAlias){
   }
   return valuesClause;
 }
+
+// ─── Composite Type Inspection — STRUCT ───────────────────────────────────────
 
 export function getStructTypeDescriptor(structColumnType){
   let index = 0;
@@ -1361,6 +1382,8 @@ export function getStructTypeDescriptor(structColumnType){
   return structure;
 }
 
+// ─── Composite Type Inspection — MAP ─────────────────────────────────────────
+
 export function getMapKeyValueType(mapType){
   if (!isMapType(mapType)){
     throw new Error(`Expected a MAP type`)
@@ -1416,6 +1439,8 @@ export function getMapEntryType(mapType){
   return `STRUCT(key ${keyType}, value ${valueType})`;
 }
 
+// ─── Composite Type Inspection — ARRAY ───────────────────────────────────────
+
 export function getArrayElementType(arrayType){
   if (!isArrayType(arrayType)){
     throw new Error(`Expected an array type`);
@@ -1442,6 +1467,8 @@ export function isStructType(dataType) {
 export function isStringType(dataType){
   return dataType === 'VARCHAR' || dataType === 'BLOB';
 }
+
+// ─── Member Expression Utilities ──────────────────────────────────────────────
 
 export function getMemberExpressionType(type, memberExpressionPath){
   if (memberExpressionPath.length) {
@@ -1508,6 +1535,8 @@ export function extrapolateColumnExpression(expressionTemplate, columnExpression
   return expressionTemplate.replace(/\$\{columnExpression\}/g, `${columnExpression}`);
 }
 
+// ─── Sampling ─────────────────────────────────────────────────────────────────
+
 export function getUsingSampleClause(samplingConfig, useTableSample){
   const size = samplingConfig.size || 100;
   const unit = samplingConfig.unit || 'ROWS';
@@ -1522,6 +1551,8 @@ export function getUsingSampleClause(samplingConfig, useTableSample){
   }
   return sampleClause;
 }
+
+// ─── Aggregation Helpers ──────────────────────────────────────────────────────
 
 export function getMedianReturnDataTypeForArgumentDataType(argumentDataType){
   const argumentTypeInfo = getDataTypeInfo(argumentDataType);

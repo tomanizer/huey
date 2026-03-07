@@ -239,6 +239,8 @@ export class FilterDialog {
     this.#updateValueSelectionStatusText();
   }
 
+  // ─── Event Wiring ─────────────────────────────────────────────────────────
+
   #initFilterValuesList(){
     const filterValuesList = this.#getFilterValuesList();
     filterValuesList.addEventListener('change', this.#handleFilterValuesListChange.bind(this));
@@ -595,6 +597,8 @@ export class FilterDialog {
     return optionObjects;
   }
 
+  // ─── Value Picklist Building ───────────────────────────────────────────────
+
   #createOptionElementFromValues(valueObject){
     const optionElement = createEl('option', {
       value: valueObject.value,
@@ -860,6 +864,8 @@ export class FilterDialog {
     this.#updateAllListAriaSelected();
   }
 
+  // ─── DOM Accessors ────────────────────────────────────────────────────────
+
   #getDialogButtons(){
     const filterDialog = this.getDom();
     const footer = filterDialog.getElementsByTagName('footer').item(0);
@@ -1054,6 +1060,8 @@ export class FilterDialog {
     this.#updateValueSelectionStatusText();
     this.#updateAllListAriaSelected();
   }
+
+  // ─── Dialog State / SQL Generation ────────────────────────────────────────
 
   #getDialogState(){
     const filterValuesList = this.#getFilterValuesList();

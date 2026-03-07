@@ -1,3 +1,19 @@
+/**
+ * @module PivotTableUi
+ * Renders a pivot table from a QueryModel and manages user interaction.
+ *
+ * Lifecycle phases:
+ *   1. init          — constructor, #initSettings, #initResizeObserver, #initScrollListener
+ *   2. query change  — #handleQueryModelChange → updatePivotTableUi → #loadAndRender
+ *   3. render        — #renderHeader, #renderRows, #renderCells, #removeExcess*
+ *   4. scroll        — #handleInnerContainerScrolled → #loadAndRender (partial update)
+ *   5. resize        — #handleDomResized → updatePivotTableUi (full re-render after debounce)
+ *                      #handleColumnHeaderResized → column width bookkeeping
+ *   6. context menu  — #initContextMenu, event delegation on right-click
+ *
+ * Data flow:  QueryModel → TupleSet/CellSet → DOM
+ */
+
 import { EventEmitter } from '../util/event/EventEmitter.js';
 import { bufferEvents } from '../util/event/EventBuffer.js';
 import { byId, instantiateTemplate, hasClass, getChildWithClassName, createEl, registerTemplates } from '../util/dom/dom.js';
@@ -36,10 +52,10 @@ export class PivotTableUi extends EventEmitter {
 
   #resizeObserver = undefined;
   #resizeTimeoutId = undefined;
-  #resizeTimeout = 1000;
-  #scrollTimeout = 500;
+  #resizeTimeout = 150;
+  #scrollTimeout = 150;
 
-  #columnHeaderResizeTimeout = 500;
+  #columnHeaderResizeTimeout = 150;
   #columnHeaderResizeTimeoutId = undefined;
 
   // the maximum width in ch units
@@ -77,6 +93,8 @@ export class PivotTableUi extends EventEmitter {
     this.#initCancelQueryButtonClickHandler();
 
   }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
 
   #initDom(config) {
     const dom = instantiateTemplate(PivotTableUi.#templateId, config.id)
@@ -208,6 +226,8 @@ export class PivotTableUi extends EventEmitter {
     }
   }
 
+  // ─── Resize / Scroll Handlers ─────────────────────────────────────────────
+
   #handleDomResized(){
     if (this.#resizeTimeoutId !== undefined) {
       clearTimeout(this.#resizeTimeoutId);
@@ -272,6 +292,8 @@ export class PivotTableUi extends EventEmitter {
       this.#columnHeaderResizeTimeoutId = undefined;
     }, this.#columnHeaderResizeTimeout);
   }
+
+  // ─── Settings / State ─────────────────────────────────────────────────────
 
   #initSettings(settings){
     this.#settings = settings;
@@ -491,6 +513,8 @@ export class PivotTableUi extends EventEmitter {
       return;
     }
   }
+
+  // ─── Geometry / Tuple Index Calculations ──────────────────────────────────
 
   #getPhysicalTupleIndices(){
     const innerContainer = this.#getInnerContainerDom();
@@ -1236,6 +1260,8 @@ export class PivotTableUi extends EventEmitter {
     }
   }
 
+  // ─── Rendering ────────────────────────────────────────────────────────────
+
   #renderHeader() {
     const tableHeaderDom = this.#getTableHeaderDom();
     const tableBodyDom = this.#getTableBodyDom();
@@ -1786,6 +1812,8 @@ export class PivotTableUi extends EventEmitter {
     return _getMaxCellWidth(this.#settings);
   }
 
+  // ─── Public API ───────────────────────────────────────────────────────────
+
   async updatePivotTableUi(){
     if (this.#getBusy()) {
       return;
@@ -1897,6 +1925,8 @@ export class PivotTableUi extends EventEmitter {
   getDom(){
     return document.getElementById(this.#id);
   }
+
+  // ─── DOM Accessors ────────────────────────────────────────────────────────
 
   #getInnerContainerDom(){
     return getChildWithClassName(this.getDom(), 'pivotTableUiInnerContainer');
@@ -2093,6 +2123,8 @@ export class PivotTableUi extends EventEmitter {
     const tableDom = this.#getTableDom();
     return getChildWithClassName(tableDom, 'pivotTableUiTableBody');
   }
+
+  // ─── Context Menu ─────────────────────────────────────────────────────────
 
   #contextMenuContext = null;
   beforeShowContextMenu(event, _contextMenu){
