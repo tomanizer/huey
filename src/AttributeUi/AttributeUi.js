@@ -783,10 +783,16 @@ export class AttributeUi {
     };
   }
 
-  constructor(id, queryModel){
+  constructor(config, queryModel){
     registerTemplates(attributeTemplatesHtml);
-    this.#id = id;
-    this.#queryModel = queryModel;
+    if (typeof config === 'object' && config !== null) {
+      this.#id = config.id;
+      this.#queryModel = config.queryModel;
+    }
+    else {
+      this.#id = config;
+      this.#queryModel = queryModel;
+    }
 
     const dom = this.getDom();
     dom.addEventListener('click', this.#clickHandler.bind(this));
@@ -1611,6 +1617,13 @@ export class AttributeUi {
 }
 
 export let attributeUi;
-export function initAttributeUi(){
-  attributeUi = new AttributeUi('attributeUi', queryModel);
+export function initAttributeUi(context){
+  attributeUi = new AttributeUi({
+    id: 'attributeUi',
+    queryModel: context && context.has('queryModel') ? context.queryModel : queryModel
+  });
+  if (context) {
+    context.register('attributeUi', attributeUi);
+  }
+  return attributeUi;
 }

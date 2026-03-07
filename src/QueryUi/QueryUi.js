@@ -16,7 +16,7 @@ export class QueryUi {
   #id = undefined;
   #container = undefined;
   #queryModel = undefined;
-  #filterDialog = filterDialog;
+  #filterDialog = undefined;
 
   constructor(config){
     registerTemplates(queryUiTemplatesHtml);
@@ -170,7 +170,7 @@ export class QueryUi {
 
   #queryAxisUiItemRemoveClicked(queryAxisItemUi){
     const queryModelItem = this.#getQueryModelItem(queryAxisItemUi);
-    queryModel.removeItem(queryModelItem);
+    this.#queryModel.removeItem(queryModelItem);
   }
 
   #queryAxisUiItemToggleTotals(queryAxisItemUi){
@@ -178,7 +178,7 @@ export class QueryUi {
     const toggleTotalsCheckbox = queryAxisItemUi.querySelector(`menu > label > input[type=checkbox]`);
     const value = toggleTotalsCheckbox.checked;
     const queryModelItem = this.#getQueryModelItem(queryAxisItemUi);
-    queryModel.toggleTotals(queryModelItem, value);
+    this.#queryModel.toggleTotals(queryModelItem, value);
   }
   
   #queryAxisUiItemToggleEnableDataValue(queryAxisItemUi, dataValueKey){
@@ -210,7 +210,7 @@ export class QueryUi {
     for (let i = 0; i < axes.length; i++){
       const axis = axes.item(i);
       const axisId = axis.getAttribute('data-axis');
-      const queryModelAxis = queryModel.getQueryAxis(axisId);
+      const queryModelAxis = this.#queryModel.getQueryAxis(axisId);
       this.#updateQueryAxisUi(axis, queryModelAxis);
     }
     
@@ -1036,11 +1036,15 @@ export class QueryUi {
 }
 
 export let queryUi;
-export function initQueryUi(){
+export function initQueryUi(context){
   queryUi = new QueryUi({
     id: 'queryUi',
     container: 'workarea',
-    queryModel: queryModel,
-    filterDialog: filterDialog
+    queryModel: context && context.has('queryModel') ? context.queryModel : queryModel,
+    filterDialog: context && context.has('filterUi') ? context.filterUi : filterDialog
   });
+  if (context) {
+    context.register('queryUi', queryUi);
+  }
+  return queryUi;
 }

@@ -265,6 +265,10 @@ export class PageStateManager {
 }
 
 export let pageStateManager;
-export function initPageStateManager(){
+export function initPageStateManager(context){
   pageStateManager = new PageStateManager();
+  if (context) {
+    context.register('pageStateManager', pageStateManager);
+  }
+  return pageStateManager;
 }

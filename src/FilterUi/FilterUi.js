@@ -198,22 +198,22 @@ export class FilterDialog {
     });
 
     const includeAllFiltersCheckbox = this.#getIncludeAllFilters();
-    includeAllFiltersCheckbox.checked = settings.getSettings(['filterDialogSettings', 'filterSearchApplyAll']);
+    includeAllFiltersCheckbox.checked = this.#settings.getSettings(['filterDialogSettings', 'filterSearchApplyAll']);
     includeAllFiltersCheckbox.addEventListener('change', (event) =>{
       // TODO: check to see if there are any other filter items,
       // and also if they have any filter condition set.
       // If we can avoid a query, then return, if not, repopulate the list.
       const target = event.target;
-      settings.assignSettings(['filterDialogSettings', 'filterSearchApplyAll'], target.checked);
+      this.#settings.assignSettings(['filterDialogSettings', 'filterSearchApplyAll'], target.checked);
 
       this.#updatePicklist();
     });
 
     const autoWildcardsCheckbox = this.#getAutoWildChards();
-    autoWildcardsCheckbox.checked = settings.getSettings(['filterDialogSettings', 'filterSearchAutoWildcards']);
+    autoWildcardsCheckbox.checked = this.#settings.getSettings(['filterDialogSettings', 'filterSearchAutoWildcards']);
     autoWildcardsCheckbox.addEventListener('change', (event) =>{
       const target = event.target;
-      settings.assignSettings(['filterDialogSettings', 'filterSearchAutoWildcards'], target.checked);
+      this.#settings.assignSettings(['filterDialogSettings', 'filterSearchAutoWildcards'], target.checked);
 
       this.#updatePicklist();
     });
@@ -221,7 +221,7 @@ export class FilterDialog {
     const caseSensitive = this.#getCaseSensitive();
     caseSensitive.addEventListener('change', (event) =>{
       const target = event.target;
-      settings.assignSettings(['filterDialogSettings', 'filterSearchCaseSensitive'], target.checked);
+      this.#settings.assignSettings(['filterDialogSettings', 'filterSearchCaseSensitive'], target.checked);
 
       this.#updatePicklist();
     });
@@ -1145,7 +1145,7 @@ export class FilterDialog {
     ];
 
     let filterAxisItems = [];
-    const filterSearchApplyAll = settings.getSettings(['filterDialogSettings', 'filterSearchApplyAll']);
+    const filterSearchApplyAll = this.#settings.getSettings(['filterDialogSettings', 'filterSearchApplyAll']);
     if (filterSearchApplyAll) {
       filterAxisItems = filterAxisItems.concat(this.#getOtherFilterAxisItems(true));
     }
@@ -1381,10 +1381,14 @@ export class FilterDialog {
 }
 
 export let filterDialog;
-export function initFilterUi(){
+export function initFilterUi(context){
   filterDialog = new FilterDialog({
     id: 'filterDialog',
-    queryModel: queryModel,
-    settings: settings
+    queryModel: context && context.has('queryModel') ? context.queryModel : queryModel,
+    settings: context && context.has('settings') ? context.settings : settings
   });
+  if (context) {
+    context.register('filterUi', filterDialog);
+  }
+  return filterDialog;
 }

@@ -44,6 +44,42 @@ describe('QueryModel', () => {
     getDatasourceMock.mockReset();
   });
 
+  test('setState uses injected settings and datasource manager dependencies', async () => {
+    const datasource = {
+      getId: () => 'ds-injected',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+    const assignSettings = vi.fn();
+    const injectedDatasourcesUi = {
+      getDatasource: vi.fn(() => datasource),
+    };
+    const injectedSettings = {
+      getSettings(keyPath) {
+        if (keyPath === 'querySettings') {
+          return { autoRunQuery: true };
+        }
+        return {};
+      },
+      assignSettings: assignSettings,
+    };
+    const model = new QueryModel({
+      settings: injectedSettings,
+      datasourcesUi: injectedDatasourcesUi,
+    });
+
+    await model.setState({
+      datasourceId: 'ds-injected',
+      axes: {},
+    });
+
+    expect(injectedDatasourcesUi.getDatasource).toHaveBeenCalledWith('ds-injected');
+    expect(getDatasourceMock).not.toHaveBeenCalled();
+    expect(model.getDatasource()).toBe(datasource);
+    expect(assignSettings).toHaveBeenNthCalledWith(1, ['querySettings', 'autoRunQuery'], false);
+    expect(assignSettings).toHaveBeenNthCalledWith(2, ['querySettings', 'autoRunQuery'], true);
+  });
+
   test('addItem adds to specified axis', async () => {
     const model = createModel();
     await model.addItem({

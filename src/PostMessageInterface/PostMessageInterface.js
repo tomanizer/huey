@@ -361,11 +361,15 @@ export class PostMessageInterface {
 }
 
 export let postMessageInterface = undefined;
-export function initPostMessageInterface(skipHostingWindowCheck){
+export function initPostMessageInterface(skipHostingWindowCheck, context){
   if (!skipHostingWindowCheck && !PostMessageInterface.getHostingWindow()) {
     registerPostMessageGlobals();
     return;
   }
   postMessageInterface = new PostMessageInterface();
+  if (context) {
+    context.register('postMessageInterface', postMessageInterface);
+  }
   registerPostMessageGlobals();
+  return postMessageInterface;
 }

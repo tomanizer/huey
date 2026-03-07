@@ -2543,12 +2543,13 @@ export class PivotTableUi extends EventEmitter {
 
 export let pivotTableUi;
 export let pivotTableUiHighlighting;
-export function initPivotTableUi(){
+export function initPivotTableUi(context){
+  const pivotSettings = context && context.has('settings') ? context.settings : settings;
   pivotTableUi = new PivotTableUi({
     container: 'workarea',
     id: 'pivotTableUi',
-    queryModel: queryModel,
-    settings: settings
+    queryModel: context && context.has('queryModel') ? context.queryModel : queryModel,
+    settings: pivotSettings
   });
 
   const _pivotTableUiContextMenu = new ContextMenu(pivotTableUi, 'pivotTableContextMenu');
@@ -2556,13 +2557,17 @@ export function initPivotTableUi(){
   pivotTableUiHighlighting = new PivotTableUiHighlighting(pivotTableUi);
   
   function updateAppearance(){
-    const pivotTableSettings = settings.getSettings('pivotSettings');
+    const pivotTableSettings = pivotSettings.getSettings('pivotSettings');
     pivotTableUiHighlighting.enableAlternatingRowColors(pivotTableSettings.alternatingRowColors);
     pivotTableUiHighlighting.enableHoverRowHighlighting(pivotTableSettings.hoverRowHighlight);
     pivotTableUiHighlighting.enableHoverColumnHighlighting(pivotTableSettings.hoverColumnHighlight);
   }
   updateAppearance();
-  settings.addEventListener('change', () =>{
+  pivotSettings.addEventListener('change', () =>{
     updateAppearance();
   });
+  if (context) {
+    context.register('pivotTableUi', pivotTableUi);
+  }
+  return pivotTableUi;
 }

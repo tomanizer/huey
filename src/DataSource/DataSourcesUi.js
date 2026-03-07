@@ -873,6 +873,10 @@ export class DataSourcesUi extends EventEmitter {
 }
 
 export let datasourcesUi;
-export function initDataSourcesUi(){
+export function initDataSourcesUi(context){
   datasourcesUi = new DataSourcesUi('datasourcesUi');
+  if (context) {
+    context.register('datasourcesUi', datasourcesUi);
+  }
+  return datasourcesUi;
 }

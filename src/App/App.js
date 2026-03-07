@@ -4,7 +4,7 @@ import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { getQuotedIdentifier, createNumberFormatter } from '../util/sql/SQLHelper.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { initDragableDialogs } from '../DragAndDrop/DragableDialogs.js';
-import { QueryModel, queryModel, initQueryModel } from '../QueryModel/QueryModel.js';
+import { QueryModel, initQueryModel } from '../QueryModel/QueryModel.js';
 import { initAttributeUi } from '../AttributeUi/AttributeUi.js';
 import { initSearch } from '../Search/Search.js';
 import { initUploadUi } from '../UploadUi/UploadUi.js';
@@ -13,15 +13,16 @@ import { DataSourcesUi, initDataSourcesUi } from '../DataSource/DataSourcesUi.js
 import { initDatasourceSettingsDialog } from '../DatasourceSettingsDialog/DatasourceSettingsDialog.js';
 import { initFilterUi } from '../FilterUi/FilterUi.js';
 import { initQueryUi } from '../QueryUi/QueryUi.js';
-import { pivotTableUi, initPivotTableUi } from '../PivotTableUi/PivotTableUi.js';
+import { initPivotTableUi } from '../PivotTableUi/PivotTableUi.js';
 import { Routing } from '../Routing/Routing.js';
-import { pageStateManager, initPageStateManager } from '../PageStateManager/PageStateManager.js';
+import { initPageStateManager } from '../PageStateManager/PageStateManager.js';
 import { initSessionCloner } from '../SessionCloner/SessionCloner.js';
 import { initQuickQueryMenu } from '../QuickQueryMenu/QuickQueryMenu.js';
 import { initDataSourceMenu } from '../DataSourceMenu/DataSourceMenu.js';
-import { postMessageInterface, initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
+import { initPostMessageInterface } from '../PostMessageInterface/PostMessageInterface.js';
 import { getConnection, setReservedWords } from '../DataSource/duckdb/database.js';
 import { Theme } from '../Theme/Theme.js';
+import { appContext } from './AppContext.js';
 
 
 const queryParams = Object.fromEntries(new URLSearchParams(document.location.search));
@@ -118,7 +119,9 @@ export function initDuckdbVersion(){
 
 export { analyzeDatasource } from './analyzeDatasource.js';
 
-export function initExecuteQuery(){
+export function initExecuteQuery(context = appContext){
+  const pivotTableUi = context.pivotTableUi;
+  const settings = context.settings;
 
   byId('runQueryButton').addEventListener('click', (_event) =>{
     pivotTableUi.updatePivotTableUi();
@@ -139,20 +142,21 @@ export function initExecuteQuery(){
   });
 }
 
-export function initApplication(){
+export function initApplication(context = appContext){
+  context.register('settings', settings);
   initDragableDialogs();
   initDuckdbVersion();
-  initDataSourcesUi();
-  initQueryModel();
-  initExportDialog();
-  initAttributeUi();
+  initDataSourcesUi(context);
+  initQueryModel(context);
+  initExportDialog(context);
+  initAttributeUi(context);
   initSearch();
-  initFilterUi();
-  initQueryUi();
-  initPivotTableUi();
-  initExecuteQuery();
-  initPageStateManager();
-  initUploadUi();
+  initFilterUi(context);
+  initQueryUi(context);
+  initPivotTableUi(context);
+  initExecuteQuery(context);
+  initPageStateManager(context);
+  initUploadUi(context);
   initDatasourceSettingsDialog();
   initSessionCloner();
   initQuickQueryMenu();
@@ -160,15 +164,15 @@ export function initApplication(){
 
   const currentRoute = Routing.getCurrentRoute();
   if (currentRoute){
-    pageStateManager.setPageState(currentRoute);
+    context.pageStateManager.setPageState(currentRoute);
   }
 
-  bufferEvents(queryModel, 'change', (event, count) => {
+  bufferEvents(context.queryModel, 'change', (event, count) => {
     if (count !== undefined) {
       return;
     }
     try {
-      const datasource = queryModel.getDatasource();
+      const datasource = context.queryModel.getDatasource();
       let currentDatasourceCaption;
       if (datasource) {
         currentDatasourceCaption = DataSourcesUi.getCaptionForDatasource(datasource);
@@ -178,10 +182,10 @@ export function initApplication(){
       byId('currentDatasource').setAttribute('data-current-datasource', currentDatasourceCaption);
       byId('currentDatasource').firstChild.data = currentDatasourceCaption;
 
-      const title = ExportUi.generateExportTitle(queryModel);
+      const title = ExportUi.generateExportTitle(context.queryModel);
       document.title = 'Huey - ' + title;
 
-      Routing.updateRouteFromQueryModel(queryModel);
+      Routing.updateRouteFromQueryModel(context.queryModel);
     } catch (err) {
       console.error('Error handling buffered query change event', err);
       showErrorDialog({ title: 'Query update failed', description: err?.message || String(err) });
@@ -189,7 +193,7 @@ export function initApplication(){
   }, null, 50);
 
   const tupleNumberFormatter = createNumberFormatter(0).format;
-  pivotTableUi.addEventListener('updated', async (e) =>{
+  context.pivotTableUi.addEventListener('updated', async (e) =>{
     const eventData = e.eventData;
     const status = eventData.status;
     
@@ -240,7 +244,7 @@ export function initApplication(){
     }
   });
 
-  bufferEvents(pivotTableUi, 'busy', (event, count) =>{
+  bufferEvents(context.pivotTableUi, 'busy', (event, count) =>{
     if (count !== undefined) {
       return;
     }
@@ -254,8 +258,8 @@ export function initApplication(){
     }
   });
 
-  initPostMessageInterface();
-  if (postMessageInterface) {
-    postMessageInterface.sendReadyMessage();
+  initPostMessageInterface(undefined, context);
+  if (context.has('postMessageInterface')) {
+    context.postMessageInterface.sendReadyMessage();
   }
 }

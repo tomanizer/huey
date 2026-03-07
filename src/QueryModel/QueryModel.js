@@ -65,16 +65,20 @@ export class QueryModel extends EventEmitter {
   #cellheadersaxis = QueryModel.AXIS_COLUMNS;
   #settings = undefined;
   #datasource = undefined;
+  #datasourcesUi = undefined;
   #sampling = undefined;
 
   /**
-   * @param {{settings?: Object}} [config]
+   * @param {{settings?: Object, datasourcesUi?: Object}} [config]
    */
   constructor(config){
     super(['change', 'beforechange']);
     const resolvedConfig = Object.assign({}, QueryModel.#defaultConfig, config);
     if (resolvedConfig.settings){
-      this.#settings = settings;
+      this.#settings = resolvedConfig.settings;
+    }
+    if (resolvedConfig.datasourcesUi){
+      this.#datasourcesUi = resolvedConfig.datasourcesUi;
     }
   }
 
@@ -986,6 +990,18 @@ export class QueryModel extends EventEmitter {
     return autoUpdate;
   }
 
+  #getDatasourceForState(queryModelState) {
+    const datasourceId = queryModelState.datasourceId;
+    if (datasourceId) {
+      const datasourceManager = this.#datasourcesUi || datasourcesUi;
+      return datasourceManager ? datasourceManager.getDatasource(datasourceId) : undefined;
+    }
+    if (queryModelState.datasource && queryModelState.datasource instanceof DuckDbDataSource) {
+      return queryModelState.datasource;
+    }
+    return this.getDatasource();
+  }
+
   /**
    * @param {QueryModelState} queryModelState
    * @returns {Promise<void>}
@@ -996,22 +1012,11 @@ export class QueryModel extends EventEmitter {
     const canAssignSettings = this.#settings && typeof this.#settings.assignSettings === 'function';
 
     if (canAssignSettings){
-      settings.assignSettings(['querySettings', 'autoRunQuery'], false);
+      this.#settings.assignSettings(['querySettings', 'autoRunQuery'], false);
     }
 
     try {
-      const datasourceId = queryModelState.datasourceId;
-      let datasource;
-      if (datasourceId){
-        datasource = datasourcesUi.getDatasource(datasourceId);
-      }
-      else
-      if ( queryModelState.datasource && queryModelState.datasource instanceof DuckDbDataSource ){
-        datasource = queryModelState.datasource;
-      }
-      else {
-        datasource = this.getDatasource();
-      }
+      const datasource = this.#getDatasourceForState(queryModelState);
 
       if (this.getDatasource() === datasource) {
         this.clear();
@@ -1098,8 +1103,13 @@ export class QueryModel extends EventEmitter {
 _setQueryModelRef(QueryModel);
 
 export let queryModel;
-export function initQueryModel(){
+export function initQueryModel(context){
   queryModel = new QueryModel({
-    settings: settings
+    settings: context && context.has('settings') ? context.settings : settings,
+    datasourcesUi: context && context.has('datasourcesUi') ? context.datasourcesUi : datasourcesUi
   });
+  if (context) {
+    context.register('queryModel', queryModel);
+  }
+  return queryModel;
 }

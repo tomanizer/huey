@@ -739,8 +739,11 @@ export function afterUploaded(uploadResults){
   }
 }
 
-export function initUploadUi(){
+export function initUploadUi(context){
   uploadUi = new UploadUi('uploadUi');
+  if (context) {
+    context.register('uploadUi', uploadUi);
+  }
 
   const uploader = byId('uploader');
   let acceptFileTypes = Object.keys(DuckDbDataSource.fileTypes).sort().map((fileType) =>{
@@ -954,4 +957,5 @@ export function initUploadUi(){
     }
   });
 
+  return uploadUi;
 }

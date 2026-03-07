@@ -583,7 +583,9 @@ export class ExportDialog {
   #queryModel = undefined;
   #settings = undefined;
 
-  constructor(){
+  constructor(config = {}){
+    this.#queryModel = config.queryModel;
+    this.#settings = config.settings;
     this.#initExportDialog();
   }
 
@@ -631,9 +633,9 @@ export class ExportDialog {
     return byId(ExportDialog.#id);
   }
 
-  open(config){
-    this.#queryModel = config.queryModel || queryModel;
-    this.#settings = config.settings || settings;
+  open(config = {}){
+    this.#queryModel = config.queryModel || this.#queryModel || queryModel;
+    this.#settings = config.settings || this.#settings || settings;
     this.#updateDialog();
     const dialog = this.#getDialog();
     dialog.showModal();
@@ -770,15 +772,21 @@ export class ExportDialog {
 }
 
 export let exportDialog;
-export function initExportDialog(){
-  exportDialog = new ExportDialog();
+export function initExportDialog(context){
+  exportDialog = new ExportDialog({
+    queryModel: context && context.has('queryModel') ? context.queryModel : queryModel,
+    settings: context && context.has('settings') ? context.settings : settings
+  });
+  if (context) {
+    context.register('exportDialog', exportDialog);
+  }
 
   const exportButton = byId('exportButton');
 
   exportButton.addEventListener('click', (_event) =>{
     exportDialog.open({
-      queryModel: queryModel,
-      settings: settings
+      queryModel: context && context.has('queryModel') ? context.queryModel : queryModel,
+      settings: context && context.has('settings') ? context.settings : settings
     });
   });
 
@@ -787,4 +795,5 @@ export function initExportDialog(){
     settings.assignSettings(['exportUi', 'exportTitleTemplate'], exportTitleTemplate.value);
     updateExportTitle();
   }
+  return exportDialog;
 }
