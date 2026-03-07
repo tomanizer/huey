@@ -107,8 +107,13 @@ async function addAggregateMeasure(page, columnName, aggregator) {
 
 async function runQueryAndWaitForPivot(page) {
   const runButton = page.locator('#runQueryButton');
-  await expect(runButton).toBeVisible({ timeout: 15000 });
-  await runButton.click();
+  await expect(runButton).toBeAttached({ timeout: 15000 });
+  if (await runButton.isVisible()) {
+    await runButton.click();
+  } else {
+    const autoRun = page.locator('#autoRunQuery');
+    await expect(autoRun).toBeChecked({ timeout: 5000 });
+  }
 
   const pivot = page.locator('#pivotTableUi');
   await expect(pivot).toBeVisible({ timeout: 60000 });
