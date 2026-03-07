@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     dim_stale_ttl_seconds: int = 0  # Extra seconds to serve stale while refreshing (0 = disabled)
     dim_version_token: str | None = None  # External override; change to force invalidation
     dim_prewarm_fields: str | None = None  # CSV of "dataset_id:field" pairs to prewarm on startup
+    dim_prewarm_date: str | None = None  # Optional ISO date override for prewarm picklist queries
+    dim_prewarm_date_mode: str = "latest_available"  # latest_available or today when no explicit date
     # Query execution
     execution_mode: Literal["sample_table", "parquet_partitioned"] = "sample_table"
     partition_base_path: str | None = None

@@ -118,6 +118,8 @@ because dimension reference data changes infrequently.
 | `QUERYSERVICE_DIM_STALE_TTL_SECONDS` | `0` | int | Extra seconds to serve a stale response while a background refresh runs (`0` disables stale-while-revalidate) |
 | `QUERYSERVICE_DIM_VERSION_TOKEN` | unset | string | Optional external override for the dimension version token; change this value to force cache invalidation across all fields (useful after a reference-data reload or in multi-node deployments) |
 | `QUERYSERVICE_DIM_PREWARM_FIELDS` | unset | string | Comma-separated list of `dataset_id:field_name` pairs to prewarm on startup (e.g. `trades_v1:symbol,trades_v1:region`) |
+| `QUERYSERVICE_DIM_PREWARM_DATE` | unset | ISO date string | Optional fixed date for prewarm picklist queries; overrides the date mode when set |
+| `QUERYSERVICE_DIM_PREWARM_DATE_MODE` | `latest_available` | string | Date selection strategy when `DIM_PREWARM_DATE` is unset: `latest_available` uses the newest cached partition date, `today` uses the current date |
 
 ### How dimension cache invalidation works
 
@@ -174,6 +176,12 @@ the first real client request is served from cache:
 ```bash
 QUERYSERVICE_DIM_PREWARM_FIELDS=trades_v1:symbol,trades_v1:region
 ```
+
+By default, prewarming chooses the most recent cached partition date for each
+dataset (`QUERYSERVICE_DIM_PREWARM_DATE_MODE=latest_available`).  If no cached
+partition metadata is available, it falls back to `today`.  To make warmup
+fully deterministic across environments, set `QUERYSERVICE_DIM_PREWARM_DATE`
+to an explicit ISO date such as `2026-03-01`.
 
 Prewarming runs as a background task and never blocks or fails the startup
 sequence.
