@@ -118,6 +118,7 @@ async function runQueryAndWaitForPivot(page) {
   const pivot = page.locator('#pivotTableUi');
   await expect(pivot).toBeVisible({ timeout: 60000 });
   await expect(pivot).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
+  await expect(page.locator('#pivotTableUi .pivotTableUiValueCell').first()).toBeVisible({ timeout: 60000 });
   return pivot;
 }
 
