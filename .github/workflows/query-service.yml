@@ -118,7 +118,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run frontend lint
+      - name: Run frontend lint (warning budget: 47)
         run: npm run lint:js
 
   e2e:
