@@ -119,6 +119,8 @@ test.describe('Accessibility', () => {
 
     const copySubmenuButton = page.locator('#copySubmenuActivate');
     await expect(copySubmenuButton).toHaveAttribute('aria-haspopup', 'menu');
+    await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'true');
+    await copySubmenuButton.click();
     await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'false');
     await copySubmenuButton.click();
     await expect(copySubmenuButton).toHaveAttribute('aria-expanded', 'true');
