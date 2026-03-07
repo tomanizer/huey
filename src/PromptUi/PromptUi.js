@@ -35,6 +35,8 @@ export class PromptUi {
   static show(config){
     return new Promise((resolve, _reject) =>{
       const promptDialog = byId( 'promptUi');
+      promptDialog.returnValue = '';
+      promptDialog.setAttribute('data-returnValue', '');
       const ariaLabel = promptDialog.querySelector('#' + promptDialog.getAttribute('aria-labelledby'))
       ariaLabel.textContent = config.title;
       const section = promptDialog.querySelector('section')
@@ -55,7 +57,8 @@ export class PromptUi {
 
       const closeHandler = function(_event){
         byId('promptUi').removeEventListener('close', closeHandler);
-        resolve(byId('promptUi').getAttribute('data-returnValue'));
+        const dialog = byId('promptUi');
+        resolve(dialog.returnValue || dialog.getAttribute('data-returnValue') || '');
       };
       promptDialog.addEventListener('close', closeHandler);
       promptDialog.showModal();
