@@ -455,10 +455,15 @@ export class Settings extends EventEmitter {
       }
     });
 
-    settingsDialog.addEventListener('toggle', (event) => {
-      if (event.newState !== 'closed') {
+    byId('settingsButton').addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
         return;
       }
+      event.preventDefault();
+      event.currentTarget.click();
+    });
+
+    settingsDialog.addEventListener('close', () => {
       if (this.#lastTrigger && typeof this.#lastTrigger.focus === 'function') {
         this.#lastTrigger.focus();
       }
