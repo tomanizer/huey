@@ -401,6 +401,7 @@ describe('DataSet cache limits', () => {
 
   test('CellSet evicts least-recently-used cells when size limit is exceeded', async () => {
     let fetchCellsCallCount = 0;
+    const cellValuePadding = 'x'.repeat(64);
     const connection = {
       fetchCells(dateRange, query) {
         fetchCellsCallCount += 1;
@@ -412,7 +413,7 @@ describe('DataSet cache limits', () => {
             cells.push({
               row_index: rowIndex,
               column_index: columnIndex,
-              values: { 2: `value-${rowIndex}-${columnIndex}-${'x'.repeat(64)}` }
+              values: { 2: `value-${rowIndex}-${columnIndex}-${cellValuePadding}` }
             });
           }
         }
@@ -508,15 +509,18 @@ describe('DataSet cache limits', () => {
       })
     );
 
-    await cellSet.getCells([[0, 2], [0, 1]]);
+    const initialCells = await cellSet.getCells([[0, 2], [0, 1]]);
     expect(fetchCellsCallCount).toBe(1);
     expect(cellSet.cacheSize).toBeLessThanOrEqual(maxCacheSizeBytes);
 
-    await cellSet.getCells([[1, 2], [0, 1]]);
+    const cachedSecondCell = await cellSet.getCells([[1, 2], [0, 1]]);
     expect(fetchCellsCallCount).toBe(1);
+    expect(cachedSecondCell[1]).toBe(initialCells[1]);
 
-    await cellSet.getCells([[0, 1], [0, 1]]);
+    const refetchedFirstCell = await cellSet.getCells([[0, 1], [0, 1]]);
     expect(fetchCellsCallCount).toBe(2);
+    expect(refetchedFirstCell[0]).toBeDefined();
+    expect(refetchedFirstCell[0]).not.toBe(initialCells[0]);
   });
 
   test('CellSet cache sizing handles BigInt cell values without crashing', async () => {
