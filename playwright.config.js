@@ -7,15 +7,18 @@ const localProjects = [
   { name: 'webkit', use: { ...devices['Desktop Safari'] } },
 ];
 
-const requestedProjects = process.env.PLAYWRIGHT_PROJECTS
+const requestedProjectNames = process.env.PLAYWRIGHT_PROJECTS
   ? process.env.PLAYWRIGHT_PROJECTS.split(',').map((project) => project.trim()).filter(Boolean)
   : null;
 const defaultProjects = process.env.CI ? ['chromium'] : localProjects.map((project) => project.name);
-const selectedProjectNames = requestedProjects && requestedProjects.length ? requestedProjects : defaultProjects;
+const selectedProjectNames = requestedProjectNames && requestedProjectNames.length ? requestedProjectNames : defaultProjects;
 const selectedProjects = localProjects.filter((project) => selectedProjectNames.includes(project.name));
 
 if (!selectedProjects.length) {
-  throw new Error(`No valid Playwright projects selected from PLAYWRIGHT_PROJECTS=${process.env.PLAYWRIGHT_PROJECTS}`);
+  throw new Error(
+    `No valid Playwright projects selected from PLAYWRIGHT_PROJECTS=${process.env.PLAYWRIGHT_PROJECTS}. `
+    + `Available projects: ${localProjects.map((project) => project.name).join(', ')}`
+  );
 }
 
 module.exports = defineConfig({
