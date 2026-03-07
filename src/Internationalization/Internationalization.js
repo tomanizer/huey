@@ -39,7 +39,7 @@ export class Internationalization {
   }
 
   static getCurrentLanguage(){
-    return Internationalization.#currentLocale.language;
+    return Internationalization.#currentLocale?.language || Internationalization.#hueyNativeLanguage;
   }
 
   static #languageChanged(_event){
@@ -68,10 +68,15 @@ export class Internationalization {
     if (Internationalization.#languageIndex === undefined) {
       Internationalization.#languageIndex = 0;
     }
-    const languages = navigator.languages;
+    const languages = navigator.languages && navigator.languages.length
+      ? navigator.languages
+      : [Internationalization.#hueyNativeLanguage];
     if (Internationalization.#languageIndex >= languages.length){
+      Internationalization.#applyTexts(true);
+      Internationalization.#setCurrentLocale(Internationalization.#hueyNativeLanguage);
+      return;
     }
-    const language = languages[ Internationalization.#languageIndex++ ];
+    const language = languages[ Internationalization.#languageIndex++ ] || Internationalization.#hueyNativeLanguage;
     if (language === Internationalization.#hueyNativeLanguage || language.startsWith('en')){
       Internationalization.#applyTexts(true);
       Internationalization.#setCurrentLocale(language);

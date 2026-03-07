@@ -19,15 +19,19 @@ preloadLink.setAttribute('crossorigin', 'true');
 document.head.appendChild(preloadLink);
 
 // Insert the @font-face rule for tabler icons
-document.styleSheets[0]?.insertRule(`
-  @font-face {
-    font-family: "tabler-icons";
-    font-style: normal;
-    font-weight: 400;
-    font-display: block;
-    src: url("${tablerIconsFontUrl}") format("woff2");
-  }
-`);
+try {
+  document.styleSheets[0]?.insertRule(`
+    @font-face {
+      font-family: "tabler-icons";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("${tablerIconsFontUrl}") format("woff2");
+    }
+  `);
+} catch (error) {
+  console.warn('Unable to register tabler-icons font-face rule.', error);
+}
 
 try {
   const duckdb = await import(/* @vite-ignore */ duckDbLibraryUrl);
@@ -55,11 +59,15 @@ try {
   await initApplication();
 } catch (error) {
   document.body.setAttribute('aria-busy', false);
-  const main = document.body.getElementsByTagName('main')[0];
-  if (main) {
-    main.style.display = 'none';
-  }
   console.error(error);
+  try {
+    showErrorDialog({
+      title: 'Application startup failed',
+      description: error?.message || String(error)
+    });
+  } catch (dialogError) {
+    console.error('Failed to show startup error dialog.', dialogError);
+  }
 } finally {
   document.body.setAttribute('aria-busy', false);
 }
