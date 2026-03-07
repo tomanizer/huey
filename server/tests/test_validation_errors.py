@@ -158,16 +158,16 @@ class TestCommonValidation:
         monkeypatch.setenv("QUERYSERVICE_MAX_DATE_RANGE_DAYS", "2")
         get_settings.cache_clear()
         try:
-            body = _valid_body_for(endpoint)
-            body["date_range"] = {"type": "range", "start": "2026-03-01", "end": "2026-03-03"}
-            r = client.post(endpoint, json=body)
+            request_body = _valid_body_for(endpoint)
+            request_body["date_range"] = {"type": "range", "start": "2026-03-01", "end": "2026-03-03"}
+            r = client.post(endpoint, json=request_body)
         finally:
             get_settings.cache_clear()
         assert r.status_code == 422
-        body = r.json()
-        assert body["code"] == "VALIDATION_ERROR"
-        assert body["details"]["errors"][0]["ctx"] == {"requested_days": 3, "max_days": 2}
-        assert "exceeds configured max of 2" in body["details"]["errors"][0]["msg"]
+        resp_body = r.json()
+        assert resp_body["code"] == "VALIDATION_ERROR"
+        assert resp_body["details"]["errors"][0]["ctx"] == {"requested_days": 3, "max_days": 2}
+        assert "exceeds configured max of 2" in resp_body["details"]["errors"][0]["msg"]
 
     def test_not_json(self, client: TestClient, endpoint: str) -> None:
         r = client.post(endpoint, content="not json", headers={"Content-Type": "application/json"})
