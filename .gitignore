@@ -22,6 +22,8 @@ __pycache__/
 # Local/dev artifacts
 .copilot_tmp/
 .env
+.env.*
+!.env.example
 .github/PULL_REQUEST_TEMPLATE/
 .secrets
 .venv-ci/
