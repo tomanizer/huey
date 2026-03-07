@@ -7,6 +7,7 @@ const {
   addBasicPivotAxes,
   addFilterAxis,
   runQueryAndWaitForPivot,
+  triggerUnhandledRejection,
 } = require('./helpers/app-bootstrap');
 
 const fixturePath = path.join(__dirname, 'fixtures/test-data.csv');
@@ -27,16 +28,14 @@ test.describe('Accessibility', () => {
   test('interactive dialogs expose required aria relationships', async ({ page }) => {
     await waitForAppReady(page);
 
-    await page.evaluate(async () => {
-      const { showErrorDialog } = await import('/ErrorDialog/ErrorDialog.js');
-      showErrorDialog(new Error('Accessibility check'));
-    });
+    await triggerUnhandledRejection(page, new Error('Accessibility check'));
 
     const dialog = page.locator('#errorDialog');
     await expect(dialog).toBeVisible({ timeout: 5000 });
     await expect(dialog).toHaveAttribute('aria-labelledby', 'errorDialogTitle');
     await expect(dialog).toHaveAttribute('aria-describedby', 'errorDialogDescription');
-    await expect(page.locator('#errorDialogTitle')).toContainText('Accessibility check');
+    await expect(page.locator('#errorDialogTitle')).toContainText('Unexpected error');
+    await expect(page.locator('#errorDialogDescription')).toContainText('Accessibility check');
   });
 
   test('dialog and filter controls expose ARIA metadata', async ({ page }) => {
