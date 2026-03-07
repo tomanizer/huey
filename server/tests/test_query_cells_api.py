@@ -27,6 +27,7 @@ def test_query_cells_returns_aggregated_data(client: TestClient) -> None:
     assert "row_index" in cell
     assert "values" in cell
     assert isinstance(cell["values"], dict)
+    assert list(cell["values"]) == ["symbol", "sum_volume"]
 
 
 def test_query_cells_multiple_aggregations(client: TestClient) -> None:
@@ -51,8 +52,7 @@ def test_query_cells_multiple_aggregations(client: TestClient) -> None:
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) > 0
-    # Each cell should have symbol + 5 aggregation values = 6 values
-    assert len(cells[0]["values"]) == 6
+    assert list(cells[0]["values"]) == ["symbol", "sum_vol", "avg_vol", "min_vol", "max_vol", "cnt_vol"]
 
 
 def test_query_cells_with_filter(client: TestClient) -> None:
@@ -72,7 +72,7 @@ def test_query_cells_with_filter(client: TestClient) -> None:
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) == 1
-    assert cells[0]["values"]["0"] == "AAPL"
+    assert cells[0]["values"]["symbol"] == "AAPL"
 
 
 def test_query_cells_empty_axes_returns_empty(client: TestClient) -> None:
@@ -110,7 +110,7 @@ def test_query_cells_row_window_limits_results(client: TestClient) -> None:
     cells = r.json()["cells"]
     assert len(cells) == 1
     # Ordered ascending, first symbol should be AAPL from sample data
-    assert cells[0]["values"]["0"] == "AAPL"
+    assert cells[0]["values"]["symbol"] == "AAPL"
 
 
 def test_query_cells_window_too_large_returns_error(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -220,11 +220,18 @@ Success `200` example:
 ```json
 {
   "cells": [
-    {"row_index": 0, "values": {"0": "AAPL", "1": 1500}},
-    {"row_index": 1, "values": {"0": "GOOG", "1": 2200}}
+    {"row_index": 0, "values": {"symbol": "AAPL", "sum_volume": 1500}},
+    {"row_index": 1, "values": {"symbol": "GOOG", "sum_volume": 2200}}
   ]
 }
 ```
+
+`cells[].values` uses semantic keys in select order: all row axis fields, then
+column axis fields, then measure aliases (or the server-generated measure name
+when no alias is supplied). This replaces the older positional `"0"`, `"1"`,
+... mapping. Clients migrating from the positional contract should switch to
+field/alias lookups; the insertion order remains aligned with the request's
+axis/measure order to simplify transition logic.
 
 Error statuses:
 

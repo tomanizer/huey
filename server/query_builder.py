@@ -246,11 +246,11 @@ def build_cells_sql(
     date_range: DateRange,
     schema_fields: set[str],
     max_cells: int | None = None,
-) -> tuple[str, list[Any]]:
+) -> tuple[str, list[Any], list[str]]:
     """
     Generate SQL for a cells query: aggregated measure values grouped by dimensions.
 
-    Returns (sql, params) for parameterized execution.
+    Returns (sql, params, output_columns) for parameterized execution.
     """
     validate_cells_query_fields(query, schema_fields)
     axes = query.axes
@@ -261,14 +261,17 @@ def build_cells_sql(
 
     dim_cols = [_quote(f) for f in row_fields + col_fields]
     agg_exprs = []
+    measure_aliases: list[str] = []
     for m in measures:
         field = m.field
         agg = m.aggregation.upper()
         alias = m.alias or f"{agg.lower()}_{field}"
+        measure_aliases.append(alias)
         agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
+    output_columns = row_fields + col_fields + measure_aliases
 
     if not dim_cols and not agg_exprs:
-        return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
+        return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", [], []
 
     required_columns = set(row_fields + col_fields)
     required_columns.update(m.field for m in measures)
@@ -362,7 +365,7 @@ def build_cells_sql(
     limit_clause = f" LIMIT {max_cells}" if max_cells else ""
 
     sql = f"{with_clause} SELECT {select_clause}{from_clause}{group_clause}{order_clause}{limit_clause}"
-    return sql, params
+    return sql, params, output_columns
 
 
 def build_picklist_sql(

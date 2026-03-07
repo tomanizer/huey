@@ -242,7 +242,7 @@ async def post_query_cells(
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         effective_max = settings.max_cells_per_response
-        sql, params = build_cells_sql(
+        sql, params, output_columns = build_cells_sql(
             body.dataset_id, body.query, body.date_range, schema_fields, max_cells=effective_max + 1
         )
 
@@ -275,7 +275,7 @@ async def post_query_cells(
                     "min_result_count": effective_max + 1,
                 },
             )
-        cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
+        cells = [{"row_index": i, "values": dict(zip(output_columns, row, strict=True))} for i, row in enumerate(rows)]
         return {
             "response": {"cells": cells},
             "duration_ms": duration_ms,

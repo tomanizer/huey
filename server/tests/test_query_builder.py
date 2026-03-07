@@ -167,15 +167,17 @@ class TestBuildCellsSql:
                 "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}],
             },
         )
-        sql, params = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        sql, params, output_columns = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert 'SUM("volume")' in sql
         assert '"total_volume"' in sql
         assert "GROUP BY" in sql
+        assert output_columns == ["symbol", "total_volume"]
 
     def test_no_axes(self) -> None:
         query = CellsQueryBody(axes={})
-        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        sql, _, output_columns = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "FALSE" in sql
+        assert output_columns == []
 
     def test_with_filter(self) -> None:
         query = CellsQueryBody(
@@ -186,7 +188,7 @@ class TestBuildCellsSql:
             },
             filters=[TupleFilter(field="symbol", operator="INCLUDE", values=["AAPL"])],
         )
-        sql, params = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        sql, params, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert '"symbol" IN (?)' in sql
         assert "AAPL" in params
 
@@ -198,7 +200,7 @@ class TestBuildCellsSql:
                 "measures": [{"field": "volume", "aggregation": "COUNT", "alias": "count_vol"}],
             },
         )
-        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        sql, _, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert 'COUNT("volume")' in sql
 
     def test_avg_aggregation(self) -> None:
@@ -209,7 +211,7 @@ class TestBuildCellsSql:
                 "measures": [{"field": "volume", "aggregation": "AVG", "alias": "avg_vol"}],
             },
         )
-        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        sql, _, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert 'AVG("volume")' in sql
 
     def test_min_max_aggregation(self) -> None:
@@ -223,11 +225,11 @@ class TestBuildCellsSql:
                 ],
             },
         )
-        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        sql, _, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert 'MIN("volume")' in sql
         assert 'MAX("volume")' in sql
 
-    def test_column_fields(self) -> None:
+    def test_output_columns_follow_row_column_measure_order(self) -> None:
         query = CellsQueryBody(
             axes={
                 "rows": [{"field": "date"}],
@@ -235,10 +237,11 @@ class TestBuildCellsSql:
                 "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
             },
         )
-        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        sql, _, output_columns = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert '"date"' in sql
         assert '"symbol"' in sql
         assert "GROUP BY" in sql
+        assert output_columns == ["date", "symbol", "vol"]
 
     def test_unknown_measure_field_rejected(self) -> None:
         query = CellsQueryBody(
@@ -261,12 +264,13 @@ class TestBuildCellsSql:
                 "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
             },
         )
-        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS, max_cells=50)
+        sql, _, output_columns = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS, max_cells=50)
         assert "row_window" in sql
         assert "LIMIT 2 OFFSET 1" in sql
         assert "col_window" in sql
         assert "LIMIT 1" in sql
         assert "LIMIT 50" in sql
+        assert output_columns == ["symbol", "date", "sum_vol"]
 
 
 class TestBuildPicklistSql:
