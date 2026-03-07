@@ -37,6 +37,27 @@ class QueryBudget:
             self.DEFAULT_DISCONNECT_POLL_INTERVAL_SECONDS
         )
 
+    async def _run_cleanup_shielded(self, cleanup: Awaitable[None]) -> None:
+        cleanup_task = asyncio.create_task(cleanup)
+        try:
+            await asyncio.shield(cleanup_task)
+        except asyncio.CancelledError:
+            await cleanup_task
+            raise
+
+    async def _finalize_acquire(self, acquired: bool) -> None:
+        async with self._queue_lock:
+            self._waiting = max(0, self._waiting - 1)
+            if acquired:
+                self._active += 1
+
+    async def _release_slot(self) -> None:
+        try:
+            async with self._queue_lock:
+                self._active = max(0, self._active - 1)
+        finally:
+            self._semaphore.release()
+
     @asynccontextmanager
     async def acquire(self) -> Generator[float, None, None]:
         """Acquire execution slot; enforce optional queue depth. Returns queue_wait_ms."""
@@ -56,18 +77,13 @@ class QueryBudget:
             await self._semaphore.acquire()
             acquired = True
         finally:
-            async with self._queue_lock:
-                self._waiting = max(0, self._waiting - 1)
-                if acquired:
-                    self._active += 1
+            await self._run_cleanup_shielded(self._finalize_acquire(acquired))
 
         queue_wait_ms = (time.perf_counter() - queue_start) * 1000
         try:
             yield queue_wait_ms
         finally:
-            async with self._queue_lock:
-                self._active = max(0, self._active - 1)
-            self._semaphore.release()
+            await self._run_cleanup_shielded(self._release_slot())
 
     @property
     def active_count(self) -> int:

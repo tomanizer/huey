@@ -171,6 +171,50 @@ def test_cancelled_acquire_does_not_increment_active_count(settings_override) ->
     asyncio.run(scenario())
 
 
+def test_cancelled_acquire_cleans_waiting_while_queue_lock_is_contended(
+    settings_override,
+) -> None:
+    """Cancellation must still clean waiting counters while queue-lock cleanup waits."""
+    settings_override(max_concurrent_queries=1, max_query_queue_depth=1, query_timeout_seconds=5)
+
+    async def scenario() -> None:
+        budget = QueryBudget()
+        async with budget.acquire():
+            assert budget.active_count == 1
+
+            async def wait_for_slot() -> None:
+                async with budget.acquire():
+                    pytest.fail("Cancelled waiter unexpectedly acquired the semaphore")
+
+            waiter = asyncio.create_task(wait_for_slot())
+            deadline = asyncio.get_running_loop().time() + WAIT_FOR_WAITER_SECONDS
+            while asyncio.get_running_loop().time() < deadline:
+                if budget._waiting == 1:
+                    break
+                await asyncio.sleep(0.01)
+            assert budget._waiting == 1
+
+            await budget._queue_lock.acquire()
+            try:
+                waiter.cancel()
+                await asyncio.sleep(0)
+                assert budget._waiting == 1
+                assert not waiter.done()
+            finally:
+                budget._queue_lock.release()
+
+            with suppress(asyncio.CancelledError):
+                await waiter
+
+            assert budget.active_count == 1
+            assert budget._waiting == 0
+
+        assert budget.active_count == 0
+        assert budget._waiting == 0
+
+    asyncio.run(scenario())
+
+
 def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
     """Disconnect polling should be rate-limited while a query keeps running."""
     settings_override(query_timeout_seconds=5)
