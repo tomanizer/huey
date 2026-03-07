@@ -1289,13 +1289,13 @@ export class PivotTableUi extends EventEmitter {
       numRowAxisColumns = 1;
     }
 
-    const headerRows = [];
+    const headerRowElements = [];
     for (let i = 0; i < numColumnAxisRows; i++){
       const tableRow = createEl('div', {
         "class": "pivotTableUiRow",
         "role": "row"
       });
-      headerRows.push(tableRow);
+      headerRowElements.push(tableRow);
 
       let tableCell, labelText, label, columnWidth;
       for (let j = 0; j < numRowAxisColumns; j++) {
@@ -1343,7 +1343,7 @@ export class PivotTableUi extends EventEmitter {
             columnWidth += 'ch';
           }
 
-          const firstTableHeaderRow = headerRows[0];
+          const firstTableHeaderRow = headerRowElements[0];
           const firstTableHeaderRowCells = firstTableHeaderRow.childNodes;
           const firstTableHeaderRowCell = firstTableHeaderRowCells.item(j);
           firstTableHeaderRowCell.style.width = columnWidth;
@@ -1372,9 +1372,9 @@ export class PivotTableUi extends EventEmitter {
       }
     }
 
-    PivotTableUi.#appendNodes(tableHeaderDom, headerRows);
+    PivotTableUi.#appendNodes(tableHeaderDom, headerRowElements);
 
-    const firstTableHeaderRow = headerRows[0];
+    const firstTableHeaderRow = headerRowElements[0];
     let stufferCell;
     stufferCell = createEl('div', {
       "class": "pivotTableUiCell pivotTableUiHeaderCell pivotTableUiStufferCell",
@@ -1445,7 +1445,7 @@ export class PivotTableUi extends EventEmitter {
 
     // loop for each row from the column axis query result
     // if there aren't any, but the cells are on the column axis, and there is at least one item on the cell axis, this will still run once.
-    let pendingCellsByRow = headerRows.length ? Array.from({length: headerRows.length}, () => []) : [];
+    let pendingCellsByRow = Array.from({length: headerRows.length}, () => []);
     let pendingColumns = 0;
     for (let i = 0; i < numColumns; i++){
       let tuple;

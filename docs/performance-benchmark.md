@@ -2,7 +2,7 @@
 
 ## Benchmark dataset
 
-- Fixture: `/home/runner/work/huey/huey/tests/ui/fixtures/performance-benchmark.csv`
+- Fixture: `tests/ui/fixtures/performance-benchmark.csv`
 - Shape: 10,980 data rows + header row
 - Columns:
   - `date`
