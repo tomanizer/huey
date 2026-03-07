@@ -39,6 +39,7 @@ test.describe('Filters', () => {
     await expect(page.locator('#filterValueList option')).toHaveAttribute('value', 'AAPL');
 
     await page.click('#filterDialogOkButton');
+    await expect(filterDialog).not.toBeVisible({ timeout: 10000 });
     const pivot = await runQueryAndWaitForPivot(page);
     await expect(pivot).toContainText('AAPL');
     await expect(pivot).not.toContainText('GOOG');
@@ -53,6 +54,7 @@ test.describe('Filters', () => {
     await page.fill('#filterSearch', 'AAPL');
     await page.click('#addFilterValueButton');
     await page.click('#filterDialogOkButton');
+    await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
 
     await runQueryAndWaitForPivot(page);
     await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveAttribute('data-filtertype', 'notin');
@@ -72,6 +74,7 @@ test.describe('Filters', () => {
     await page.fill('#filterSearch', '2026-01-02');
     await page.click('#addFilterValueButton');
     await page.click('#filterDialogOkButton');
+    await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
 
     await runQueryAndWaitForPivot(page);
     await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveAttribute('data-filtertype', 'between');
@@ -90,6 +93,7 @@ test.describe('Filters', () => {
     await page.click('#filterDialogClearButton');
     await expect(page.locator('#filterValueList option')).toHaveCount(0);
     await page.click('#filterDialogOkButton');
+    await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
     await runQueryAndWaitForPivot(page);
     await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li ol li')).toHaveCount(0);
   });
@@ -100,6 +104,7 @@ test.describe('Filters', () => {
     await page.fill('#filterSearch', 'AAPL');
     await page.click('#addFilterValueButton');
     await page.click('#filterDialogOkButton');
+    await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
 
     await runQueryAndWaitForPivot(page);
     await runQueryAndWaitForPivot(page);

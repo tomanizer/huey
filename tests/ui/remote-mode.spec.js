@@ -55,7 +55,6 @@ test.describe('Remote mode UI', () => {
     await page.route('**/query/picklist', (route) => route.fulfill({ status: 200, body: JSON.stringify({ total_count: 3, values: [{ value: 'AAPL', label: 'AAPL' }], paging: { limit: 100, offset: 0, returned: 1 } }) }));
 
     await waitForAppReady(page);
-    await page.locator('#uploader').click();
     await expect(page.locator('#addRemoteDatasource')).toBeVisible({ timeout: 10000 });
     await page.locator('#addRemoteDatasource').click();
     await expect(page.locator('#remoteDatasourceBaseUrl')).toBeVisible({ timeout: 5000 });
