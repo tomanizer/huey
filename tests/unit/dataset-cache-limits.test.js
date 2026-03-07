@@ -170,7 +170,21 @@ describe('DataSet cache limits', () => {
       }
     };
 
-    const maxCacheSizeBytes = 73;
+    const singleTupleCacheSizeSet = new TupleSet(queryModel, 'rows', createSettings({
+      tupleSetMaxCacheEntries: 10,
+      tupleSetMaxCacheSizeMb: 50
+    }));
+    singleTupleCacheSizeSet.setPageSize(1);
+    await singleTupleCacheSizeSet.getTuples(1, 0);
+
+    const twoTupleCacheSizeSet = new TupleSet(queryModel, 'rows', createSettings({
+      tupleSetMaxCacheEntries: 10,
+      tupleSetMaxCacheSizeMb: 50
+    }));
+    twoTupleCacheSizeSet.setPageSize(2);
+    await twoTupleCacheSizeSet.getTuples(2, 0);
+
+    const maxCacheSizeBytes = Math.floor((singleTupleCacheSizeSet.cacheSize + twoTupleCacheSizeSet.cacheSize) / 2);
     const maxCacheSizeMb = maxCacheSizeBytes / (1024 * 1024);
     const tupleSet = new TupleSet(queryModel, 'rows', createSettings({
       tupleSetMaxCacheEntries: 10,
