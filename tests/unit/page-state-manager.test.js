@@ -175,4 +175,16 @@ describe('PageStateManager datasource chooser', () => {
     expect(capturedContents).not.toContain('<img src=x onerror=1>');
     expect(capturedContents).not.toContain('<b>bad</b> VARCHAR<script>');
   });
+
+  test('treats prompt close as a deterministic cancel path', async () => {
+    promptShowMock.mockResolvedValue('');
+    getDatasourceMock.mockReturnValue(undefined);
+
+    const { PageStateManager } = await import('../../src/PageStateManager/PageStateManager.js');
+    const pageStateManager = new PageStateManager();
+
+    await expect(
+      pageStateManager.chooseDataSourceForPageStateChangeDialog({}, 'desired-ds', undefined, undefined)
+    ).rejects.toThrow('Datasource selection canceled.');
+  });
 });

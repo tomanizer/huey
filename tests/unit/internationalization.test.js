@@ -80,4 +80,20 @@ describe('Internationalization', () => {
     expect(script).not.toBeNull();
     expect(script.getAttribute('src')).toContain('Internationalization/i18n/fr-FR.js');
   });
+
+  test('getCurrentLanguage falls back to native language before locale init', async () => {
+    const Internationalization = await loadI18nWithLanguages([]);
+
+    expect(Internationalization.getCurrentLanguage()).toBe('en');
+  });
+
+  test('initialization falls back to native language when navigator.languages is empty', async () => {
+    const Internationalization = await loadI18nWithLanguages([]);
+    const selectorSpy = mockUnsupportedSelector();
+
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+
+    expect(Internationalization.getCurrentLanguage()).toBe('en');
+    selectorSpy.mockRestore();
+  });
 });
