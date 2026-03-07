@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-function mockAppModuleDependencies(row){
+function mockAppModuleDependencies(mockQueryRow){
   const query = vi.fn().mockResolvedValue({
     get(index) {
       expect(index).toBe(0);
-      return row;
+      return mockQueryRow;
     },
   });
   const setReservedWords = vi.fn();
@@ -120,11 +120,10 @@ describe('initDuckdbVersion', () => {
 
     initDuckdbVersion();
 
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(query).toHaveBeenCalledTimes(1);
-    expect(document.getElementById('duckdbVersionLabel').textContent).toBe('DuckDB v1.4.2, API: wasm');
+    await vi.waitFor(() => {
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('duckdbVersionLabel').textContent).toBe('DuckDB v1.4.2, API: wasm');
+    });
 
     expect(setReservedWords).toHaveBeenCalledWith(['select', 'from']);
 
