@@ -117,6 +117,7 @@ class QueryBudget:
         if disconnect_task.done():
             return
         disconnect_task.cancel()
+
     @staticmethod
     def _cancel(task: asyncio.Task[Any], cancel_fn: Callable[[], None] | None) -> None:
         """Cancel the awaiting task and, when provided, the underlying query."""

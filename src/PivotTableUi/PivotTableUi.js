@@ -108,8 +108,8 @@ export class PivotTableUi extends EventEmitter {
     );
   }
 
-  async #cancelQueryButtonClicked(_event){
-    await Promise.all([
+  #cancelQueryButtonClicked(_event){
+    void Promise.allSettled([
       this.#columnsTupleSet.cancelPendingQuery(),
       this.#rowsTupleSet.cancelPendingQuery(),
       this.#cellsSet.cancelPendingQuery()
@@ -1766,11 +1766,11 @@ export class PivotTableUi extends EventEmitter {
     }
   }
 
-  async #estimateColumnsAxisPageSize(){
+  #estimateColumnsAxisPageSize(){
     return 100;
   }
 
-  async #estimateRowsAxisPageSize(){
+  #estimateRowsAxisPageSize(){
     return 100;
   }
 
@@ -2122,7 +2122,7 @@ export class PivotTableUi extends EventEmitter {
   }
 
   // see: https://github.com/rpbouman/huey/issues/543
-  async #contextMenuFilterClicked(event){
+  #contextMenuFilterClicked(event){
     const target = event.target;
     const id = target.id;
 
