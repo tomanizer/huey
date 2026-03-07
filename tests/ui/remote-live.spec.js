@@ -6,7 +6,7 @@ const {
   runQueryAndWaitForPivot,
 } = require('./helpers/app-bootstrap');
 
-const liveRemoteBaseUrl = 'http://127.0.0.1:8002';
+const liveRemoteBaseUrl = process.env.PLAYWRIGHT_REMOTE_BASE_URL || 'http://127.0.0.1:8002';
 
 async function waitForRemoteAppReady(page) {
   await page.goto('/index.html');

@@ -1221,6 +1221,7 @@ export class FilterDialog {
         const totalCount = hasTotalCount ? apiResponse.total_count : (apiResponse.values || []).length;
         const values = apiResponse.values || [];
         const fields = (offset === 0 ? [{ name: FilterDialog.#numRowsColumnName }] : []).concat([
+          // Arrow typeId 5 = Utf8/string; remote picklist values must use a supported scalar type here.
           { name: 'value', type: { typeId: 5 } },
           { name: 'label', type: { typeId: 5 } }
         ]);

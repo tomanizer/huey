@@ -12,6 +12,7 @@ datasets:
         is_measure: true
 
   - dataset_id: trades_unavailable_v1
+    # Intentionally schema-only so live Playwright can assert a real 409 DATASET_UNAVAILABLE query path.
     seed_sample_data: false
     fields:
       - name: date

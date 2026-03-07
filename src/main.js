@@ -54,7 +54,7 @@ try {
 
   await initApplication();
 } catch (error) {
-  console.error(error);
+  console.warn('DuckDB startup failed; continuing with remote-only application initialization.', error);
   await initApplication();
 } finally {
   document.body.setAttribute('aria-busy', false);

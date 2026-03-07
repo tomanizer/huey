@@ -14,6 +14,9 @@ const defaultProjects = process.env.CI ? ['chromium'] : localProjects.map((proje
 const selectedProjectNames = requestedProjectNames && requestedProjectNames.length ? requestedProjectNames : defaultProjects;
 const selectedProjects = localProjects.filter((project) => selectedProjectNames.includes(project.name));
 const liveRemoteEnabled = process.env.PLAYWRIGHT_REMOTE_LIVE === '1';
+const liveRemoteBaseUrl = process.env.PLAYWRIGHT_REMOTE_BASE_URL || 'http://127.0.0.1:8002';
+const liveRemoteUrl = new URL(liveRemoteBaseUrl);
+const liveRemotePort = liveRemoteUrl.port || '8002';
 const frontendServer = {
   command: 'npm run dev -- --host 127.0.0.1 --port 8765 --strictPort',
   url: 'http://127.0.0.1:8765',
@@ -28,8 +31,8 @@ const liveRemoteServer = {
     + 'QUERYSERVICE_DATASETS_CONFIG_PATH=tests/ui/fixtures/queryservice-live-datasets.yaml '
     + 'QUERYSERVICE_EXPORT_OUTPUT_DIR=/tmp/huey-playwright-exports '
     + 'QUERYSERVICE_EXPORT_DB_PATH=/tmp/huey-playwright-exports/jobs.db '
-    + 'python -m uvicorn server.main:app --host 127.0.0.1 --port 8002',
-  url: 'http://127.0.0.1:8002/health/liveness',
+    + `python -m uvicorn server.main:app --host ${liveRemoteUrl.hostname} --port ${liveRemotePort}`,
+  url: `${liveRemoteBaseUrl}/health/liveness`,
   reuseExistingServer: !process.env.CI,
   timeout: 120000,
 };
