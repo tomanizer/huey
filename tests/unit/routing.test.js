@@ -60,4 +60,18 @@ describe('Routing', () => {
     expect(Routing.getRouteForQueryModel({ queryModel: {} })).toBeDefined();
     expect(Routing.getRouteForQueryModel(null)).toBeUndefined();
   });
+
+  test('oversized route state is not serialized into the hash', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const route = Routing.getRouteForQueryModel({
+      datasourceId: 'ds1',
+      axes: {
+        rows: [{ columnName: 'x'.repeat(9000) }],
+      },
+    });
+
+    expect(route).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalled();
+  });
 });
