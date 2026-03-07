@@ -4,13 +4,14 @@ import asyncio
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 
 import pytest
 from starlette.testclient import TestClient
 
 from server.config import get_settings
 from server.engine import db_manager
-from server.query_budget import reset_query_budget
+from server.query_budget import QueryBudget, reset_query_budget
 
 
 @pytest.fixture
@@ -131,3 +132,66 @@ def test_timeout_uses_per_query_cancel_not_global_interrupt(
     assert not global_interrupt_called["called"], (
         "db_manager.interrupt() must NOT be called when a per-cursor cancel_fn is available"
     )
+
+
+def test_cancelled_acquire_does_not_increment_active_count(settings_override) -> None:
+    """Cancelling while waiting on the semaphore must not leak active slots."""
+    settings_override(max_concurrent_queries=1, max_query_queue_depth=1, query_timeout_seconds=5)
+
+    async def scenario() -> None:
+        budget = QueryBudget()
+        async with budget.acquire():
+            assert budget.active_count == 1
+
+            async def wait_for_slot() -> None:
+                async with budget.acquire():
+                    pytest.fail("Cancelled waiter unexpectedly acquired the semaphore")
+
+            waiter = asyncio.create_task(wait_for_slot())
+            for _ in range(50):
+                if budget._waiting == 1:
+                    break
+                await asyncio.sleep(0)
+            assert budget._waiting == 1
+
+            waiter.cancel()
+            with suppress(asyncio.CancelledError):
+                await waiter
+
+            assert budget.active_count == 1
+            assert budget._waiting == 0
+
+        assert budget.active_count == 0
+        assert budget._waiting == 0
+
+    asyncio.run(scenario())
+
+
+def test_disconnect_polling_uses_bounded_interval(settings_override) -> None:
+    """Disconnect polling should be rate-limited while a query keeps running."""
+    settings_override(query_timeout_seconds=5)
+
+    class StubRequest:
+        def __init__(self) -> None:
+            self.poll_count = 0
+
+        async def is_disconnected(self) -> bool:
+            self.poll_count += 1
+            return False
+
+    async def scenario() -> int:
+        budget = QueryBudget()
+        budget._disconnect_poll_interval_seconds = 0.05
+        request = StubRequest()
+
+        result, execution_ms = await budget.run_with_budget(
+            request,
+            lambda: asyncio.sleep(0.12, result="ok"),
+        )
+
+        assert result == "ok"
+        assert execution_ms >= 0
+        return request.poll_count
+
+    poll_count = asyncio.run(scenario())
+    assert poll_count <= 4
