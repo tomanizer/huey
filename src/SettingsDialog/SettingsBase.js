@@ -138,9 +138,9 @@ export class SettingsBase extends EventEmitter {
   }
     
   #examineChangesAndSendEvent(_oldSettings){
-    // TODO: 
-    // figure out exactly what changed and prepare a change reccord
-    // send the change record along with the change event.
+    // Known gap: the change event currently carries no diff record.
+    // Listeners receive the full settings object and must compare against
+    // their own cached copy to determine what changed.
     
     this.fireEvent('change', this);
   }

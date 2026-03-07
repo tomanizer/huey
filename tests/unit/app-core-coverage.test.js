@@ -72,6 +72,7 @@ async function loadAppModule(options = {}) {
       return undefined;
     }),
     assignSettings: vi.fn(),
+    ready: vi.fn(),
   };
   calls.settings = settingsMock;
 
@@ -83,6 +84,7 @@ async function loadAppModule(options = {}) {
   calls.showErrorDialog = showErrorDialog;
   vi.doMock('../../src/ErrorDialog/ErrorDialog.js', () => ({
     showErrorDialog,
+    initErrorDialog: vi.fn(),
   }));
 
   vi.doMock('../../src/util/sql/SQLHelper.js', () => ({

@@ -2,7 +2,7 @@ import { byId } from '../util/dom/dom.js';
 import { bufferEvents } from '../util/event/EventBuffer.js';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
 import { getQuotedIdentifier, createNumberFormatter } from '../util/sql/SQLHelper.js';
-import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
+import { showErrorDialog, initErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { initDragableDialogs } from '../DragAndDrop/DragableDialogs.js';
 import { QueryModel, queryModel, initQueryModel } from '../QueryModel/QueryModel.js';
 import { initAttributeUi } from '../AttributeUi/AttributeUi.js';
@@ -140,6 +140,8 @@ export function initExecuteQuery(){
 }
 
 export function initApplication(){
+  settings.ready();
+  initErrorDialog();
   initDragableDialogs();
   initDuckdbVersion();
   initDataSourcesUi();

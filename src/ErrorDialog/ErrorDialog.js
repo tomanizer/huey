@@ -74,7 +74,7 @@ export function showErrorDialog(config){
   byId('errorDialogOkButton').focus();
 }
 
-function initErrorDialog(){
+export function initErrorDialog(){
   const errorDialog = byId('errorDialog');
   errorDialog.addEventListener('close', () =>{
     if (errorDialogFocusOrigin && typeof errorDialogFocusOrigin.focus === 'function') {
@@ -87,4 +87,3 @@ function initErrorDialog(){
     errorDialog.close();
   });
 }
-initErrorDialog()

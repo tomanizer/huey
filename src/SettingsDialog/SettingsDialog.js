@@ -339,8 +339,11 @@ export class Settings extends EventEmitter {
     super('change');
     this.#id = id;
     this.#loadFromLocalStorage();
-    this.#initDialog();
+  }
 
+  /** Call once the DOM is ready (from App.initApplication). */
+  ready(){
+    this.#initDialog();
     window.addEventListener('beforeunload', () =>{
       this.#storeToLocalStorage();
     });
@@ -522,9 +525,11 @@ export class Settings extends EventEmitter {
   }
 
   #examineChangesAndSendEvent(_oldSettings){
-    // TODO:
-    // figure out exactly what changed and prepare a change reccord
-    // send the change record along with the change event.
+    // Known gap: the change event currently carries no diff record.
+    // Listeners receive the full settings object and must compare against
+    // their own cached copy to determine what changed.
+    // To improve: compute a shallow diff of _oldSettings vs this.#settings
+    // and include it in the event payload.
 
     this.fireEvent('change', this);
   }
