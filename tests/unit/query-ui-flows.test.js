@@ -1,21 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
-  settings: {
-    getSettings() {
-      return {};
-    },
-    assignSettings() {},
-    addEventListener() {},
-    removeEventListener() {},
-  },
-}));
+vi.mock('../../src/SettingsDialog/SettingsDialog.js');
 
-vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
-  showErrorDialog: vi.fn(),
-  getDataFromError: vi.fn((e) => ({ title: String(e), description: String(e) })),
-  initErrorDialog: vi.fn(),
-}));
+vi.mock('../../src/ErrorDialog/ErrorDialog.js');
 
 vi.mock('../../src/FilterUi/FilterUi.js', () => ({
   FilterDialog: {
