@@ -16,11 +16,7 @@ vi.mock('../../src/SettingsDialog/SettingsDialog.js', () => ({
   },
 }));
 
-vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
-  showErrorDialog: vi.fn(),
-  getDataFromError: vi.fn((e) => ({ title: String(e), description: String(e) })),
-  initErrorDialog: vi.fn(),
-}));
+vi.mock('../../src/ErrorDialog/ErrorDialog.js');
 
 import { RemoteQueryAdapter } from '../../src/DataSource/remote/RemoteQueryAdapter.js';
 import { FilterDialog } from '../../src/FilterUi/FilterUi.js';

@@ -130,9 +130,7 @@ vi.mock('../../src/PivotTableUi/PivotTableUiHighlighting.js', () => ({
   PivotTableUiHighlighting: class PivotTableUiHighlighting {},
 }));
 
-vi.mock('../../src/ErrorDialog/ErrorDialog.js', () => ({
-  showErrorDialog: vi.fn(),
-}));
+vi.mock('../../src/ErrorDialog/ErrorDialog.js');
 
 vi.mock('../../src/util/clipboard/clipboard.js', () => ({
   copyToClipboard: vi.fn(),

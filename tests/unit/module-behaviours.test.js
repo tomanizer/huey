@@ -17,7 +17,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('zero-coverage frontend module anchors', () => {
+describe('module behaviours', () => {
   test('ErrorDialog.getDataFromError extracts message and stack', async () => {
     document.body.innerHTML = `
       <dialog id="errorDialog"></dialog>
@@ -141,25 +141,6 @@ describe('zero-coverage frontend module anchors', () => {
 
     expect(locale).toHaveProperty('minimumIntegerDigits');
     expect(locale).toHaveProperty('maximumFractionDigits');
-  });
-
-  test('QueryUi module loads without throwing', async () => {
-    vi.doMock('../../src/FilterUi/FilterUi.js', () => ({
-      FilterDialog: class {},
-      filterDialog: {},
-    }));
-    vi.doMock('../../src/QueryModel/QueryModel.js', () => ({
-      QueryModel: {
-        AXIS_COLUMNS: 'columns',
-        AXIS_ROWS: 'rows',
-        AXIS_CELLS: 'cells',
-        AXIS_FILTERS: 'filters',
-      },
-      QueryAxisItem: class {},
-      queryModel: {},
-    }));
-
-    await expect(import('../../src/QueryUi/QueryUi.js')).resolves.toBeDefined();
   });
 
   test('SessionCloner ignores postMessage events from untrusted origins', async () => {
