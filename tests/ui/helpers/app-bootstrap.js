@@ -70,10 +70,16 @@ async function addFilterAxis(page, columnName) {
   await expect(filterToggle).toBeVisible({ timeout: 15000 });
   await filterToggle.click();
   await expect(page.locator('#queryUi section[data-axis="filters"] > ol > li')).toHaveCount(1, { timeout: 30000 });
+  // The filter dialog may auto-open after the axis is added. Wait briefly for it
+  // and cancel if it appears. A one-shot isVisible() check misses it when WASM
+  // is warm and initialization is faster than usual.
   const filterDialog = page.locator('#filterDialog');
-  if (await filterDialog.isVisible().catch(() => false)) {
+  try {
+    await expect(filterDialog).toBeVisible({ timeout: 2000 });
     await page.locator('#filterDialogCancelButton').click();
     await expect(filterDialog).not.toBeVisible({ timeout: 10000 });
+  } catch {
+    // Dialog did not auto-open — nothing to cancel.
   }
 }
 

@@ -35,17 +35,19 @@ test.describe('Remote mode UI', () => {
       ],
     };
     const tuplesResponse = {
-      total_count: 5,
+      total_count: 3,
       items: [
-        { values: ['2026-03-01', 'AAPL', 1500], grouping_id: null },
-        { values: ['2026-03-01', 'GOOG', 2200], grouping_id: null },
-        { values: ['2026-03-01', 'MSFT', 1800], grouping_id: null },
+        { values: ['AAPL'], grouping_id: null },
+        { values: ['GOOG'], grouping_id: null },
+        { values: ['MSFT'], grouping_id: null },
       ],
       paging: { limit: 100, offset: 0, returned: 3 },
     };
     const cellsResponse = {
       cells: [
         { row_index: 0, column_index: 0, values: { sum_volume_0: 1500 } },
+        { row_index: 1, column_index: 0, values: { sum_volume_0: 2200 } },
+        { row_index: 2, column_index: 0, values: { sum_volume_0: 1800 } },
       ],
     };
 
@@ -62,8 +64,11 @@ test.describe('Remote mode UI', () => {
     await page.locator('#remoteDatasourceDatasetId').fill('trades_v1');
     await page.locator('#promptDialogAcceptButton').click();
     await expect(page.locator('details[data-grouptype="remote"]')).toBeVisible({ timeout: 15000 });
-    await page.locator('details[data-grouptype="remote"]').first().locator('summary').click();
-    await page.locator('details[data-grouptype="remote"] .analyzeActionButton').first().click();
+    // Open the group header so the datasource node is revealed in the sidebar.
+    await page.locator('details[data-grouptype="remote"] > summary').click();
+    // The analyzeActionButton label is CSS-hidden (only shown on hover), so use
+    // evaluate to click it programmatically, bypassing Playwright's visibility check.
+    await page.locator('details[data-grouptype="remote"] .analyzeActionButton').first().evaluate((el) => el.click());
     await expect(page.locator('#attributeUi')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#attributeUi details[data-column_name="symbol"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#attributeUi details[data-column_name="volume"]')).toBeVisible({ timeout: 10000 });

@@ -43,6 +43,8 @@ test.describe('Filters', () => {
 
     await page.click('#filterDialogOkButton');
     await expect(filterDialog).not.toBeVisible({ timeout: 10000 });
+    // Wait for the filter to commit to the query model before triggering the run
+    await expect(page.locator('#pivotTableUi')).toHaveAttribute('data-needs-update', 'true', { timeout: 5000 });
     const pivot = await runQueryAndWaitForPivot(page);
     await expect(pivot).toContainText('AAPL');
     await expect(pivot).not.toContainText('GOOG');

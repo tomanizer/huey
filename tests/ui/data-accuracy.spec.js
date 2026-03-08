@@ -129,6 +129,8 @@ test.describe('Data accuracy', () => {
     await expect(page.locator('#filterValueList option')).toHaveAttribute('value', 'GOOG');
     await page.locator('#filterDialogOkButton').click();
     await expect(page.locator('#filterDialog')).not.toBeVisible({ timeout: 10000 });
+    // Wait for the filter to commit to the query model before triggering the run
+    await expect(page.locator('#pivotTableUi')).toHaveAttribute('data-needs-update', 'true', { timeout: 5000 });
     await runQueryAndWaitForPivot(page);
 
     await expect(page.locator('#pivotTableUi')).toContainText('GOOG');

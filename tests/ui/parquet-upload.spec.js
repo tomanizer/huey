@@ -98,9 +98,14 @@ test.describe('Parquet: wide.parquet', () => {
     await ensureAutoRunDisabled(page);
     await addToAxis(page, 'symbol', 'rows');
     await addToAxis(page, 'metric_000', 'cells');
-    await runQueryAndWaitForPivot(page);
 
-    await expect(page.locator('#pivotTableUi')).toContainText(/\d/, { timeout: 15000 });
+    // wide.parquet has 100 attribute columns; resize events from the large AttributeUi
+    // can keep data-needs-update="true" in a cycle, so we wait for aria-busy directly.
+    await page.locator('#runQueryButton').evaluate((btn) => btn.click());
+    const pivot = page.locator('#pivotTableUi');
+    await expect(pivot).toBeVisible({ timeout: 60000 });
+    await expect(pivot).toHaveAttribute('aria-busy', 'false', { timeout: 120000 });
+    await expect(pivot).toContainText(/\d/, { timeout: 15000 });
   });
 });
 
