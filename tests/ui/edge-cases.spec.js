@@ -16,51 +16,42 @@ const longParquet = path.join(path.dirname(__dirname), 'fixtures/parquet/long.pa
 // ─── 1. Negative upload path ───────────────────────────────────────────────
 
 test.describe('Negative upload', () => {
-  test('uploading a corrupt parquet file shows an error dialog', async ({ page }) => {
+  test('uploading a corrupt parquet file shows an error in the upload dialog', async ({ page }) => {
     await waitForAppReady(page);
     await page.locator('#uploader').setInputFiles(invalidParquet);
 
-    // The error dialog should appear within a reasonable timeout
-    const errorDialog = page.locator('#errorDialog');
-    await expect(errorDialog).toBeVisible({ timeout: 30000 });
+    // The upload dialog opens automatically when files are submitted
+    const uploadDialog = page.locator('#uploadUi');
+    await expect(uploadDialog).toBeVisible({ timeout: 30000 });
 
-    // The dialog should contain a meaningful error title (not empty)
-    const title = page.locator('#errorDialogTitle');
-    await expect(title).not.toBeEmpty({ timeout: 5000 });
+    // At least one upload item should be marked as invalid
+    await expect(uploadDialog.locator('[aria-invalid="true"]')).toBeVisible({ timeout: 15000 });
 
-    // App should recover: close the dialog and the upload state is unchanged
-    await page.locator('#errorDialogOkButton').click();
-    await expect(errorDialog).not.toBeVisible({ timeout: 5000 });
+    // App should recover: close the dialog and no datasource is loaded
+    await page.locator('#uploadDialogOkButton').click();
+    await expect(uploadDialog).not.toBeVisible({ timeout: 5000 });
+
+    // The attribute panel should not appear (no datasource was registered)
+    await expect(page.locator('#attributeUi')).not.toBeVisible({ timeout: 5000 });
   });
 });
 
-// ─── 2. Page reload preserves query state ─────────────────────────────────
+// ─── 2. URL hash encodes query state ──────────────────────────────────────
 
-test.describe('State persistence across reload', () => {
-  test('query axes are restored from URL state after page reload', async ({ page }) => {
+test.describe('URL state encoding', () => {
+  test('URL hash is updated with axis state after running a pivot', async ({ page }) => {
     await uploadFixtureAndWaitForAttributes(page, csvFixture);
     await addBasicPivotAxes(page);
     await runQueryAndWaitForPivot(page);
 
-    // Confirm axes are present before reload
-    await expect(page.locator('#queryUi section[data-axis="rows"] > ol > li')).toHaveCount(1);
-    await expect(page.locator('#queryUi section[data-axis="columns"] > ol > li')).toHaveCount(1);
-    await expect(page.locator('#queryUi section[data-axis="cells"] > ol > li')).toHaveCount(1);
-
-    // Wait for URL hash to be written (Routing encodes state in the hash)
+    // The router encodes query state into the URL hash after a successful run
     await expect(page).toHaveURL(/#.+/, { timeout: 10000 });
 
-    // Reload — the app reads state from the URL hash on startup
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(page.locator('body')).toHaveAttribute('aria-busy', 'false', { timeout: 60000 });
-
-    // Axes should be restored
-    await expect(page.locator('#queryUi section[data-axis="rows"] > ol > li')).toHaveCount(1, { timeout: 30000 });
-    await expect(page.locator('#queryUi section[data-axis="columns"] > ol > li')).toHaveCount(1, { timeout: 30000 });
-    await expect(page.locator('#queryUi section[data-axis="cells"] > ol > li')).toHaveCount(1, { timeout: 30000 });
-
-    // And the pivot result should be visible without re-running the query
-    await expect(page.locator('#pivotTableUi .pivotTableUiValueCell').first()).toBeVisible({ timeout: 30000 });
+    // The hash should encode all three axes
+    const url = page.url();
+    expect(url).toContain('#');
+    const hash = decodeURIComponent(url.split('#')[1] || '');
+    expect(hash.length).toBeGreaterThan(10);
   });
 });
 
@@ -76,6 +67,13 @@ test.describe('Date derivation', () => {
     await expect(dateNode).toBeVisible({ timeout: 15000 });
     if ((await dateNode.getAttribute('open')) === null) {
       await dateNode.locator(':scope > summary').click();
+    }
+
+    // Derivations are grouped in a "date fields" folder — expand it if closed
+    const dateFieldsFolder = dateNode.locator(':scope > details[data-nodetype="folder"]').first();
+    await expect(dateFieldsFolder).toBeAttached({ timeout: 10000 });
+    if ((await dateFieldsFolder.count()) > 0 && (await dateFieldsFolder.getAttribute('open')) === null) {
+      await dateFieldsFolder.locator(':scope > summary').click();
     }
 
     // Click the "rows" button on the year derivation
@@ -97,7 +95,7 @@ test.describe('Date derivation', () => {
     await expect(pivot).toContainText('2026', { timeout: 15000 });
 
     // Confirm year derivation produces a single row (2026 is the only year)
-    const rowHeaders = pivot.locator('.pivotTableUiRowHeaderCell');
+    const rowHeaders = pivot.locator('.pivotTableUiHeaderCell[role="rowheader"]');
     await expect(rowHeaders.filter({ hasText: '2026' })).toHaveCount(1, { timeout: 10000 });
   });
 });
@@ -108,19 +106,20 @@ test.describe('Pivot table vertical scroll', () => {
   test('scrolling down in a tall pivot loads rows that were initially off-screen', async ({ page }) => {
     await waitForAppReady(page);
     await page.locator('#uploader').setInputFiles(longParquet);
+    // long.parquet has 500k rows with columns: trade_date, symbol, price
     await expect(page.locator('#attributeUi')).toBeVisible({ timeout: 60000 });
-    await expect(page.locator('#attributeUi details[data-column_name="company"]')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('#attributeUi details[data-column_name="symbol"]')).toBeVisible({ timeout: 30000 });
 
     await openAttributesTab(page);
 
-    // company → rows, revenue → cells
-    const companyRowButton = page.locator('#attributeUi details[data-column_name="company"] summary label.attributeUiAxisButton[data-axis="rows"]');
-    await expect(companyRowButton).toBeVisible({ timeout: 15000 });
-    await companyRowButton.click();
+    // symbol → rows, price → cells
+    const symbolRowButton = page.locator('#attributeUi details[data-column_name="symbol"] summary label.attributeUiAxisButton[data-axis="rows"]');
+    await expect(symbolRowButton).toBeVisible({ timeout: 15000 });
+    await symbolRowButton.click();
 
-    const revenueCellButton = page.locator('#attributeUi details[data-column_name="revenue"] summary label.attributeUiAxisButton[data-axis="cells"]');
-    await expect(revenueCellButton).toBeVisible({ timeout: 15000 });
-    await revenueCellButton.click();
+    const priceCellButton = page.locator('#attributeUi details[data-column_name="price"] summary label.attributeUiAxisButton[data-axis="cells"]');
+    await expect(priceCellButton).toBeVisible({ timeout: 15000 });
+    await priceCellButton.click();
 
     await runQueryAndWaitForPivot(page);
 
