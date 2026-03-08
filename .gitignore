@@ -4,6 +4,7 @@
 
 # Coverage
 .coverage
+coverage/
 
 # Node (UI tests)
 node_modules/
