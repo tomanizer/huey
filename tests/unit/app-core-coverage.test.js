@@ -11,7 +11,7 @@ function createAppDom() {
     <div id="queryResultRowsInfo"></div>
     <div id="queryResultColumnsInfo"></div>
     <div id="queryPerformanceInfo"></div>
-    <dialog id="visualizationProgressDialog"></dialog>
+    <dialog id="visualizationProgressDialog"><p id="visualizationProgressMessage"></p></dialog>
   `;
   const busyDialog = document.getElementById('visualizationProgressDialog');
   busyDialog.showModal = vi.fn();
@@ -271,9 +271,12 @@ describe('App core initialization and query flows', () => {
     expect(document.getElementById('queryPerformanceInfo').textContent).toBe('Query: 12ms | Render: 6ms');
 
     busyHandlers[0]({ eventData: { busy: true } });
+    pivotHandlers.progress({ eventData: { message: 'Fetching aggregated cell values...' } });
+    expect(document.getElementById('visualizationProgressMessage').textContent).toBe('Fetching aggregated cell values...');
     busyHandlers[0]({ eventData: { busy: false } });
     expect(document.getElementById('visualizationProgressDialog').showModal).toHaveBeenCalledTimes(1);
     expect(document.getElementById('visualizationProgressDialog').close).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('visualizationProgressMessage').textContent).toBe('');
 
     pivotHandlers.updated({ eventData: { status: 'error', error: { title: 'boom' } } });
     expect(calls.showErrorDialog).toHaveBeenCalledWith({ title: 'boom' });

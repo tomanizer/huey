@@ -264,12 +264,27 @@ export function initApplication(){
     }
     const busy = event.eventData.busy;
     const busyDialog = byId('visualizationProgressDialog');
+    const progressMessage = byId('visualizationProgressMessage');
     if (busy) {
+      if (progressMessage && !progressMessage.textContent) {
+        progressMessage.textContent = 'Running query...';
+      }
       busyDialog.showModal();
     }
     else {
+      if (progressMessage) {
+        progressMessage.textContent = '';
+      }
       busyDialog.close();
     }
+  });
+
+  pivotTableUi.addEventListener('progress', (event) =>{
+    const progressMessage = byId('visualizationProgressMessage');
+    if (!progressMessage) {
+      return;
+    }
+    progressMessage.textContent = event.eventData.message || 'Running query...';
   });
 
   initPostMessageInterface();
