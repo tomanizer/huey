@@ -22,4 +22,4 @@ The existing UI smoke test (`npm run test:ui`) verifies that the app loads and t
 - Use Playwright’s `page.waitForLoadState('domcontentloaded')` and measure time to a stable selector (e.g. `#workarea` visible).
 - Fail the build if time exceeds a threshold (e.g. 10 s in CI).
 
-For now, performance validation is manual; automate when baseline and SLOs are defined.
+For automated local-mode benchmarking and baseline comparison, see [frontend-performance-benchmarks.md](./frontend-performance-benchmarks.md).

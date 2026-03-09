@@ -1,0 +1,67 @@
+{
+  "profile": "local-dev-reference-2026-03-09",
+  "notes": "Reference frontend benchmark baseline captured on a local development machine via scripts/ui_benchmark_runner.cjs. Use for relative before/after comparisons, not as a hard universal SLO.",
+  "scenarios": [
+    {
+      "name": "app_ready",
+      "wallTimeMs": 4135,
+      "uiMetrics": null,
+      "sql": {
+        "count": 0,
+        "totalTimeMs": 0,
+        "byKind": {}
+      }
+    },
+    {
+      "name": "upload_wide_schema",
+      "wallTimeMs": 3967,
+      "uiMetrics": null,
+      "sql": {
+        "count": 0,
+        "totalTimeMs": 0,
+        "byKind": {}
+      }
+    },
+    {
+      "name": "long_pivot_first_run",
+      "wallTimeMs": 455,
+      "uiMetrics": {
+        "queryTimeMs": 50,
+        "renderTimeMs": 141,
+        "totalTimeMs": 191
+      },
+      "sql": {
+        "count": 2,
+        "totalTimeMs": 148,
+        "byKind": {
+          "tuples": 1,
+          "cells": 1
+        }
+      }
+    },
+    {
+      "name": "long_pivot_rerun",
+      "wallTimeMs": 71,
+      "uiMetrics": {
+        "queryTimeMs": 0,
+        "renderTimeMs": 46,
+        "totalTimeMs": 46
+      },
+      "sql": {
+        "count": 0,
+        "totalTimeMs": 0,
+        "byKind": {}
+      }
+    },
+    {
+      "name": "long_pivot_scroll",
+      "wallTimeMs": 512,
+      "uiMetrics": null,
+      "sql": {
+        "count": 0,
+        "totalTimeMs": 0,
+        "byKind": {}
+      }
+    }
+  ]
+}

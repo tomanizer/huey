@@ -16,6 +16,7 @@
     "test:coverage": "vitest run --coverage",
     "pretest:ui": "node scripts/check-node-version.js",
     "test:ui":   "playwright test",
+    "perf:ui":   "node scripts/ui_benchmark_runner.cjs",
     "lint:js":   "eslint src/ --max-warnings 47"
   },
   "devDependencies": {
