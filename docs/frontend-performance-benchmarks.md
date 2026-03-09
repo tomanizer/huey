@@ -36,6 +36,8 @@ The benchmark runner currently measures:
 - `long_pivot_first_run`: upload `tests/fixtures/parquet/long.parquet`, build a pivot, and run the first query
 - `long_pivot_rerun`: re-run the same pivot to observe cache behavior
 - `long_pivot_scroll`: scroll an already-run tall pivot and measure viewport update latency
+- `long_pivot_second_shape`: change the query shape on the already-open long parquet datasource and measure the next run
+- `long_reopen_same_file_first_run`: reopen the same long parquet file in a fresh browser context and measure the first run again
 
 ## Metrics
 
