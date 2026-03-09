@@ -151,8 +151,8 @@ async function uploadParquetAndWaitForAttribute(page, fixturePath, expectedColum
 async function addToAxis(page, columnName, axis) {
   await openAttributesTab(page);
   const toggle = page.locator(
-    `#attributeUi details[data-column_name="${columnName}"] summary label.attributeUiAxisButton[data-axis="${axis}"]`
-  ).first();
+    `#attributeUi details[data-nodetype="column"][data-column_name="${columnName}"] > summary label.attributeUiAxisButton[data-axis="${axis}"]`
+  );
   await expect(toggle).toBeVisible({ timeout: 15000 });
   await toggle.click();
 }
@@ -190,6 +190,22 @@ async function getLastPerformanceMetrics(page) {
   return await page.evaluate(() => {
     return window.__hueyLastPerformanceMetrics || null;
   });
+}
+
+async function setupLongPivot(page) {
+  await uploadParquetAndWaitForAttribute(page, longParquet, 'symbol');
+  await ensureAutoRunDisabled(page);
+  await addToAxis(page, 'symbol', 'rows');
+  await addToAxis(page, 'price', 'cells');
+}
+
+async function runAndRecordPivotScenario(page, recorder, name, extra) {
+  await clearPerformanceMetrics(page);
+  const mark = recorder.mark();
+  const start = Date.now();
+  await runQueryAndWaitForPivot(page);
+  const metrics = await getLastPerformanceMetrics(page);
+  return buildScenarioResult(name, Date.now() - start, recorder.getSlice(mark), metrics, extra);
 }
 
 function summarizeSql(entries) {
@@ -252,32 +268,18 @@ async function runScenarios(browserType) {
       const page = await context.newPage();
       const recorder = createSqlRecorder(page);
 
-      await uploadParquetAndWaitForAttribute(page, longParquet, 'symbol');
-      await ensureAutoRunDisabled(page);
-      await addToAxis(page, 'symbol', 'rows');
-      await addToAxis(page, 'price', 'cells');
-
-      await clearPerformanceMetrics(page);
-      let mark = recorder.mark();
-      let start = Date.now();
-      await runQueryAndWaitForPivot(page);
-      let metrics = await getLastPerformanceMetrics(page);
-      results.push(buildScenarioResult('long_pivot_first_run', Date.now() - start, recorder.getSlice(mark), metrics, {
+      await setupLongPivot(page);
+      results.push(await runAndRecordPivotScenario(page, recorder, 'long_pivot_first_run', {
         fixture: path.relative(rootDir, longParquet),
       }));
 
-      await clearPerformanceMetrics(page);
-      mark = recorder.mark();
-      start = Date.now();
-      await runQueryAndWaitForPivot(page);
-      metrics = await getLastPerformanceMetrics(page);
-      results.push(buildScenarioResult('long_pivot_rerun', Date.now() - start, recorder.getSlice(mark), metrics, {
+      results.push(await runAndRecordPivotScenario(page, recorder, 'long_pivot_rerun', {
         fixture: path.relative(rootDir, longParquet),
       }));
 
       const innerContainer = page.locator('#pivotTableUi .pivotTableUiInnerContainer');
-      mark = recorder.mark();
-      start = Date.now();
+      const mark = recorder.mark();
+      const start = Date.now();
       await innerContainer.evaluate((element) => {
         element.scrollTop += 2000;
       });
@@ -294,12 +296,7 @@ async function runScenarios(browserType) {
       await addToAxis(page, 'symbol', 'columns');
       await addToAxis(page, 'price', 'cells');
 
-      await clearPerformanceMetrics(page);
-      mark = recorder.mark();
-      start = Date.now();
-      await runQueryAndWaitForPivot(page);
-      metrics = await getLastPerformanceMetrics(page);
-      results.push(buildScenarioResult('long_pivot_second_shape', Date.now() - start, recorder.getSlice(mark), metrics, {
+      results.push(await runAndRecordPivotScenario(page, recorder, 'long_pivot_second_shape', {
         fixture: path.relative(rootDir, longParquet),
       }));
 
@@ -311,17 +308,8 @@ async function runScenarios(browserType) {
       const page = await context.newPage();
       const recorder = createSqlRecorder(page);
 
-      await uploadParquetAndWaitForAttribute(page, longParquet, 'symbol');
-      await ensureAutoRunDisabled(page);
-      await addToAxis(page, 'symbol', 'rows');
-      await addToAxis(page, 'price', 'cells');
-
-      await clearPerformanceMetrics(page);
-      const mark = recorder.mark();
-      const start = Date.now();
-      await runQueryAndWaitForPivot(page);
-      const metrics = await getLastPerformanceMetrics(page);
-      results.push(buildScenarioResult('long_reopen_same_file_first_run', Date.now() - start, recorder.getSlice(mark), metrics, {
+      await setupLongPivot(page);
+      results.push(await runAndRecordPivotScenario(page, recorder, 'long_reopen_same_file_first_run', {
         fixture: path.relative(rootDir, longParquet),
       }));
 
@@ -370,6 +358,7 @@ function writeCsv(filePath, results, comparison) {
       'sql_count',
       'sql_total_time_ms',
       'sql_schema_count',
+      'sql_tuple_count_queries',
       'sql_tuples_count',
       'sql_cells_count',
       'wall_time_delta_ms',
@@ -389,6 +378,7 @@ function writeCsv(filePath, results, comparison) {
       scenario.sql.count,
       scenario.sql.totalTimeMs,
       scenario.sql.byKind.schema || 0,
+      scenario.sql.byKind.tuple_counts || 0,
       scenario.sql.byKind.tuples || 0,
       scenario.sql.byKind.cells || 0,
       delta.wallTimeMsDelta ?? '',
@@ -409,14 +399,14 @@ function writeMarkdown(filePath, results, comparison, baselinePath) {
     '',
     baselinePath ? `Baseline: \`${path.relative(rootDir, baselinePath)}\`` : 'Baseline: none',
     '',
-    '| Scenario | Wall (ms) | UI Query | UI Render | UI Total | SQL Count | SQL Total | Schema | Tuples | Cells | Wall Δ | UI Total Δ | SQL Total Δ |',
-    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Scenario | Wall (ms) | UI Query | UI Render | UI Total | SQL Count | SQL Total | Schema | Tuple Count Queries | Tuples | Cells | Wall Δ | UI Total Δ | SQL Total Δ |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
   ];
 
   results.forEach((scenario) => {
     const delta = comparisonByName.get(scenario.name) || {};
     lines.push(
-      `| ${scenario.name} | ${scenario.wallTimeMs} | ${scenario.uiMetrics ? scenario.uiMetrics.queryTimeMs : ''} | ${scenario.uiMetrics ? scenario.uiMetrics.renderTimeMs : ''} | ${scenario.uiMetrics ? scenario.uiMetrics.totalTimeMs : ''} | ${scenario.sql.count} | ${scenario.sql.totalTimeMs} | ${scenario.sql.byKind.schema || 0} | ${scenario.sql.byKind.tuples || 0} | ${scenario.sql.byKind.cells || 0} | ${delta.wallTimeMsDelta ?? ''} | ${delta.uiTotalTimeMsDelta ?? ''} | ${delta.sqlTotalTimeMsDelta ?? ''} |`
+      `| ${scenario.name} | ${scenario.wallTimeMs} | ${scenario.uiMetrics ? scenario.uiMetrics.queryTimeMs : ''} | ${scenario.uiMetrics ? scenario.uiMetrics.renderTimeMs : ''} | ${scenario.uiMetrics ? scenario.uiMetrics.totalTimeMs : ''} | ${scenario.sql.count} | ${scenario.sql.totalTimeMs} | ${scenario.sql.byKind.schema || 0} | ${scenario.sql.byKind.tuple_counts || 0} | ${scenario.sql.byKind.tuples || 0} | ${scenario.sql.byKind.cells || 0} | ${delta.wallTimeMsDelta ?? ''} | ${delta.uiTotalTimeMsDelta ?? ''} | ${delta.sqlTotalTimeMsDelta ?? ''} |`
     );
   });
 

@@ -65,28 +65,33 @@
     },
     {
       "name": "long_pivot_second_shape",
-      "wallTimeMs": 172,
-      "uiMetrics": null,
+      "wallTimeMs": 803,
+      "uiMetrics": {
+        "queryTimeMs": 59,
+        "renderTimeMs": 664,
+        "totalTimeMs": 724
+      },
       "sql": {
-        "count": 2,
-        "totalTimeMs": 19,
+        "count": 5,
+        "totalTimeMs": 388,
         "byKind": {
-          "tuple_counts": 1,
-          "other": 1
+          "tuple_counts": 2,
+          "other": 2,
+          "cells": 1
         }
       }
     },
     {
       "name": "long_reopen_same_file_first_run",
-      "wallTimeMs": 403,
+      "wallTimeMs": 418,
       "uiMetrics": {
-        "queryTimeMs": 44,
-        "renderTimeMs": 127,
-        "totalTimeMs": 170
+        "queryTimeMs": 48,
+        "renderTimeMs": 139,
+        "totalTimeMs": 187
       },
       "sql": {
         "count": 3,
-        "totalTimeMs": 124,
+        "totalTimeMs": 138,
         "byKind": {
           "tuple_counts": 1,
           "other": 1,
