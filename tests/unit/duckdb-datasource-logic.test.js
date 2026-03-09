@@ -33,6 +33,7 @@ describe('DuckDbDataSource logic coverage', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    localStorage.clear();
   });
 
   describe('static file helpers', () => {
@@ -238,6 +239,51 @@ describe('DuckDbDataSource logic coverage', () => {
 
       await expect(datasource.getColumnMetadata()).rejects.toThrow('describe failed');
       expect(showErrorDialog).toHaveBeenCalledWith(error);
+    });
+
+    it('reuses cached parquet metadata across datasource instances with the same file fingerprint', async () => {
+      const file = new File(['parquet'], 'people.parquet', { type: 'application/vnd.apache.parquet', lastModified: 1234 });
+
+      const firstInstance = createInstanceMock();
+      const firstMetadata = {
+        numRows: 1,
+        schema: { fields: [{ name: 'column_name' }, { name: 'column_type' }] },
+        get() {
+          return {
+            column_name: 'id',
+            column_type: 'BIGINT',
+            toJSON() {
+              return { column_name: 'id', column_type: 'BIGINT' };
+            }
+          };
+        }
+      };
+      firstInstance.__query.mockResolvedValue(firstMetadata);
+
+      const firstDatasource = DuckDbDataSource.createFromFile(duckdbMock, firstInstance, file);
+      const cacheKey = firstDatasource.getColumnMetadataCacheKey();
+      expect(cacheKey).toBeTruthy();
+      await firstDatasource.getColumnMetadata();
+      expect(firstInstance.__query).toHaveBeenCalledTimes(1);
+
+      const secondInstance = createInstanceMock();
+      const secondDatasource = DuckDbDataSource.createFromFile(duckdbMock, secondInstance, file);
+      const cachedMetadata = await secondDatasource.getColumnMetadata();
+
+      expect(secondInstance.__query).not.toHaveBeenCalled();
+      expect(cachedMetadata.numRows).toBe(1);
+      expect(cachedMetadata.get(0).column_name).toBe('id');
+      expect(cachedMetadata.get(0).column_type).toBe('BIGINT');
+    });
+
+    it('does not create a persistent cache key for non-parquet files', () => {
+      const datasource = DuckDbDataSource.createFromFile(
+        duckdbMock,
+        createInstanceMock(),
+        new File(['a,b\n1,2'], 'people.csv', { type: 'text/csv' })
+      );
+
+      expect(datasource.getColumnMetadataCacheKey()).toBeUndefined();
     });
   });
 });
