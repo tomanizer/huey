@@ -274,6 +274,7 @@ describe('DuckDbDataSource logic coverage', () => {
       expect(cachedMetadata.numRows).toBe(1);
       expect(cachedMetadata.get(0).column_name).toBe('id');
       expect(cachedMetadata.get(0).column_type).toBe('BIGINT');
+      expect(cachedMetadata.schema.fields.map((field) => field.name)).toEqual(['column_name', 'column_type']);
     });
 
     it('does not create a persistent cache key for non-parquet files', () => {

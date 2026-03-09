@@ -5,8 +5,8 @@ import { DatasourceSettings } from '../../DatasourceSettingsDialog/DatasourceSet
 import { getDatabase } from './database.js';
 import {
   buildColumnMetadataCacheKey,
-  getCachedColumnMetadataRows,
-  cacheColumnMetadataRows,
+  getCachedColumnMetadata,
+  cacheColumnMetadata,
   createCachedColumnMetadataResult,
   serializeColumnMetadataResult,
 } from './DuckDbMetadataCache.js';
@@ -1200,9 +1200,9 @@ export class DuckDbDataSource extends EventEmitter {
 
     const cacheKey = this.getColumnMetadataCacheKey();
     if (cacheKey) {
-      const cachedRows = getCachedColumnMetadataRows(cacheKey);
-      if (cachedRows) {
-        this.#columnMetadata = createCachedColumnMetadataResult(cachedRows);
+      const cachedMetadata = getCachedColumnMetadata(cacheKey);
+      if (cachedMetadata !== undefined) {
+        this.#columnMetadata = createCachedColumnMetadataResult(cachedMetadata);
         return this.#columnMetadata;
       }
     }
@@ -1219,7 +1219,7 @@ export class DuckDbDataSource extends EventEmitter {
       throw e;
     }
     if (cacheKey) {
-      cacheColumnMetadataRows(cacheKey, serializeColumnMetadataResult(columnMetadata));
+      cacheColumnMetadata(cacheKey, serializeColumnMetadataResult(columnMetadata));
     }
     this.#columnMetadata = columnMetadata;
     return columnMetadata;

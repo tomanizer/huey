@@ -269,11 +269,12 @@ async function runScenarios(browserType) {
 
       await page.close();
       const reopenPage = await context.newPage();
+      const reopenRecorder = createSqlRecorder(reopenPage);
       const reopenStart = Date.now();
-      const reopenMark = recorder.mark();
+      const reopenMark = reopenRecorder.mark();
       await waitForAppReady(reopenPage);
       await uploadParquetOnReadyPageAndWaitForAttribute(reopenPage, wideParquet, 'id');
-      results.push(buildScenarioResult('upload_wide_schema_cached', Date.now() - reopenStart, recorder.getSlice(reopenMark), null, {
+      results.push(buildScenarioResult('upload_wide_schema_cached', Date.now() - reopenStart, reopenRecorder.getSlice(reopenMark), null, {
         fixture: path.relative(rootDir, wideParquet),
       }));
       await context.close();

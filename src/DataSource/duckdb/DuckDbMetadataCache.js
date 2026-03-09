@@ -1,10 +1,15 @@
 const COLUMN_METADATA_CACHE_PREFIX = 'huey:columnMetadata:v1:';
 
 function getLocalStorage() {
-  if (typeof localStorage === 'undefined') {
+  try {
+    if (typeof globalThis === 'undefined' || typeof globalThis.localStorage === 'undefined') {
+      return null;
+    }
+    return globalThis.localStorage;
+  }
+  catch (_error) {
     return null;
   }
-  return localStorage;
 }
 
 export function buildColumnMetadataCacheKey(fingerprint) {
@@ -14,7 +19,7 @@ export function buildColumnMetadataCacheKey(fingerprint) {
   return `${COLUMN_METADATA_CACHE_PREFIX}${fingerprint}`;
 }
 
-export function getCachedColumnMetadataRows(cacheKey) {
+export function getCachedColumnMetadata(cacheKey) {
   const storage = getLocalStorage();
   if (!storage || !cacheKey) {
     return undefined;
@@ -25,23 +30,29 @@ export function getCachedColumnMetadataRows(cacheKey) {
       return undefined;
     }
     const payload = JSON.parse(raw);
-    const rows = payload && payload.rows;
-    return Array.isArray(rows) ? rows : undefined;
+    if (payload && Array.isArray(payload.rows) && payload.schema) {
+      return {
+        rows: payload.rows,
+        schema: payload.schema,
+      };
+    }
+    return undefined;
   }
   catch (_error) {
     return undefined;
   }
 }
 
-export function cacheColumnMetadataRows(cacheKey, rows) {
+export function cacheColumnMetadata(cacheKey, data) {
   const storage = getLocalStorage();
-  if (!storage || !cacheKey || !Array.isArray(rows)) {
+  if (!storage || !cacheKey || !data || !Array.isArray(data.rows) || !data.schema) {
     return;
   }
   try {
     storage.setItem(cacheKey, JSON.stringify({
       cachedAt: Date.now(),
-      rows,
+      rows: data.rows,
+      schema: data.schema,
     }));
   }
   catch (_error) {
@@ -49,12 +60,13 @@ export function cacheColumnMetadataRows(cacheKey, rows) {
   }
 }
 
-export function createCachedColumnMetadataResult(rows) {
+export function createCachedColumnMetadataResult(data) {
+  const rows = data && data.rows;
+  const schema = data && data.schema;
   const safeRows = Array.isArray(rows) ? rows : [];
-  const fields = safeRows.length ? Object.keys(safeRows[0]).map((name) => ({ name })) : [];
   return {
     numRows: safeRows.length,
-    schema: { fields },
+    schema: schema || { fields: [] },
     get(index) {
       const row = safeRows[index];
       if (!row) {
@@ -72,6 +84,7 @@ export function createCachedColumnMetadataResult(rows) {
 export function serializeColumnMetadataResult(resultSet) {
   const numRows = resultSet && typeof resultSet.numRows === 'number' ? resultSet.numRows : 0;
   const rows = [];
+  const schema = resultSet && resultSet.schema ? resultSet.schema : { fields: [] };
   for (let i = 0; i < numRows; i++) {
     const row = resultSet.get(i);
     if (!row) {
@@ -89,5 +102,8 @@ export function serializeColumnMetadataResult(resultSet) {
     }
     rows.push(plainRow);
   }
-  return rows;
+  return {
+    rows,
+    schema,
+  };
 }
