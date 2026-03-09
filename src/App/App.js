@@ -228,6 +228,19 @@ export function initApplication(){
 
     const metrics = eventData.metrics;
     if (metrics) {
+      if (typeof window !== 'undefined') {
+        const entry = {
+          queryTimeMs: metrics.queryTimeMs,
+          renderTimeMs: metrics.renderTimeMs,
+          totalTimeMs: metrics.totalTimeMs,
+          recordedAt: Date.now(),
+        };
+        window.__hueyLastPerformanceMetrics = entry;
+        if (!Array.isArray(window.__hueyPerformanceHistory)) {
+          window.__hueyPerformanceHistory = [];
+        }
+        window.__hueyPerformanceHistory.push(entry);
+      }
       byId('queryPerformanceInfo').textContent = `Query: ${metrics.queryTimeMs}ms | Render: ${metrics.renderTimeMs}ms`;
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
         console.log('[Performance]', {
@@ -238,6 +251,9 @@ export function initApplication(){
       }
     }
     else {
+      if (typeof window !== 'undefined') {
+        window.__hueyLastPerformanceMetrics = null;
+      }
       byId('queryPerformanceInfo').textContent = '';
     }
   });
