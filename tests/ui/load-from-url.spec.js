@@ -125,11 +125,11 @@ async function loadFromUrl(page, url) {
  * @param {number} [timeout=30000]
  */
 async function assertColumnsVisible(page, columnNames, timeout = 30000) {
-  for (const col of columnNames) {
-    await expect(
-      page.locator(`#attributeUi details[data-column_name="${col}"]`)
-    ).toBeVisible({ timeout });
-  }
+  await Promise.all(
+    columnNames.map((col) =>
+      expect(page.locator(`#attributeUi details[data-column_name="${col}"]`)).toBeVisible({ timeout })
+    )
+  );
 }
 
 // ─── 1. CSV via HTTPS — prompts.chat dataset ──────────────────────────────────
