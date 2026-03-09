@@ -284,7 +284,8 @@ export function initApplication(){
     if (!progressMessage) {
       return;
     }
-    progressMessage.textContent = event.eventData.message || 'Running query...';
+    const message = event.eventData.message;
+    progressMessage.textContent = message ?? 'Running query...';
   });
 
   initPostMessageInterface();
