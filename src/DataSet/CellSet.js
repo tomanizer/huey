@@ -239,7 +239,15 @@ export class CellSet extends DataSetComponent {
 
     const tupleSetIndex = numTupleSets - numRanges;
     const tupleSet = tupleSets[tupleSetIndex];
-    const tupleCount = tupleSet.getTupleCountSync();
+    let tupleCount = tupleSet.getTupleCountSync();
+    if (!tupleCount) {
+      const queryAxisItems = tupleSet.getQueryAxisItems();
+      if (queryAxisItems.length === 0) {
+        // An empty axis still contributes one synthetic coordinate so measure-only
+        // layouts can fetch cells without requiring a physical tuple row.
+        tupleCount = 1;
+      }
+    }
 
     const range = ranges.shift();
     const fromTuple = range[0];
@@ -265,39 +273,41 @@ export class CellSet extends DataSetComponent {
 
   #getTuplesCte(tuplesToQuery, tuplesFields, includeGroupingId){
     const tupleSets = this.#tupleSets;
-    const totalsItems = [];
+    const axisItemsByTupleSet = tupleSets.map((tupleSet) => {
+      return tupleSet.getQueryAxisItems();
+    });
+    const totalsItems = axisItemsByTupleSet.map((queryAxisItems) => {
+      return queryAxisItems.filter((queryAxisItem) => {
+        return queryAxisItem.includeTotals;
+      });
+    });
     const combinationTuples = [];
-    let allQueryAxisItems = [];
+    const allQueryAxisItems = axisItemsByTupleSet.flat();
     const cellIndices = Object.keys(tuplesToQuery);
     _cells: for (let i = 0; i < cellIndices.length; i++) {
       let groupingId = 0;
       const cellIndex = cellIndices[i];
       const combinationTuple = [cellIndex];
       const tuples = tuplesToQuery[cellIndex];
-      _tuples: for (let j = 0; j < tuples.length; j++){
-        const tupleSet = tupleSets[j];
-        const queryAxisItems = tupleSet.getQueryAxisItems();
-        if (i === 0) {
-          allQueryAxisItems = allQueryAxisItems.concat(queryAxisItems);
-          totalsItems[j] = queryAxisItems.filter((queryAxisItem) =>{
-            return queryAxisItem.includeTotals;
-          });
-        }
+      _tuples: for (let j = 0; j < tupleSets.length; j++){
+        const queryAxisItems = axisItemsByTupleSet[j];
         if (j && totalsItems[j] && totalsItems[j].length){
           groupingId <<= totalsItems[j].length;
         }
         const tuple = tuples[j];
-        if (tuple){
+        const fields = tuplesFields[j] || [];
+        if (tuple) {
           groupingId |= parseInt(tuple[TupleSet.groupingIdAlias]) || 0;
-          const tupleValues = tuple.values;
-          const fields = tuplesFields[j];
-          _fields: for (let k = 0; k < queryAxisItems.length; k++){
-            const queryAxisItem = queryAxisItems[k];
-            const tupleValue = tupleValues[k];
-            const tupleValueField = fields[k];
-            const literal = getTupleValueLiteral(queryAxisItem, tupleValue, tupleValueField);
-            combinationTuple.push(literal);
-          }
+        }
+        const tupleValues = tuple ? tuple.values : [];
+        _fields: for (let k = 0; k < queryAxisItems.length; k++){
+          const queryAxisItem = queryAxisItems[k];
+          const tupleValue = tupleValues[k];
+          const tupleValueField = fields[k];
+          const literal = tuple
+            ? getTupleValueLiteral(queryAxisItem, tupleValue, tupleValueField)
+            : 'NULL';
+          combinationTuple.push(literal);
         }
       }
       if (includeGroupingId) {
@@ -307,7 +317,14 @@ export class CellSet extends DataSetComponent {
     }
     
     if (cellIndices.length === 0){
-      combinationTuples.push([0]);
+      const emptyTuple = [0];
+      for (let i = 0; i < allQueryAxisItems.length; i++) {
+        emptyTuple.push('NULL');
+      }
+      if (includeGroupingId) {
+        emptyTuple.push(0);
+      }
+      combinationTuples.push(emptyTuple);
     }
     let tuplesSql = combinationTuples.map((combinationTuple) =>{
       return `(${combinationTuple.join(', ')})`;
@@ -640,6 +657,33 @@ export class CellSet extends DataSetComponent {
     return cells;
   }
 
+  async #ensureTuplesReadyForRanges(ranges){
+    const preloadPromises = [];
+    for (let i = 0; i < this.#tupleSets.length; i++) {
+      const tupleSet = this.#tupleSets[i];
+      const range = ranges[i];
+      if (!tupleSet || !range) {
+        continue;
+      }
+      const queryAxisItems = tupleSet.getQueryAxisItems();
+      if (!queryAxisItems.length) {
+        continue;
+      }
+      if (typeof tupleSet.getTuples !== 'function') {
+        continue;
+      }
+      const from = range[0];
+      let count = range[1] - range[0];
+      if (count <= 0) {
+        count = 1;
+      }
+      preloadPromises.push(tupleSet.getTuples(count, from));
+    }
+    if (preloadPromises.length) {
+      await Promise.all(preloadPromises);
+    }
+  }
+
   // ranges is aa list of tuple index pairs
   async getCells(ranges){
     const queryModel = this.getQueryModel();
@@ -649,6 +693,8 @@ export class CellSet extends DataSetComponent {
     if (cellsAxisItems.length === 0){
       return undefined;
     }
+
+    await this.#ensureTuplesReadyForRanges(ranges);
 
     const tupleIndices = this.getTupleRanges(ranges);
     const tupleSets = this.#tupleSets;
@@ -714,10 +760,18 @@ export class CellSet extends DataSetComponent {
         const tupleIndex = tupleIndicesItem[j];
         const tupleSet = tupleSets[j];
 
-        const tuple = tupleSet.getTupleSync(tupleIndex);
+        let tuple = tupleSet.getTupleSync(tupleIndex);
         if (!tuple) {
-          // this shouldn't happen!
-          // if we arrive here it means we messed up while calculating the tuple ranges.
+          const queryAxisItems = tupleSet.getQueryAxisItems();
+          const tupleCount = tupleSet.getTupleCountSync();
+          if (queryAxisItems.length && tupleCount !== 0) {
+            const fetchedTuples = await tupleSet.getTuples(1, tupleIndex);
+            tuple = fetchedTuples && fetchedTuples.length ? fetchedTuples[0] : tupleSet.getTupleSync(tupleIndex);
+          }
+        }
+        if (!tuple) {
+          // Empty axes may intentionally have no physical tuple. Non-empty axes should
+          // usually have been loaded by now, but if not we skip and let SQL fall back.
           continue;
         }
         tuplesForCell[j] = tuple;

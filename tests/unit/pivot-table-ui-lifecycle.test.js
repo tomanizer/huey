@@ -258,6 +258,35 @@ describe('PivotTableUi lifecycle flows', () => {
     expect(pivotTableUi.getDom().querySelector('.pivotTableUiTableBody').childNodes.length).toBeGreaterThan(0);
   });
 
+  test('updatePivotTableUi requests one synthetic column tuple when only cell headers are on columns', async () => {
+    const { PivotTableUi } = await import('../../src/PivotTableUi/PivotTableUi.js');
+    const pivotTableUi = new PivotTableUi({
+      id: 'pivotTableUi',
+      container: 'workarea',
+      queryModel: createQueryModel(),
+      settings: {
+        getSettings(path) {
+          if (path === 'querySettings') {
+            return { autoRunQuery: false, autoRunQueryTimeout: 1 };
+          }
+          if (path === 'pivotSettings') {
+            return { totalsString: 'Totals', hideRepeatingAxisValues: true, defaultDittoMark: '〃', maximumCellWidth: 30 };
+          }
+          return {};
+        },
+      },
+    });
+
+    const innerContainer = pivotTableUi.getDom().querySelector('.pivotTableUiInnerContainer');
+    const table = pivotTableUi.getDom().querySelector('.pivotTableUiTable');
+    setElementDimensions(innerContainer, { clientWidth: 640, clientHeight: 320, scrollWidth: 640, scrollHeight: 320, scrollLeft: 0, scrollTop: 0 });
+    setElementDimensions(table, { clientWidth: 240, clientHeight: 120 });
+
+    await pivotTableUi.updatePivotTableUi();
+
+    expect(cellSetInstances[0].getCells).toHaveBeenCalledWith([[0, 1], [0, 1]]);
+  });
+
   test('cancel query button cancels pending tuple and cell requests and marks the table dirty', async () => {
     const { PivotTableUi } = await import('../../src/PivotTableUi/PivotTableUi.js');
     const pivotTableUi = new PivotTableUi({

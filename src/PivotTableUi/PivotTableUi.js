@@ -564,7 +564,7 @@ export class PivotTableUi extends EventEmitter {
     if (tupleIndexInfo.cellsAxisItemIndex){
       tupleCount += 1;
     }
-    const allTupleCount = this.#columnsTupleSet.getTupleCountSync();
+    const allTupleCount = this.#getEffectiveTupleCountForAxis(QueryModel.AXIS_COLUMNS);
     if (tupleIndexInfo.tupleIndex + tupleCount >= allTupleCount) {
       const maxPhysicalColumn = allTupleCount * tupleIndexInfo.factor;
       physicalColumnsAxisTupleIndex = maxPhysicalColumn - count;
@@ -642,7 +642,7 @@ export class PivotTableUi extends EventEmitter {
       tupleCount += 1;
     }
     const tupleSet = this.#columnsTupleSet;
-    const lastTupleIndex = tupleSet.getTupleCountSync() - 1;
+    const lastTupleIndex = this.#getEffectiveTupleCountForAxis(axisId) - 1;
 
     const queryModel = this.getQueryModel();
     const queryAxis = queryModel.getColumnsAxis();
@@ -824,7 +824,7 @@ export class PivotTableUi extends EventEmitter {
       tupleCount += 1;
     }      
     const tupleSet = this.#rowsTupleSet;
-    const lastTupleIndex = tupleSet.getTupleCountSync() - 1;
+    const lastTupleIndex = this.#getEffectiveTupleCountForAxis(axisId) - 1;
 
     const queryModel = this.getQueryModel();
     const queryAxis = queryModel.getRowsAxis();
@@ -1143,7 +1143,7 @@ export class PivotTableUi extends EventEmitter {
           }
         }
         else {
-          numColumnsAxisTuples = 0;
+          numColumnsAxisTuples = cellsAxisItems.length ? 1 : 0;
         }
         numRowsAxisTuples = rowsAxisItems.length ? tableBodyRows.length - 1 : 0;
         break;
@@ -1156,7 +1156,7 @@ export class PivotTableUi extends EventEmitter {
           }
         }
         else {
-          numRowsAxisTuples = 0;
+          numRowsAxisTuples = cellsAxisItems.length ? 1 : 0;
         }
         break;
     }
@@ -1696,8 +1696,11 @@ export class PivotTableUi extends EventEmitter {
             "role": "rowheader"
           });
 
-          const headerCell = firstTableHeaderRowCells[bodyRow.childNodes.length];
-          let headerCellWidth = parseInt(headerCell.style.width, 10);
+          const headerCell = firstTableHeaderRowCells.item(bodyRow.childNodes.length);
+          let headerCellWidth = parseInt(headerCell && headerCell.style ? headerCell.style.width : '', 10);
+          if (isNaN(headerCellWidth)) {
+            headerCellWidth = 0;
+          }
 
           bodyRow.appendChild(cell);
 
@@ -1741,7 +1744,9 @@ export class PivotTableUi extends EventEmitter {
               headerCellWidth = PivotTableUi.#maximumCellWidth;
             }
 
-            headerCell.style.width = headerCellWidth + 'ch';
+            if (headerCell) {
+              headerCell.style.width = headerCellWidth + 'ch';
+            }
             cell.style.width = headerCellWidth + 'ch';
           }
         }
@@ -1941,6 +1946,36 @@ export class PivotTableUi extends EventEmitter {
     sizer.style.width = size + 'px';
   }
 
+  #getEffectiveTupleCountForAxis(axisId){
+    let tupleSet;
+    switch (axisId){
+      case QueryModel.AXIS_COLUMNS:
+        tupleSet = this.#columnsTupleSet;
+        break;
+      case QueryModel.AXIS_ROWS:
+        tupleSet = this.#rowsTupleSet;
+        break;
+      default:
+        throw new Error(`Invalid axis id ${axisId}.`);
+    }
+
+    const tupleCount = tupleSet.getTupleCountSync();
+    if (tupleCount === undefined) {
+      return 1;
+    }
+
+    if (tupleCount === 0) {
+      const queryModel = this.getQueryModel();
+      const axisItems = queryModel.getQueryAxis(axisId).getItems();
+      const cellsAxisItems = queryModel.getCellsAxis().getItems();
+      if (axisItems.length === 0 && queryModel.getCellHeadersAxis() === axisId && cellsAxisItems.length) {
+        return 1;
+      }
+    }
+
+    return tupleCount;
+  }
+
   #getNumberOfPhysicalTuplesForAxis(axisId){
     const queryModel = this.getQueryModel();
     const cellHeadersAxis = queryModel.getCellHeadersAxis();
@@ -1955,22 +1990,7 @@ export class PivotTableUi extends EventEmitter {
     if (!factor) {
       factor = 1;
     }
-
-    let tupleSet;
-    switch (axisId){
-      case QueryModel.AXIS_COLUMNS:
-        tupleSet = this.#columnsTupleSet;
-        break;
-      case QueryModel.AXIS_ROWS:
-        tupleSet = this.#rowsTupleSet;
-        break;
-      default:
-        throw new Error(`Invalid axis id ${axisId}.`);
-    }
-    let tupleCount = tupleSet.getTupleCountSync();
-    if (tupleCount === undefined) {
-      tupleCount = 1;
-    }
+    const tupleCount = this.#getEffectiveTupleCountForAxis(axisId);
     const numberOfPhysicalRows = tupleCount * factor;
     return numberOfPhysicalRows;
   }

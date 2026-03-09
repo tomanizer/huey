@@ -51,8 +51,7 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
   #datasource = undefined;
 
   #columnsTabDatasource = undefined;
-  #columnsTabQueryModel = undefined;
-  #columnsTabPivotTableUi = undefined;
+  #columnsTabPanel = undefined;
 
   #rejectsDatasource = undefined;
   #rejectsTabQueryModel = undefined;
@@ -96,6 +95,78 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
     this.#initCsvReaderOptionsTab();
     this.#initColumnsTab();
     this.#initRejectsTab();
+  }
+
+  async #waitForDialogLayout(){
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
+  }
+
+  async #getColumnsTabQueryResult(sql){
+    const connection = this.#columnsTabDatasource.getManagedConnection();
+    const result = await connection.query(sql);
+    const rowCount = result.numRows || 0;
+    const fields = result.schema && result.schema.fields ? result.schema.fields.map((field) => field.name) : [];
+    const rows = [];
+    for (let i = 0; i < rowCount; i++) {
+      const row = result.get(i);
+      const plainRow = {};
+      for (let j = 0; j < fields.length; j++) {
+        const fieldName = fields[j];
+        plainRow[fieldName] = row[fieldName];
+      }
+      rows.push(plainRow);
+    }
+    return {
+      fields,
+      rows
+    };
+  }
+
+  #renderColumnsTabResult(fields, rows){
+    if (!this.#columnsTabPanel) {
+      return;
+    }
+
+    const fieldOrder = ['#', 'column_name', 'column_type'].filter((fieldName) => {
+      return fields.indexOf(fieldName) !== -1;
+    });
+    const fieldLabels = {
+      '#': '#',
+      column_name: 'Column Name',
+      column_type: 'Data Type'
+    };
+
+    const table = document.createElement('table');
+    table.className = 'datasourceSettingsColumnsTable';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    fieldOrder.forEach((fieldName) => {
+      const th = document.createElement('th');
+      th.textContent = fieldLabels[fieldName];
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      fieldOrder.forEach((fieldName) => {
+        const td = document.createElement('td');
+        const value = row[fieldName];
+        td.textContent = value === null || value === undefined ? '' : String(value);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    this.#columnsTabPanel.replaceChildren(table);
   }
 
   async #autodetectCsvReaderSettings(_event){
@@ -187,26 +258,15 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
       getDatabase(),
       'DESCRIBE SELECT 1'
     );
-
-    this.#columnsTabQueryModel = new QueryModel();
     
     const tabId = 'datasourceSettingsDialogColumnsTab';
-    const columnsTabPanel = TabUi.getTabPanel(
+    this.#columnsTabPanel = TabUi.getTabPanel(
       DatasourceSettingsDialog.#tabListSelector,
       `#${tabId}`
     );
-    this.#columnsTabPivotTableUi = new PivotTableUi({
-      container: columnsTabPanel,
-      id: tabId + 'PivotTableUi',
-      queryModel: this.#columnsTabQueryModel,
-      settings: DatasourceSettingsDialog.#dialogPivotSettings()
-    });
-    
-    //let pivotTableUiContextMenu = new ContextMenu(this.#columnsTabPivotTableUi, 'pivotTableContextMenu');
-     
   }
 
-  async #downloadCsvReaderRejectsHandler(_event){
+  #downloadCsvReaderRejectsHandler(_event){
     const exportUiSettings = settings.getSettings('exportUi');
     exportUiSettings.exportTitleTemplate = '${datasource}';
     exportUiSettings.exportResultShapePivot = true;
@@ -255,7 +315,7 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
     });
   }
 
-  #updateColumnsTabData(){
+  async #updateColumnsTabData(){
     const datasource = this.#datasource;
 
     // Prepare our column datasource (reuse same instance; setState will clear and repopulate)
@@ -265,22 +325,11 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
       `FROM (${datasource.getSqlForTableSchema()}) as ds_schema`
     ].join('\n');
     this.#columnsTabDatasource.setSqlQuery(sql);
-
-    // re-initialize the query model.
-    const axes = {};
-    axes[QueryModel.AXIS_ROWS] = [{column: '#', columnType: 'USMALLINT'}];
-    axes[QueryModel.AXIS_CELLS] = [
-      {caption: "Column Name", column: 'column_name', columnType: 'VARCHAR', aggregator: 'min'},
-      {caption: "Data Type", column: 'column_type', columnType: 'VARCHAR', aggregator: 'min'}
-    ];
-    this.#columnsTabQueryModel.setState({
-      axes: axes,
-      datasource: this.#columnsTabDatasource
-    });
-    this.#columnsTabPivotTableUi.updatePivotTableUi();
+    const result = await this.#getColumnsTabQueryResult(sql);
+    this.#renderColumnsTabResult(result.fields, result.rows);
   }
 
-  #updateRejectsTabData(){
+  async #updateRejectsTabData(){
     const datasource = this.#datasource;
 
     // first clean up the datasource
@@ -310,7 +359,7 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
       axes: axes,
       datasource: rejectsDatasource
     });
-    this.#rejectsTabPivotTableUi.updatePivotTableUi();
+    await this.#rejectsTabPivotTableUi.updatePivotTableUi();
   }
 
   async setDatasource(datasource){
@@ -340,19 +389,20 @@ export class DatasourceSettingsDialog extends SettingsDialogBase {
 
     byId('datasourceFileSize').value = fileSize;
 
-    this.#updateColumnsTabData();
-    this.#updateRejectsTabData();
-
     TabUi.setSelectedTab(
       DatasourceSettingsDialog.#tabListSelector,
       '#datasourceSettingsDialogColumnsTab'
     );
+
+    await this.#waitForDialogLayout();
+    await this.#updateColumnsTabData();
+    await this.#updateRejectsTabData();
   }
 
   open(datasource) {
-    this.setDatasource(datasource);
     const settings = datasource.getSettings();
     super.open(settings);
+    void this.setDatasource(datasource);
   }
 }
 
