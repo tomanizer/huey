@@ -4,6 +4,7 @@ const path = require('path');
 const {
   waitForAppReady,
   openAttributesTab,
+  addToAxis,
   runQueryAndWaitForPivot,
 } = require('./helpers/app-bootstrap');
 
@@ -22,18 +23,6 @@ async function uploadParquetAndWaitForAttributes(page, filePath, expectedColumn)
   await expect(
     page.locator(`#attributeUi details[data-column_name="${expectedColumn}"]`)
   ).toBeVisible({ timeout: 30000 });
-}
-
-/**
- * Toggle a column onto a query axis.
- */
-async function addToAxis(page, columnName, axis) {
-  await openAttributesTab(page);
-  const toggle = page.locator(
-    `#attributeUi details[data-column_name="${columnName}"] summary label.attributeUiAxisButton[data-axis="${axis}"]`
-  );
-  await expect(toggle).toBeVisible({ timeout: 15000 });
-  await toggle.click();
 }
 
 /**

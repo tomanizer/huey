@@ -119,6 +119,15 @@ async function addAggregateMeasure(page, columnName, aggregator) {
   }
 }
 
+async function addToAxis(page, columnName, axis) {
+  await openAttributesTab(page);
+  const toggle = page.locator(
+    `#attributeUi details[data-column_name="${columnName}"] summary label.attributeUiAxisButton[data-axis="${axis}"]`
+  );
+  await expect(toggle).toBeVisible({ timeout: 15000 });
+  await toggle.click();
+}
+
 async function runQueryAndWaitForPivot(page) {
   const runButton = page.locator('#runQueryButton');
   const pivot = page.locator('#pivotTableUi');
@@ -187,6 +196,7 @@ module.exports = {
   addBasicPivotAxes,
   addFilterAxis,
   addSymbolFilterAxis,
+  addToAxis,
   addAggregateMeasure,
   runQueryAndWaitForPivot,
   triggerUnhandledRejection,
