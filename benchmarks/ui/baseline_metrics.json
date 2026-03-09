@@ -62,6 +62,37 @@
         "totalTimeMs": 0,
         "byKind": {}
       }
+    },
+    {
+      "name": "long_pivot_second_shape",
+      "wallTimeMs": 172,
+      "uiMetrics": null,
+      "sql": {
+        "count": 2,
+        "totalTimeMs": 19,
+        "byKind": {
+          "tuple_counts": 1,
+          "other": 1
+        }
+      }
+    },
+    {
+      "name": "long_reopen_same_file_first_run",
+      "wallTimeMs": 403,
+      "uiMetrics": {
+        "queryTimeMs": 44,
+        "renderTimeMs": 127,
+        "totalTimeMs": 170
+      },
+      "sql": {
+        "count": 3,
+        "totalTimeMs": 124,
+        "byKind": {
+          "tuple_counts": 1,
+          "other": 1,
+          "cells": 1
+        }
+      }
     }
   ]
 }

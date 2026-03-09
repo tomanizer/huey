@@ -88,6 +88,7 @@ async function stopServer(child) {
 function classifySql(text) {
   if (text.includes('DESCRIBE SELECT *')) return 'schema';
   if (text.includes('WITH __huey_cells')) return 'cells';
+  if (text.includes('SELECT COUNT(*) AS "__huey_count"')) return 'tuple_counts';
   if (text.includes('COUNT(*) OVER ()')) return 'tuples';
   return 'other';
 }
@@ -151,9 +152,16 @@ async function addToAxis(page, columnName, axis) {
   await openAttributesTab(page);
   const toggle = page.locator(
     `#attributeUi details[data-column_name="${columnName}"] summary label.attributeUiAxisButton[data-axis="${axis}"]`
-  );
+  ).first();
   await expect(toggle).toBeVisible({ timeout: 15000 });
   await toggle.click();
+}
+
+async function clearAxis(page, axis) {
+  const button = page.locator(`#queryUi section[data-axis="${axis}"] button[id$="-clear-axis"]`);
+  await expect(button).toBeVisible({ timeout: 15000 });
+  await button.evaluate((element) => element.click());
+  await expect(page.locator(`#queryUi section[data-axis="${axis}"] > ol > li`)).toHaveCount(0, { timeout: 30000 });
 }
 
 async function runQueryAndWaitForPivot(page) {
@@ -276,6 +284,44 @@ async function runScenarios(browserType) {
       await page.waitForTimeout(500);
       await expect(page.locator('#pivotTableUi')).toHaveAttribute('aria-busy', 'false', { timeout: 30000 });
       results.push(buildScenarioResult('long_pivot_scroll', Date.now() - start, recorder.getSlice(mark), null, {
+        fixture: path.relative(rootDir, longParquet),
+      }));
+
+      await clearAxis(page, 'rows');
+      await clearAxis(page, 'columns');
+      await clearAxis(page, 'cells');
+      await addToAxis(page, 'trade_date', 'rows');
+      await addToAxis(page, 'symbol', 'columns');
+      await addToAxis(page, 'price', 'cells');
+
+      await clearPerformanceMetrics(page);
+      mark = recorder.mark();
+      start = Date.now();
+      await runQueryAndWaitForPivot(page);
+      metrics = await getLastPerformanceMetrics(page);
+      results.push(buildScenarioResult('long_pivot_second_shape', Date.now() - start, recorder.getSlice(mark), metrics, {
+        fixture: path.relative(rootDir, longParquet),
+      }));
+
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ baseURL: serverUrl });
+      const page = await context.newPage();
+      const recorder = createSqlRecorder(page);
+
+      await uploadParquetAndWaitForAttribute(page, longParquet, 'symbol');
+      await ensureAutoRunDisabled(page);
+      await addToAxis(page, 'symbol', 'rows');
+      await addToAxis(page, 'price', 'cells');
+
+      await clearPerformanceMetrics(page);
+      const mark = recorder.mark();
+      const start = Date.now();
+      await runQueryAndWaitForPivot(page);
+      const metrics = await getLastPerformanceMetrics(page);
+      results.push(buildScenarioResult('long_reopen_same_file_first_run', Date.now() - start, recorder.getSlice(mark), metrics, {
         fixture: path.relative(rootDir, longParquet),
       }));
 
