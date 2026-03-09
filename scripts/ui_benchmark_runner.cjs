@@ -143,9 +143,7 @@ async function ensureAutoRunDisabled(page) {
 
 async function uploadParquetAndWaitForAttribute(page, fixturePath, expectedColumn) {
   await waitForAppReady(page);
-  await page.locator('#uploader').setInputFiles(fixturePath);
-  await expect(page.locator('#attributeUi')).toBeVisible({ timeout: 60000 });
-  await expect(page.locator(`#attributeUi details[data-column_name="${expectedColumn}"]`)).toBeVisible({ timeout: 60000 });
+  await uploadParquetOnReadyPageAndWaitForAttribute(page, fixturePath, expectedColumn);
 }
 
 async function uploadParquetOnReadyPageAndWaitForAttribute(page, fixturePath, expectedColumn) {
