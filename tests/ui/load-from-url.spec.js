@@ -5,6 +5,7 @@ const fs = require('fs');
 const {
   waitForAppReady,
   openAttributesTab,
+  addToAxis,
   addAggregateMeasure,
   runQueryAndWaitForPivot,
 } = require('./helpers/app-bootstrap');
@@ -131,20 +132,6 @@ async function assertColumnsVisible(page, columnNames, timeout = 30000) {
   }
 }
 
-/**
- * Click a column's single-click axis toggle in the attribute panel summary row.
- * Works for rows, columns, and filters axes.
- * For cells use addAggregateMeasure() instead.
- */
-async function addToAxis(page, columnName, axis) {
-  await openAttributesTab(page);
-  const toggle = page.locator(
-    `#attributeUi details[data-column_name="${columnName}"] summary label.attributeUiAxisButton[data-axis="${axis}"]`
-  );
-  await expect(toggle).toBeVisible({ timeout: 15000 });
-  await toggle.click();
-}
-
 // ─── 1. CSV via HTTPS — prompts.chat dataset ──────────────────────────────────
 //
 // The real HuggingFace URL is intercepted and served from a local fixture
@@ -203,9 +190,10 @@ test.describe('Load from URL — CSV (prompts.chat)', () => {
 // ─── 2. Parquet via HTTPS — Databricks loan-risks.snappy.parquet ─────────────
 //
 // The test intercepts the real GitHub URL and fulfils it locally with
-// tests/fixtures/parquet/alltypes.parquet.  This validates the complete
-// "load .parquet from HTTPS URL" code path (HEAD → content-type detection →
-// DuckDB HTTP read) without requiring a live network connection.
+// tests/fixtures/parquet/wide.parquet (100 columns, 10 rows).  Using a
+// wide fixture here — rather than alltypes.parquet which group 3 already
+// covers — gives distinct coverage: the URL loading path is exercised with
+// a high column-count schema that stresses attribute panel rendering.
 //
 // To test with the actual loan-risks schema, download the file from:
 //   https://github.com/databricks/LearningSparkV2/raw/refs/heads/master/
@@ -213,8 +201,8 @@ test.describe('Load from URL — CSV (prompts.chat)', () => {
 // save it to tests/fixtures/parquet/loan-risks.snappy.parquet, and update
 // fixturePath below.
 
-test.describe('Load from URL — Parquet (loan-risks, served locally via page.route)', () => {
-  const fixturePath = path.join(__dirname, '../fixtures/parquet/alltypes.parquet');
+test.describe('Load from URL — Parquet via real-world HTTPS URL (wide fixture)', () => {
+  const fixturePath = path.join(__dirname, '../fixtures/parquet/wide.parquet');
 
   test.beforeEach(async ({ page }) => {
     await routeLocalFile(
@@ -230,15 +218,16 @@ test.describe('Load from URL — Parquet (loan-risks, served locally via page.ro
     ).toBeVisible({ timeout: 30000 });
   });
 
-  test('datasource loads and all columns are visible', async ({ page }) => {
-    await assertColumnsVisible(page, ['id', 'name', 'price', 'quantity', 'is_active', 'trade_date', 'created_at', 'tags'], 10000);
+  test('all 100 columns are detected and visible in the attribute panel', async ({ page }) => {
+    // wide.parquet has id, symbol, trade_date + 97 metric_NNN columns.
+    await assertColumnsVisible(page, ['id', 'symbol', 'trade_date', 'metric_000', 'metric_050', 'metric_096'], 10000);
   });
 
-  test('pivot numeric column on cells by date on rows renders values', async ({ page }) => {
-    await addToAxis(page, 'trade_date', 'rows');
-    await addAggregateMeasure(page, 'price', 'sum');
+  test('pivot a metric column on cells by symbol on rows renders numeric values', async ({ page }) => {
+    await addToAxis(page, 'symbol', 'rows');
+    await addAggregateMeasure(page, 'metric_000', 'sum');
     const pivot = await runQueryAndWaitForPivot(page);
-    await expect(pivot).toContainText(/\d/);
+    await expect(pivot).toContainText(/AAPL|GOOG|MSFT|AMZN|TSLA/);
     await expect(
       page.locator('#pivotTableUi .pivotTableUiValueCell').first()
     ).toBeVisible({ timeout: 30000 });
