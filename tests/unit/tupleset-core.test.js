@@ -192,4 +192,78 @@ describe('TupleSet pagination', () => {
     expect(tupleSet.getTupleSync(0).values).toEqual(['A']);
     expect(tupleSet.getTupleSync(5).values).toEqual(['F']);
   });
+
+  test('local tuple fetch separates total count query from page fetch query', async () => {
+    const axisItems = [{ axis: 'rows', columnName: 'city', columnType: 'VARCHAR' }];
+    const queryCalls = [];
+    const connection = {
+      async query(sql) {
+        queryCalls.push(sql);
+        if (sql.includes('SELECT COUNT(*) AS "__huey_count"')) {
+          return {
+            numRows: 1,
+            schema: { fields: [{ name: '__huey_count' }] },
+            get() {
+              return { __huey_count: 3 };
+            },
+          };
+        }
+        return {
+          numRows: 3,
+          schema: { fields: [{ name: 'city' }] },
+          get(index) {
+            return [
+              { city: 'A' },
+              { city: 'B' },
+              { city: 'C' },
+            ][index];
+          },
+        };
+      },
+      getState() {
+        return 'open';
+      },
+    };
+    const datasource = {
+      getType() {
+        return 'file';
+      },
+      getManagedConnection() {
+        return connection;
+      },
+      getFromClauseSql() {
+        return 'FROM test_relation';
+      },
+      async getRejects() {
+        return undefined;
+      },
+    };
+    const queryModel = {
+      getDatasource() {
+        return datasource;
+      },
+      getQueryAxis() {
+        return { getItems: () => axisItems };
+      },
+      getFiltersAxis() {
+        return { getItems: () => [] };
+      },
+      getSampling() {
+        return undefined;
+      },
+    };
+
+    const tupleSet = new TupleSet(queryModel, 'rows', createSettings());
+    tupleSet.setPageSize(10);
+
+    const tuples = await tupleSet.getTuples(3, 0);
+
+    expect(queryCalls).toHaveLength(2);
+    expect(queryCalls[0]).toContain('SELECT COUNT(*) AS "__huey_count"');
+    expect(queryCalls[0]).not.toContain('COUNT(*) OVER ()');
+    expect(queryCalls[1]).not.toContain('COUNT(*) OVER ()');
+    expect(queryCalls[1]).toContain('LIMIT 3 OFFSET 0');
+    expect(tupleSet.getTupleCountSync()).toBe(3);
+    expect(tuples.map((tuple) => tuple.values[0])).toEqual(['A', 'B', 'C']);
+  });
 });

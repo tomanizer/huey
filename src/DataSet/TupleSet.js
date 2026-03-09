@@ -76,6 +76,48 @@ export class TupleSet extends DataSetComponent {
     return sql;
   }
 
+  /**
+   * Build a count query for the current axis without ORDER BY so total tuple
+   * counts are obtained separately from tuple page fetches.
+   *
+   * @param {import('../QueryModel/QueryModel.js').QueryModel} queryModel
+   * @param {string} axisId
+   * @param {'FIRST'|'LAST'} nullsSortOrder
+   * @param {'AFTER'|'BEFORE'} totalsPosition
+   * @returns {string|undefined}
+   */
+  static getSqlCountStatement(queryModel, axisId, nullsSortOrder, totalsPosition){
+    const datasource = queryModel.getDatasource();
+
+    const queryAxis = queryModel.getQueryAxis(axisId);
+    const queryAxisItems = queryAxis.getItems();
+    if (!queryAxisItems.length) {
+      return undefined;
+    }
+
+    const filterAxis = queryModel.getFiltersAxis();
+    const filterAxisItems = filterAxis.getItems();
+    const samplingConfig = queryModel.getSampling(axisId);
+
+    const axisSql = SqlQueryGenerator.getSqlSelectStatementForAxisItems({
+      datasource: datasource,
+      queryAxisItems: queryAxisItems,
+      filterAxisItems: filterAxisItems,
+      includeCountAll: false,
+      nullsSortOrder: nullsSortOrder,
+      totalsPosition: totalsPosition,
+      samplingConfig: samplingConfig,
+      includeOrderBy: false,
+    });
+    if (!axisSql) {
+      return undefined;
+    }
+    return [
+      'SELECT COUNT(*) AS "__huey_count"',
+      `FROM (${axisSql}) AS "__huey_axis_count"`
+    ].join('\n');
+  }
+
   #queryAxisId = undefined;
 
   #tuples = [];
@@ -190,6 +232,21 @@ export class TupleSet extends DataSetComponent {
       totalsPosition
     );
     return sql;
+  }
+
+  #getSqlCountStatement(){
+    const queryModel = this.getQueryModel();
+    if (!queryModel) {
+      return undefined;
+    }
+    const nullsSortOrder = this.#getNullsSortOrder();
+    const totalsPosition = this.#getTotalsPosition();
+    return TupleSet.getSqlCountStatement(
+      queryModel,
+      this.#queryAxisId,
+      nullsSortOrder,
+      totalsPosition
+    );
   }
 
   clear(){
@@ -335,7 +392,7 @@ export class TupleSet extends DataSetComponent {
     return Promise.resolve(this.#tupleCount);
   }
 
-  #loadTuples(resultSet, offset) {
+  #loadTuples(resultSet, offset, totalCount) {
     const numRows = resultSet.numRows;
 
     const fields = resultSet.schema.fields;
@@ -350,6 +407,10 @@ export class TupleSet extends DataSetComponent {
 
     // if the offset is 0 we should have included an expression that computes the total count as last
     if (offset === 0) {
+      if (totalCount !== undefined) {
+        this.#tupleCount = totalCount;
+      }
+      else
       if (numRows === 0){
         this.#tupleCount = 0;
       }
@@ -441,12 +502,12 @@ export class TupleSet extends DataSetComponent {
   }
 
   async #executeAxisQuery(limit, offset){
-    const includeCountExpression = offset === 0;
     const queryModel = this.getQueryModel();
     const datasource = queryModel.getDatasource();
     const isRemote = datasource && datasource.getType && datasource.getType() === 'remote';
 
     if (isRemote && datasource.getManagedConnection().fetchTuples) {
+      const includeCountExpression = offset === 0;
       const query = this.#buildRemoteTuplesQuery(limit, offset);
       if (!query) return 0;
       const dateRange = RemoteQueryAdapter.getDateRange(queryModel);
@@ -461,11 +522,23 @@ export class TupleSet extends DataSetComponent {
       if (connection.getState() === 'canceled') return 0;
       const axisItems = this.getQueryAxisItems();
       const resultSet = this.#remoteResponseToResultSet(apiResponse, axisItems, includeCountExpression);
-      this.#loadTuples(resultSet, offset);
+      this.#loadTuples(resultSet, offset, apiResponse.total_count);
       return resultSet.numRows;
     }
 
-    let axisSql = this.#getSqlSelectStatement(includeCountExpression);
+    let totalCount;
+    if (offset === 0 && this.#tupleCount === undefined) {
+      const countSql = this.#getSqlCountStatement();
+      if (!countSql) {
+        return 0;
+      }
+      const connection = await this.getManagedConnection();
+      const countResultSet = await connection.query(countSql);
+      const countRow = countResultSet.numRows ? countResultSet.get(0) : undefined;
+      totalCount = countRow ? parseInt(String(countRow.__huey_count), 10) : 0;
+    }
+
+    let axisSql = this.#getSqlSelectStatement(false);
     if (!axisSql){
       return 0;
     }
@@ -477,7 +550,7 @@ export class TupleSet extends DataSetComponent {
     if (connection.getState() === 'canceled') {
       return 0;
     }
-    this.#loadTuples(resultset, offset);
+    this.#loadTuples(resultset, offset, totalCount);
 
     return resultset.numRows;
   }
