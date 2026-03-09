@@ -62,9 +62,10 @@ export class PivotTableUi extends EventEmitter {
   static #maximumCellWidth = pivotTableUiDefaults.maximumCellWidth;
 
   #lastMetrics = undefined;
+  #lastProgressMessage = '';
 
   constructor(config){
-    super(['updated', 'busy']);
+    super(['updated', 'busy', 'progress']);
     registerTemplates(pivotTableTemplatesHtml);
     this.#initDom(config);
     this.#id = config.id;
@@ -455,6 +456,9 @@ export class PivotTableUi extends EventEmitter {
   #setBusy(busy){
     const dom = this.getDom();
     dom.setAttribute('aria-busy', String(Boolean(busy)));
+    if (!busy) {
+      this.#setProgressMessage('');
+    }
     this.fireEvent('busy', {
       busy: Boolean(busy)
     })
@@ -463,6 +467,17 @@ export class PivotTableUi extends EventEmitter {
   #getBusy(){
     const dom = this.getDom();
     return dom.getAttribute('aria-busy') === 'true';
+  }
+
+  #setProgressMessage(message){
+    const nextMessage = message ? String(message) : '';
+    if (nextMessage === this.#lastProgressMessage) {
+      return;
+    }
+    this.#lastProgressMessage = nextMessage;
+    this.fireEvent('progress', {
+      message: nextMessage
+    });
   }
 
   #fireUpdatedSuccess(){
@@ -494,6 +509,7 @@ export class PivotTableUi extends EventEmitter {
       }
       try {
         this.#setBusy(true);
+        this.#setProgressMessage('Updating visible rows and cells...');
         await this.#updateDataToScrollPosition();
         this.#fireUpdatedSuccess();
       }
@@ -1837,6 +1853,7 @@ export class PivotTableUi extends EventEmitter {
       }
 
       this.#setBusy(true);
+      this.#setProgressMessage('Preparing pivot layout...');
       this.clear();
 
       const totalStart = performance.now();
@@ -1861,6 +1878,7 @@ export class PivotTableUi extends EventEmitter {
         rowsTupleSet.getTuples(rowsTupleSet.getPageSize(), 0)
       ];
 
+      this.#setProgressMessage('Loading row and column members...');
       const renderAxisPromisesResults = await Promise.all(renderAxisPromises);
 
       const queryTimeMs = Math.round(performance.now() - totalStart);
@@ -1878,8 +1896,10 @@ export class PivotTableUi extends EventEmitter {
       this.#updateVerticalSizer();
       this.#toggleObserveColumnsResizing(true);
 
+      this.#setProgressMessage('Rendering visible cells...');
       this.#renderCells();
 
+      this.#setProgressMessage('Fetching aggregated cell values...');
       await this.#updateDataToScrollPosition();
 
       const renderTimeMs = Math.round(performance.now() - renderStart);
