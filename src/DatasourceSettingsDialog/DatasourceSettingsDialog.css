@@ -18,3 +18,23 @@ dialog#datasourceSettingsDialog {
 output#datasourceFileSize:not(:empty):after {
   content: ' bytes';
 }
+
+dialog#datasourceSettingsDialog .datasourceSettingsColumnsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var( --huey-light-background-color );
+}
+
+dialog#datasourceSettingsDialog .datasourceSettingsColumnsTable th,
+dialog#datasourceSettingsDialog .datasourceSettingsColumnsTable td {
+  padding: 2px 6px;
+  border: 1px solid var( --huey-light-border-color );
+  text-align: left;
+  white-space: nowrap;
+}
+
+dialog#datasourceSettingsDialog .datasourceSettingsColumnsTable th {
+  position: sticky;
+  top: 0;
+  background-color: var( --huey-medium-background-color );
+}

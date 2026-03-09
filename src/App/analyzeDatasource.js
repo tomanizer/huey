@@ -5,7 +5,7 @@ import { queryModel } from '../QueryModel/QueryModel.js';
 import { attributeUi } from '../AttributeUi/AttributeUi.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 
-export async function analyzeDatasource(datasource){
+export function analyzeDatasource(datasource){
   try {
     TabUi.setSelectedTab('#sidebar', '#attributesTab');
     clearSearch();
