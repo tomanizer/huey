@@ -33,6 +33,7 @@ The benchmark runner currently measures:
 
 - `app_ready`: app load to interactive shell
 - `upload_wide_schema`: upload `tests/fixtures/parquet/wide.parquet` and wait for schema/attributes
+- `upload_wide_schema_cached`: reload the app in the same browser storage context, upload `tests/fixtures/parquet/wide.parquet` again, and measure schema/attribute readiness
 - `long_pivot_first_run`: upload `tests/fixtures/parquet/long.parquet`, build a pivot, and run the first query
 - `long_pivot_rerun`: re-run the same pivot to observe cache behavior
 - `long_pivot_scroll`: scroll an already-run tall pivot and measure viewport update latency
@@ -49,7 +50,7 @@ Each scenario records:
 - `uiMetrics.totalTimeMs`: Huey's measured total time when available
 - `sql.count`: number of DuckDB queries logged during the scenario
 - `sql.totalTimeMs`: summed DuckDB query time from logged statements
-- `sql.byKind`: query counts split into `schema`, `tuples`, `cells`, and `other`
+- `sql.byKind`: query counts split into `schema`, `tuple_counts`, `tuples`, `cells`, and `other`
 
 ## Artifacts
 

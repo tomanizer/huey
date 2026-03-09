@@ -4,6 +4,13 @@ import { showErrorDialog } from '../../ErrorDialog/ErrorDialog.js';
 import { DatasourceSettings } from '../../DatasourceSettingsDialog/DatasourceSettings.js';
 import { getDatabase } from './database.js';
 import {
+  buildColumnMetadataCacheKey,
+  getCachedColumnMetadata,
+  cacheColumnMetadata,
+  createCachedColumnMetadataResult,
+  serializeColumnMetadataResult,
+} from './DuckDbMetadataCache.js';
+import {
   quoteStringLiteral,
   isQuotedIdentifier,
   unQuoteIdentifier,
@@ -1066,6 +1073,29 @@ export class DuckDbDataSource extends EventEmitter {
     return this.#fileType;
   }
 
+  getColumnMetadataCacheKey(){
+    const type = this.getType();
+    if (type !== DuckDbDataSource.types.FILE) {
+      return undefined;
+    }
+    if (this.#fileType !== 'parquet') {
+      return undefined;
+    }
+    if (!(this.#file instanceof File)) {
+      return undefined;
+    }
+
+    const readerSettings = DuckDbDataSource.getFileTypeInfo(this.#fileType);
+    const fingerprint = JSON.stringify({
+      name: this.#file.name,
+      size: this.#file.size,
+      lastModified: this.#file.lastModified,
+      fileType: this.#fileType,
+      reader: readerSettings ? readerSettings.duckdb_reader : undefined,
+    });
+    return buildColumnMetadataCacheKey(fingerprint);
+  }
+
   getFileSize(){
     if (!this.#file){
       throw new Error(`Not a file!`);
@@ -1168,6 +1198,15 @@ export class DuckDbDataSource extends EventEmitter {
       return this.#columnMetadata;
     }
 
+    const cacheKey = this.getColumnMetadataCacheKey();
+    if (cacheKey) {
+      const cachedMetadata = getCachedColumnMetadata(cacheKey);
+      if (cachedMetadata !== undefined) {
+        this.#columnMetadata = createCachedColumnMetadataResult(cachedMetadata);
+        return this.#columnMetadata;
+      }
+    }
+
     const sql = this.getSqlForTableSchema();
     const connection = await this.getConnection();
     await this.registerFile();
@@ -1178,6 +1217,9 @@ export class DuckDbDataSource extends EventEmitter {
     catch (e) {
       showErrorDialog(e);
       throw e;
+    }
+    if (cacheKey) {
+      cacheColumnMetadata(cacheKey, serializeColumnMetadataResult(columnMetadata));
     }
     this.#columnMetadata = columnMetadata;
     return columnMetadata;

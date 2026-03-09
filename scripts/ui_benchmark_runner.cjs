@@ -143,6 +143,10 @@ async function ensureAutoRunDisabled(page) {
 
 async function uploadParquetAndWaitForAttribute(page, fixturePath, expectedColumn) {
   await waitForAppReady(page);
+  await uploadParquetOnReadyPageAndWaitForAttribute(page, fixturePath, expectedColumn);
+}
+
+async function uploadParquetOnReadyPageAndWaitForAttribute(page, fixturePath, expectedColumn) {
   await page.locator('#uploader').setInputFiles(fixturePath);
   await expect(page.locator('#attributeUi')).toBeVisible({ timeout: 60000 });
   await expect(page.locator(`#attributeUi details[data-column_name="${expectedColumn}"]`)).toBeVisible({ timeout: 60000 });
@@ -258,6 +262,17 @@ async function runScenarios(browserType) {
       const mark = recorder.mark();
       await uploadParquetAndWaitForAttribute(page, wideParquet, 'id');
       results.push(buildScenarioResult('upload_wide_schema', Date.now() - start, recorder.getSlice(mark), null, {
+        fixture: path.relative(rootDir, wideParquet),
+      }));
+
+      await page.close();
+      const reopenPage = await context.newPage();
+      const reopenRecorder = createSqlRecorder(reopenPage);
+      const reopenStart = Date.now();
+      const reopenMark = reopenRecorder.mark();
+      await waitForAppReady(reopenPage);
+      await uploadParquetOnReadyPageAndWaitForAttribute(reopenPage, wideParquet, 'id');
+      results.push(buildScenarioResult('upload_wide_schema_cached', Date.now() - reopenStart, reopenRecorder.getSlice(reopenMark), null, {
         fixture: path.relative(rootDir, wideParquet),
       }));
       await context.close();
