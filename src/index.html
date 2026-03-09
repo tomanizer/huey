@@ -1683,6 +1683,24 @@
                   type="checkbox"
                   title="Infer partition columns from Hive-style key=value path segments."
                 />
+                <label for="parquetReaderHiveTypesAutocast" title="Automatically cast Hive partition column values to their detected types. Only relevant when Hive partitioning is enabled.">Hive types autocast</label>
+                <input
+                  id="parquetReaderHiveTypesAutocast"
+                  type="checkbox"
+                  title="Automatically cast Hive partition column values to their detected types. Only relevant when Hive partitioning is enabled."
+                />
+                <label for="parquetReaderUnionByName" title="When reading multiple Parquet files, unify columns by name rather than position. Useful when files have different but compatible schemas.">Union by name</label>
+                <input
+                  id="parquetReaderUnionByName"
+                  type="checkbox"
+                  title="When reading multiple Parquet files, unify columns by name rather than position. Useful when files have different but compatible schemas."
+                />
+                <label for="parquetReaderFileRowNumber" title="Add a file_row_number column containing the zero-based row index within the source Parquet file.">File row number</label>
+                <input
+                  id="parquetReaderFileRowNumber"
+                  type="checkbox"
+                  title="Add a file_row_number column containing the zero-based row index within the source Parquet file."
+                />
               </fieldset>
             </form>
           </div>

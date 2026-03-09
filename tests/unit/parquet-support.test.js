@@ -46,6 +46,40 @@ describe('Parquet support settings', () => {
 
     expect(readerArguments).toEqual({ hive_partitioning: true });
   });
+
+  test('maps union_by_name when enabled', () => {
+    const settings = new DatasourceSettings();
+    const nextSettings = settings.getSettings();
+    nextSettings.parquetReader.parquetReaderUnionByName = true;
+    settings.assignSettings([], nextSettings);
+
+    expect(settings.getReaderArguments('read_parquet')).toEqual({ union_by_name: true });
+  });
+
+  test('maps file_row_number when enabled', () => {
+    const settings = new DatasourceSettings();
+    const nextSettings = settings.getSettings();
+    nextSettings.parquetReader.parquetReaderFileRowNumber = true;
+    settings.assignSettings([], nextSettings);
+
+    expect(settings.getReaderArguments('read_parquet')).toEqual({ file_row_number: true });
+  });
+
+  test('hive_types_autocast is omitted when at its default (true)', () => {
+    const settings = new DatasourceSettings();
+    // Default is true — should not appear in reader arguments
+    const readerArguments = settings.getReaderArguments('read_parquet');
+    expect(readerArguments).not.toHaveProperty('hive_types_autocast');
+  });
+
+  test('hive_types_autocast is emitted when set to false', () => {
+    const settings = new DatasourceSettings();
+    const nextSettings = settings.getSettings();
+    nextSettings.parquetReader.parquetReaderHiveTypesAutocast = false;
+    settings.assignSettings([], nextSettings);
+
+    expect(settings.getReaderArguments('read_parquet')).toEqual({ hive_types_autocast: false });
+  });
 });
 
 describe('Upload URL parsing helpers', () => {
