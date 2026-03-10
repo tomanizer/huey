@@ -211,6 +211,24 @@ class TestFilterValidation:
         r = client.post(_post_path("tuples", body), json=body)
         assert r.status_code == 422
 
+
+class TestVersionedDatasetIdValidation:
+    @pytest.mark.parametrize("endpoint", QUERY_ENDPOINTS)
+    def test_dataset_id_must_match_path(self, client: TestClient, endpoint: str) -> None:
+        body = _valid_body_for(endpoint)
+        body["dataset_id"] = "trades_v1"
+        r = client.post(f"/api/v1/datasets/other_ds/query/{endpoint}", json=body)
+        assert r.status_code == 422
+        payload = r.json()
+        assert payload["code"] == "VALIDATION_ERROR"
+        error = payload["details"]["errors"][0]
+        assert error["loc"] == ["body", "dataset_id"]
+        assert error["type"] == "value_error.dataset_id_mismatch"
+        assert error["ctx"] == {
+            "path_dataset_id": "other_ds",
+            "body_dataset_id": "trades_v1",
+        }
+
     def test_filter_missing_values(self, client: TestClient) -> None:
         body = {
             "dataset_id": "trades_v1",

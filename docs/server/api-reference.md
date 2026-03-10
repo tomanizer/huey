@@ -7,9 +7,9 @@ Base URL examples:
 
 Interactive OpenAPI:
 
-- `/docs`
-- `/redoc`
-- `/openapi.json`
+- `/api/v1/docs`
+- `/api/v1/redoc`
+- `/api/v1/openapi.json`
 
 ## Conventions
 

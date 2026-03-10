@@ -11,7 +11,7 @@ def test_api_v1_root(client: TestClient) -> None:
     data = r.json()
     assert data["service"] == "huey-queryservice"
     assert data["api_version"] == "1"
-    assert data["links"]["datasets"] == "/api/v1/datasets"
+    assert "datasets" not in data["links"]
     assert data["links"]["openapi"] == "/api/v1/openapi.json"
 
 

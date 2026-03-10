@@ -12,7 +12,7 @@ from server.auth import require_api_key
 from server.cache import build_cache_key, get_query_cache
 from server.config import get_settings
 from server.engine import QueryCancelHandle, db_manager
-from server.errors import CellsWindowTooLargeError, DatasetNotFoundError
+from server.errors import CellsWindowTooLargeError, DatasetNotFoundError, ValidationAppError
 from server.models import (
     CellsResponse,
     PagingResponse,
@@ -45,6 +45,26 @@ def _path_dataset_id(request: Request) -> str:
     if isinstance(value, str) and value:
         return value
     raise RuntimeError("v1 query routes require a dataset_id path parameter")
+
+
+def _canonical_dataset_id(request: Request, body_dataset_id: str) -> str:
+    """Require the request body dataset id to match the v1 path dataset id."""
+    path_dataset_id = _path_dataset_id(request)
+    if body_dataset_id != path_dataset_id:
+        raise ValidationAppError(
+            [
+                {
+                    "loc": ["body", "dataset_id"],
+                    "msg": "dataset_id must match the dataset_id path parameter",
+                    "type": "value_error.dataset_id_mismatch",
+                    "ctx": {
+                        "path_dataset_id": path_dataset_id,
+                        "body_dataset_id": body_dataset_id,
+                    },
+                }
+            ]
+        )
+    return path_dataset_id
 
 
 def _apply_client_request_id(body, request: Request) -> None:
@@ -86,7 +106,7 @@ async def post_query_tuples(
 ) -> TuplesResponse:
     """POST /api/v1/datasets/{dataset_id}/query/tuples."""
     _apply_client_request_id(body, request)
-    dataset_id = _path_dataset_id(request)
+    dataset_id = _canonical_dataset_id(request, body.dataset_id)
     body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
@@ -203,7 +223,7 @@ async def post_query_cells(
 ) -> CellsResponse:
     """POST /api/v1/datasets/{dataset_id}/query/cells."""
     _apply_client_request_id(body, request)
-    dataset_id = _path_dataset_id(request)
+    dataset_id = _canonical_dataset_id(request, body.dataset_id)
     body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
@@ -350,7 +370,7 @@ async def post_query_picklist(
 ) -> PicklistResponse:
     """POST /api/v1/datasets/{dataset_id}/query/picklist."""
     _apply_client_request_id(body, request)
-    dataset_id = _path_dataset_id(request)
+    dataset_id = _canonical_dataset_id(request, body.dataset_id)
     body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
