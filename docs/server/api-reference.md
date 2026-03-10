@@ -282,7 +282,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /export`
+## `POST /api/v1/exports`
 
 Submits async export job and returns job id immediately.
 
@@ -329,7 +329,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `GET /export/{export_id}`
+## `GET /api/v1/exports/{export_id}`
 
 Returns export job status.
 
@@ -345,7 +345,7 @@ Success `200` example:
 {
   "export_id": "exp-1234abcd",
   "status": "complete",
-  "download_url": "/export/exp-1234abcd/download"
+  "download_url": "/api/v1/exports/exp-1234abcd/download"
 }
 ```
 
@@ -356,7 +356,7 @@ Error statuses:
 - `404` `EXPORT_NOT_FOUND`
 - `401` auth failure when auth enabled
 
-## `GET /export/{export_id}/download`
+## `GET /api/v1/exports/{export_id}/download`
 
 Downloads completed export artifact.
 

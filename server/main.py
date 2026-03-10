@@ -5,9 +5,9 @@ FastAPI application with health endpoints, config loader, and structured logging
 """
 # ruff: noqa: E402
 
-import os
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 # Fail fast with a clear message before importing modules that require modern syntax.
@@ -120,10 +120,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 from server.routers import export, health, query, schema  # noqa: E402
 
-app.include_router(export.router, include_in_schema=False)
 app.include_router(health.router)
-app.include_router(query.router, include_in_schema=False)
-app.include_router(schema.router, include_in_schema=False)
 app.include_router(export.router, prefix="/api/v1", include_in_schema=True)
 app.include_router(query.router, prefix="/api/v1/datasets/{dataset_id}", include_in_schema=True)
 app.include_router(schema.router, prefix="/api/v1/datasets/{dataset_id}", include_in_schema=True)

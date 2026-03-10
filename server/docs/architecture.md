@@ -32,7 +32,7 @@ Exports follow a sibling path:
 
 ## Export system
 
-- **Lifecycle**: `POST /export` creates a pending job in the SQLite-backed `ExportJobStore`, enforces `export_max_concurrent`, and schedules background processing. Status moves `pending → processing → complete/failed → expired`.
+- **Lifecycle**: `POST /api/v1/exports` creates a pending job in the SQLite-backed `ExportJobStore`, enforces `export_max_concurrent`, and schedules background processing. Status moves `pending → processing → complete/failed → expired`.
 - **Processing**: `ExportService.process` runs the export query, writes CSV to `export_output_dir`, and updates the job record with download URL and row count.
 - **Store**: `ExportJobStore` persists job metadata in SQLite (`export_db_path`), using WAL mode for file-backed DBs.
 - **TTL cleanup**: `cleanup_expired` removes jobs older than `export_ttl_seconds` and deletes their files.

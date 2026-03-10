@@ -103,7 +103,7 @@ class TestGetDownloadPath:
         store.update_status(
             job.id, "complete",
             file_path=str(csv_file),
-            download_url=f"/export/{job.id}/download",
+            download_url=f"/api/v1/exports/{job.id}/download",
         )
         assert service.get_download_path(job.id) == str(csv_file)
 
@@ -118,7 +118,7 @@ class TestGetDownloadPath:
         store.update_status(
             job.id, "complete",
             file_path="/tmp/nonexistent.csv",
-            download_url=f"/export/{job.id}/download",
+            download_url=f"/api/v1/exports/{job.id}/download",
         )
         with pytest.raises(ExportFileNotFoundError):
             service.get_download_path(job.id)

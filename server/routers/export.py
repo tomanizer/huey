@@ -1,5 +1,5 @@
 """
-Export endpoint: POST /export, GET /export/{id}, GET /export/{id}/download.
+Export endpoints: POST /exports, GET /exports/{id}, GET /exports/{id}/download.
 
 Delegates to ExportService for durable job management backed by SQLite.
 Background processing is dispatched via FastAPI BackgroundTasks.
@@ -24,7 +24,7 @@ from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.export")
 
-router = APIRouter(prefix="/export", tags=["export"])
+router = APIRouter(prefix="/exports", tags=["export"])
 
 
 @router.post("", response_model=ExportResponse)
@@ -36,7 +36,7 @@ async def post_export(
     background_tasks: BackgroundTasks,
     _api_key: str = Depends(require_api_key),
 ) -> ExportResponse:
-    """POST /export: submit export job with background processing."""
+    """POST /exports: submit export job with background processing."""
     if body.client_context and body.client_context.request_id:
         rid = body.client_context.request_id
         set_request_id(rid)
@@ -56,7 +56,7 @@ async def post_export(
 
 @router.get("/{export_id}", response_model=ExportStatusResponse)
 async def get_export_status(export_id: str, _api_key: str = Depends(require_api_key)) -> ExportStatusResponse:
-    """GET /export/{id}: return export job status (and download_url when complete)."""
+    """GET /exports/{id}: return export job status (and download_url when complete)."""
     service = get_export_service()
     job = service.get_status(export_id)
     return ExportStatusResponse(
@@ -69,7 +69,7 @@ async def get_export_status(export_id: str, _api_key: str = Depends(require_api_
 
 @router.get("/{export_id}/download")
 async def download_export(export_id: str, _api_key: str = Depends(require_api_key)) -> FileResponse:
-    """GET /export/{id}/download: download the completed export file."""
+    """GET /exports/{id}/download: download the completed export file."""
     service = get_export_service()
     file_path = service.get_download_path(export_id)
     suffix = Path(file_path).suffix.lower()

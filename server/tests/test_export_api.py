@@ -1,4 +1,4 @@
-"""Tests for POST /export, GET /export/{id}, and GET /export/{id}/download."""
+"""Tests for POST /exports, GET /exports/{id}, and GET /exports/{id}/download."""
 
 import csv
 import io
@@ -47,12 +47,12 @@ def _valid_body(**overrides):
 
 def _run_export_and_download(client: TestClient, body: dict) -> tuple[str, list[list[str]]]:
     """Submit an export, wait for completion, download, parse CSV rows."""
-    r = client.post("/export", json=body)
+    r = client.post("/api/v1/exports", json=body)
     assert r.status_code == 200
     export_id = r.json()["export_id"]
 
     for _ in range(20):
-        status_r = client.get(f"/export/{export_id}")
+        status_r = client.get(f"/api/v1/exports/{export_id}")
         assert status_r.status_code == 200
         if status_r.json()["status"] == "complete":
             break
@@ -60,7 +60,7 @@ def _run_export_and_download(client: TestClient, body: dict) -> tuple[str, list[
     else:
         pytest.fail("Export did not complete in time")
 
-    dl = client.get(f"/export/{export_id}/download")
+    dl = client.get(f"/api/v1/exports/{export_id}/download")
     assert dl.status_code == 200
     reader = csv.reader(io.StringIO(dl.text))
     return export_id, list(reader)
@@ -68,7 +68,7 @@ def _run_export_and_download(client: TestClient, body: dict) -> tuple[str, list[
 
 class TestExportLifecycle:
     def test_post_export_returns_pending(self, client: TestClient) -> None:
-        r = client.post("/export", json=_valid_body())
+        r = client.post("/api/v1/exports", json=_valid_body())
         assert r.status_code == 200
         data = r.json()
         assert data["export_id"].startswith("exp-")
@@ -84,11 +84,11 @@ class TestExportLifecycle:
         assert symbols & {"AAPL", "GOOG", "MSFT", "AMZN", "TSLA"}
 
     def test_export_status_row_count_is_nullable(self, client: TestClient) -> None:
-        r = client.post("/export", json=_valid_body())
+        r = client.post("/api/v1/exports", json=_valid_body())
         assert r.status_code == 200
         export_id = r.json()["export_id"]
         for _ in range(20):
-            status_r = client.get(f"/export/{export_id}")
+            status_r = client.get(f"/api/v1/exports/{export_id}")
             assert status_r.status_code == 200
             if status_r.json()["status"] == "complete":
                 break
@@ -107,12 +107,12 @@ class TestExportLifecycle:
         body = _valid_body()
         del body["query"]["format"]
 
-        r = client.post("/export", json=body)
+        r = client.post("/api/v1/exports", json=body)
         assert r.status_code == 200
         export_id = r.json()["export_id"]
 
         for _ in range(20):
-            status_r = client.get(f"/export/{export_id}")
+            status_r = client.get(f"/api/v1/exports/{export_id}")
             assert status_r.status_code == 200
             if status_r.json()["status"] == "complete":
                 break
@@ -120,7 +120,7 @@ class TestExportLifecycle:
         else:
             pytest.fail("Export did not complete in time")
 
-        dl = client.get(f"/export/{export_id}/download")
+        dl = client.get(f"/api/v1/exports/{export_id}/download")
         assert dl.status_code == 200
         assert dl.headers["content-type"].startswith("application/octet-stream")
         assert "filename=\"exp-" in dl.headers.get("content-disposition", "")
@@ -131,12 +131,12 @@ class TestExportLifecycle:
         body = _valid_body()
         body["query"]["format"] = "sqlite"
 
-        r = client.post("/export", json=body)
+        r = client.post("/api/v1/exports", json=body)
         assert r.status_code == 200
         export_id = r.json()["export_id"]
 
         for _ in range(20):
-            status_r = client.get(f"/export/{export_id}")
+            status_r = client.get(f"/api/v1/exports/{export_id}")
             assert status_r.status_code == 200
             if status_r.json()["status"] == "complete":
                 break
@@ -144,7 +144,7 @@ class TestExportLifecycle:
         else:
             pytest.fail("Export did not complete in time")
 
-        dl = client.get(f"/export/{export_id}/download")
+        dl = client.get(f"/api/v1/exports/{export_id}/download")
         assert dl.status_code == 200
         assert dl.headers["content-type"].startswith("application/vnd.sqlite3")
         assert ".sqlite" in dl.headers.get("content-disposition", "")
@@ -159,12 +159,12 @@ class TestExportLifecycle:
         body = _valid_body()
         body["query"]["format"] = "duckdb"
 
-        r = client.post("/export", json=body)
+        r = client.post("/api/v1/exports", json=body)
         assert r.status_code == 200
         export_id = r.json()["export_id"]
 
         for _ in range(20):
-            status_r = client.get(f"/export/{export_id}")
+            status_r = client.get(f"/api/v1/exports/{export_id}")
             assert status_r.status_code == 200
             if status_r.json()["status"] == "complete":
                 break
@@ -172,7 +172,7 @@ class TestExportLifecycle:
         else:
             pytest.fail("Export did not complete in time")
 
-        dl = client.get(f"/export/{export_id}/download")
+        dl = client.get(f"/api/v1/exports/{export_id}/download")
         assert dl.status_code == 200
         assert dl.headers["content-type"].startswith("application/vnd.duckdb")
         assert ".duckdb" in dl.headers.get("content-disposition", "")
@@ -255,7 +255,7 @@ class TestExportCsvFormat:
 
 class TestExportErrors:
     def test_dataset_not_found(self, client: TestClient) -> None:
-        r = client.post("/export", json=_valid_body(dataset_id="nonexistent"))
+        r = client.post("/api/v1/exports", json=_valid_body(dataset_id="nonexistent"))
         assert r.status_code == 404
 
     def test_dataset_unavailable_in_sample_table_mode(self, client: TestClient, monkeypatch) -> None:
@@ -265,7 +265,7 @@ class TestExportErrors:
         from server.config import get_settings
         get_settings.cache_clear()
         monkeypatch.setattr(db_manager, "table_exists", lambda _: False)
-        r = client.post("/export", json=_valid_body())
+        r = client.post("/api/v1/exports", json=_valid_body())
         get_settings.cache_clear()
         assert r.status_code == 409
         assert r.json()["code"] == "DATASET_UNAVAILABLE"
@@ -278,25 +278,25 @@ class TestExportErrors:
         get_settings.cache_clear()
         # Ensure table_exists would return False — should not matter in parquet_partitioned mode.
         monkeypatch.setattr(db_manager, "table_exists", lambda _: False)
-        r = client.post("/export", json=_valid_body())
+        r = client.post("/api/v1/exports", json=_valid_body())
         get_settings.cache_clear()
         # Job is accepted (200) even though no local table exists.
         assert r.status_code == 200
         assert r.json()["status"] == "pending"
 
     def test_get_export_not_found(self, client: TestClient) -> None:
-        r = client.get("/export/exp-nonexistent")
+        r = client.get("/api/v1/exports/exp-nonexistent")
         assert r.status_code == 404
 
     def test_download_not_found(self, client: TestClient) -> None:
-        r = client.get("/export/exp-nonexistent/download")
+        r = client.get("/api/v1/exports/exp-nonexistent/download")
         assert r.status_code == 404
 
     def test_download_not_ready(self, client: TestClient) -> None:
         store = get_export_service().store
         store.create("exp-test", "trades_v1")
         store.update_status("exp-test", "processing")
-        r = client.get("/export/exp-test/download")
+        r = client.get("/api/v1/exports/exp-test/download")
         assert r.status_code == 409
 
     def test_download_for_failed_export(self, client: TestClient) -> None:
@@ -304,7 +304,7 @@ class TestExportErrors:
         store.create("exp-fail", "trades_v1")
         store.update_status("exp-fail", "processing")
         store.update_status("exp-fail", "failed", error_message="boom")
-        r = client.get("/export/exp-fail/download")
+        r = client.get("/api/v1/exports/exp-fail/download")
         assert r.status_code == 409
 
     def test_download_file_missing_on_disk(self, client: TestClient) -> None:
@@ -314,9 +314,9 @@ class TestExportErrors:
         store.update_status(
             "exp-gone", "complete",
             file_path="/tmp/nonexistent-file.csv",
-            download_url="/export/exp-gone/download",
+            download_url="/api/v1/exports/exp-gone/download",
         )
-        r = client.get("/export/exp-gone/download")
+        r = client.get("/api/v1/exports/exp-gone/download")
         assert r.status_code == 404
 
 
@@ -326,7 +326,7 @@ class TestExportConcurrencyAndTtl:
         for i in range(5):
             store.create(f"exp-active-{i}", "trades_v1")
             store.update_status(f"exp-active-{i}", "processing")
-        r = client.post("/export", json=_valid_body())
+        r = client.post("/api/v1/exports", json=_valid_body())
         assert r.status_code == 429
         assert r.json()["code"] == "TOO_MANY_EXPORTS"
 
@@ -347,7 +347,7 @@ class TestExportConcurrencyAndTtl:
             )
             store._conn.commit()
 
-        r = client.post("/export", json=_valid_body())
+        r = client.post("/api/v1/exports", json=_valid_body())
         assert r.status_code == 200
         assert store.get("exp-old").status == "expired"
         assert not expired_file.exists()
@@ -357,13 +357,13 @@ class TestExportConcurrencyAndTtl:
         store.create("exp-recent", "trades_v1")
         store.update_status("exp-recent", "processing")
         store.update_status("exp-recent", "complete", file_path="/tmp/f.csv")
-        r = client.post("/export", json=_valid_body())
+        r = client.post("/api/v1/exports", json=_valid_body())
         assert r.status_code == 200
         job = store.get("exp-recent")
         assert job is not None
         assert job.status == "complete"
 
     def test_multiple_exports_unique_ids(self, client: TestClient) -> None:
-        r1 = client.post("/export", json=_valid_body())
-        r2 = client.post("/export", json=_valid_body())
+        r1 = client.post("/api/v1/exports", json=_valid_body())
+        r2 = client.post("/api/v1/exports", json=_valid_body())
         assert r1.json()["export_id"] != r2.json()["export_id"]

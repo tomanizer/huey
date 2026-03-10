@@ -59,7 +59,8 @@ class TestCorrelationIdMiddleware:
         assert r1.headers["X-Request-ID"] != r2.headers["X-Request-ID"]
 
     def test_post_endpoint_gets_correlation_id(self, client: TestClient) -> None:
-        r = client.post("/query/tuples", json=_query_body())
+        body = _query_body()
+        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
         assert "X-Request-ID" in r.headers
         assert len(r.headers["X-Request-ID"]) > 0
 
@@ -67,7 +68,7 @@ class TestCorrelationIdMiddleware:
 class TestClientContextOverride:
     def test_client_context_request_id_overrides(self, client: TestClient) -> None:
         body = _query_body(client_context={"request_id": "frontend-456"})
-        r = client.post("/query/tuples", json=body)
+        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
         assert r.headers["X-Request-ID"] == "frontend-456"
 
     def test_client_context_on_cells(self, client: TestClient) -> None:
@@ -82,7 +83,7 @@ class TestClientContextOverride:
             },
             "client_context": {"request_id": "cells-trace-789"},
         }
-        r = client.post("/query/cells", json=body)
+        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
         assert r.headers["X-Request-ID"] == "cells-trace-789"
 
     def test_client_context_on_picklist(self, client: TestClient) -> None:
@@ -92,7 +93,7 @@ class TestClientContextOverride:
             "query": {"field": "symbol"},
             "client_context": {"request_id": "picklist-trace-abc"},
         }
-        r = client.post("/query/picklist", json=body)
+        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
         assert r.headers["X-Request-ID"] == "picklist-trace-abc"
 
     def test_client_context_on_export(self, client: TestClient) -> None:
@@ -102,13 +103,13 @@ class TestClientContextOverride:
             "query": {"axes": {}, "format": "csv"},
             "client_context": {"request_id": "export-trace-def"},
         }
-        r = client.post("/export", json=body)
+        r = client.post("/api/v1/exports", json=body)
         assert r.headers["X-Request-ID"] == "export-trace-def"
 
     def test_no_client_context_uses_header(self, client: TestClient) -> None:
         body = _query_body()
         r = client.post(
-            "/query/tuples",
+            f"/api/v1/datasets/{body['dataset_id']}/query/tuples",
             json=body,
             headers={"X-Request-ID": "header-id-999"},
         )
@@ -121,7 +122,7 @@ class TestLoggingIncludesRequestId:
     ) -> None:
         with caplog.at_level(logging.INFO, logger="query_service"):
             client.post(
-                "/query/tuples",
+                "/api/v1/datasets/trades_v1/query/tuples",
                 json=_query_body(client_context={"request_id": "log-check-42"}),
             )
         matching = [r for r in caplog.records if hasattr(r, "request_id")]

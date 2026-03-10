@@ -11,7 +11,7 @@ def test_query_tuples_returns_results(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] > 0
@@ -31,7 +31,7 @@ def test_query_tuples_with_include_filter(client: TestClient) -> None:
             "paging": {"limit": 10, "offset": 0},
         },
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] == 2
@@ -49,7 +49,7 @@ def test_query_tuples_with_exclude_filter(client: TestClient) -> None:
             "paging": {"limit": 10, "offset": 0},
         },
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     symbols = {item["values"][0] for item in data["items"]}
@@ -63,7 +63,7 @@ def test_query_tuples_date_range(client: TestClient) -> None:
         "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
         "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] == 5
@@ -75,7 +75,7 @@ def test_query_tuples_paging(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 2, "offset": 0}},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["paging"]["returned"] == 2
@@ -88,7 +88,7 @@ def test_query_tuples_paging_limit_one(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 1, "offset": 0}},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["paging"]["limit"] == 1
@@ -103,8 +103,8 @@ def test_query_tuples_paging_offset(client: TestClient) -> None:
         "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 2, "offset": 0}},
     }
     body_page2 = {**body_page1, "query": {**body_page1["query"], "paging": {"limit": 2, "offset": 2}}}
-    r1 = client.post("/query/tuples", json=body_page1)
-    r2 = client.post("/query/tuples", json=body_page2)
+    r1 = client.post(f"/api/v1/datasets/{body_page1['dataset_id']}/query/tuples", json=body_page1)
+    r2 = client.post(f"/api/v1/datasets/{body_page2['dataset_id']}/query/tuples", json=body_page2)
     page1_symbols = {item["values"][0] for item in r1.json()["items"]}
     page2_symbols = {item["values"][0] for item in r2.json()["items"]}
     assert page1_symbols.isdisjoint(page2_symbols)
@@ -118,8 +118,8 @@ def test_query_tuples_paging_offset_limit_one(client: TestClient) -> None:
     }
     body_page1 = {**base_query, "query": {**base_query["query"], "paging": {"limit": 1, "offset": 0}}}
     body_page2 = {**base_query, "query": {**base_query["query"], "paging": {"limit": 1, "offset": 1}}}
-    r1 = client.post("/query/tuples", json=body_page1)
-    r2 = client.post("/query/tuples", json=body_page2)
+    r1 = client.post(f"/api/v1/datasets/{body_page1['dataset_id']}/query/tuples", json=body_page1)
+    r2 = client.post(f"/api/v1/datasets/{body_page2['dataset_id']}/query/tuples", json=body_page2)
     assert r1.status_code == 200
     assert r2.status_code == 200
     data1 = r1.json()
@@ -136,7 +136,7 @@ def test_query_tuples_empty_page_reports_total(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 10}},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["items"] == []
@@ -150,7 +150,7 @@ def test_query_tuples_sort_desc(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"fields": [{"field": "symbol", "sort": "DESC"}], "paging": {"limit": 10, "offset": 0}},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     symbols = [item["values"][0] for item in r.json()["items"]]
     assert symbols == sorted(symbols, reverse=True)
@@ -162,7 +162,7 @@ def test_query_tuples_dataset_not_found(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 404
 
 
@@ -182,6 +182,6 @@ def test_tuples_executes_sql_exactly_once(monkeypatch, client: TestClient) -> No
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
     }
-    r = client.post("/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
     assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/tuples, got {call_count['n']}"

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 def test_schema_found(client: TestClient) -> None:
     """GET /schema?dataset_id=trades_v1 returns 200 and schema (from default config)."""
-    r = client.get("/schema", params={"dataset_id": "trades_v1"})
+    r = client.get("/api/v1/datasets/trades_v1/schema")
     assert r.status_code == 200
     data = r.json()
     assert data["dataset_id"] == "trades_v1"
@@ -15,5 +15,5 @@ def test_schema_found(client: TestClient) -> None:
 
 def test_schema_not_found(client: TestClient) -> None:
     """GET /schema?dataset_id=nonexistent returns 404."""
-    r = client.get("/schema", params={"dataset_id": "nonexistent"})
+    r = client.get("/api/v1/datasets/nonexistent/schema")
     assert r.status_code == 404

@@ -242,7 +242,7 @@ class PicklistQueryBody(BaseModel):
 
 
 class ExportQueryBody(BaseModel):
-    """Body for /export, describing export format, filters, and bounds."""
+    """Body for /exports, describing export format, filters, and bounds."""
 
     export_type: str | None = None
     axes: AxesSpec | None = None
@@ -280,7 +280,7 @@ class QueryPicklistRequest(BaseModel):
 
 
 class ExportRequest(BaseModel):
-    """POST /export body (envelope)."""
+    """POST /exports body (envelope)."""
 
     dataset_id: str
     date_range: DateRange

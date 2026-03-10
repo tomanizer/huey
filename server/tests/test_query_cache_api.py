@@ -60,8 +60,8 @@ def test_tuples_cache_hit(monkeypatch, client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
     }
-    r1 = client.post("/query/tuples", json=body)
-    r2 = client.post("/query/tuples", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json() == r2.json()
@@ -84,8 +84,8 @@ def test_picklist_cache_hit(monkeypatch, client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 5, "offset": 0}},
     }
-    r1 = client.post("/query/picklist", json=body)
-    r2 = client.post("/query/picklist", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json() == r2.json()
@@ -114,8 +114,8 @@ def test_cells_cache_hit(monkeypatch, client: TestClient) -> None:
             }
         },
     }
-    r1 = client.post("/query/cells", json=body)
-    r2 = client.post("/query/cells", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json()["cells"]
@@ -145,8 +145,8 @@ def test_cells_not_cached_when_too_large(monkeypatch, client: TestClient) -> Non
             }
         },
     }
-    r1 = client.post("/query/cells", json=body)
-    r2 = client.post("/query/cells", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json()["cells"]
@@ -174,8 +174,8 @@ def test_picklist_dim_version_token_cache_hit(monkeypatch, client: TestClient) -
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 5, "offset": 0}},
     }
-    r1 = client.post("/query/picklist", json=body)
-    r2 = client.post("/query/picklist", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     # Second request must be a cache hit – DB should only be called once.
@@ -202,13 +202,13 @@ def test_cache_miss_when_data_version_token_changes(monkeypatch, client: TestCli
         "trades_v1",
         {"partitions": [{"date": "2026-03-01", "files": [{"path": "p1.parquet", "size": 100, "etag": "e1"}]}]},
     )
-    r1 = client.post("/query/tuples", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
 
     datasets.set_partition_metadata(
         "trades_v1",
         {"partitions": [{"date": "2026-03-01", "files": [{"path": "p1.parquet", "size": 101, "etag": "e1"}]}]},
     )
-    r2 = client.post("/query/tuples", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
 
     assert r1.status_code == 200
     assert r2.status_code == 200
@@ -237,14 +237,14 @@ def test_picklist_dim_version_token_cache_miss_on_token_change(monkeypatch, clie
     # First request with token v1.
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "token-v1")
     get_settings.cache_clear()
-    r1 = client.post("/query/picklist", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r1.status_code == 200
     assert call_count["n"] == 1
 
     # Change the token – the cache key changes, so this is a miss.
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "token-v2")
     get_settings.cache_clear()
-    r2 = client.post("/query/picklist", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r2.status_code == 200
     assert call_count["n"] == 2  # DB called again due to key change
 
@@ -270,13 +270,13 @@ def test_dim_version_token_change_does_not_invalidate_fact_cache(monkeypatch, cl
 
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "dim-v1")
     get_settings.cache_clear()
-    r1 = client.post("/query/tuples", json=body)
+    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r1.status_code == 200
     assert r1.json().get("items")
     assert call_count["n"] == 1
 
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "dim-v2")
     get_settings.cache_clear()
-    r2 = client.post("/query/tuples", json=body)
+    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r2.status_code == 200
     assert call_count["n"] == 1
