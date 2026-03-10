@@ -7,6 +7,7 @@ FastAPI application with health endpoints, config loader, and structured logging
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 # Fail fast with a clear message before importing modules that require modern syntax.
@@ -14,7 +15,7 @@ from server.runtime import ensure_supported_python
 
 ensure_supported_python()
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +37,7 @@ from server.prewarm import prewarm_dim_fields
 from server.query_budget import get_query_budget
 from server.rate_limit import limiter
 from server.request_context import get_request_id
+from server.routers.health import mark_startup_complete, reset_startup_complete
 
 settings = get_settings()
 setup_logging(settings.log_level, settings.log_format)
@@ -46,12 +48,21 @@ logger = logging.getLogger("query_service")
 async def lifespan(app: FastAPI):
     """Initialize engine and export store on startup, cleanly shut them down on exit."""
     logger.info("QueryService starting", extra={"host": settings.host, "port": settings.port})
+    reset_startup_complete()
     db_manager.initialize()
     load_sample_data(db_manager)
 
     # Prewarm dimension cache for configured hot fields (fire-and-forget).
     if getattr(settings, "cache_enabled", False) and getattr(settings, "dim_prewarm_fields", None):
-        asyncio.create_task(prewarm_dim_fields())
+        async def _prewarm_and_mark_ready() -> None:
+            try:
+                await prewarm_dim_fields()
+            finally:
+                mark_startup_complete()
+
+        asyncio.create_task(_prewarm_and_mark_ready())
+    else:
+        mark_startup_complete()
 
     export_store = ExportJobStore(settings.export_db_path)
     export_store.initialize()
@@ -87,8 +98,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="QueryService",
     description="Huey OLAP query service for S3-backed parquet datasets. Set X-API-Key header when authentication is enabled.",
-    version="0.1.0",
+    version="1.0.0",
     lifespan=lifespan,
+    openapi_url="/api/v1/openapi.json",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
 )
 
 app.add_middleware(AccessLogMiddleware)
@@ -98,7 +112,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 app.state.limiter = limiter
@@ -106,10 +120,29 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 from server.routers import export, health, query, schema  # noqa: E402
 
-app.include_router(export.router)
+v1_router = APIRouter(prefix="/api/v1")
+v1_router.include_router(export.router)
+v1_router.include_router(query.router, prefix="/datasets/{dataset_id}")
+v1_router.include_router(schema.router, prefix="/datasets/{dataset_id}")
+
 app.include_router(health.router)
-app.include_router(query.router)
-app.include_router(schema.router)
+app.include_router(v1_router)
+
+
+@app.get("/api/v1", include_in_schema=False)
+async def api_root() -> dict[str, object]:
+    """Service root for the versioned v1 API."""
+    build = os.getenv("QUERYSERVICE_BUILD", "dev")
+    return {
+        "service": "huey-queryservice",
+        "api_version": "1",
+        "build": build,
+        "links": {
+            "exports": "/api/v1/exports",
+            "openapi": "/api/v1/openapi.json",
+            "docs": "/api/v1/docs",
+        },
+    }
 
 
 @app.exception_handler(AppError)

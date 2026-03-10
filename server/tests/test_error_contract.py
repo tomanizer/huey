@@ -50,12 +50,28 @@ def _export_body(dataset_id: str = "trades_v1") -> dict:
     }
 
 
+QUERY_ENDPOINTS = ("tuples", "cells", "picklist")
+EXPORTS_ROOT = "/api/v1/exports"
+
+
+def _query_path(endpoint: str, dataset_id: str = "trades_v1") -> str:
+    return f"/api/v1/datasets/{dataset_id}/query/{endpoint}"
+
+
+def _export_status_path(export_id: str) -> str:
+    return f"{EXPORTS_ROOT}/{export_id}"
+
+
+def _export_download_path(export_id: str) -> str:
+    return f"{EXPORTS_ROOT}/{export_id}/download"
+
+
 class TestErrorResponseSchema:
     """Every error response must contain at least 'code' and 'message'."""
 
-    @pytest.mark.parametrize("endpoint", ["/query/tuples", "/query/cells", "/query/picklist"])
+    @pytest.mark.parametrize("endpoint", QUERY_ENDPOINTS)
     def test_query_404_envelope(self, client: TestClient, endpoint: str) -> None:
-        r = client.post(endpoint, json=_query_body(dataset_id="no_such"))
+        r = client.post(_query_path(endpoint, "no_such"), json=_query_body(dataset_id="no_such"))
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "DATASET_NOT_FOUND"
@@ -64,27 +80,27 @@ class TestErrorResponseSchema:
         assert body["details"]["dataset_id"] == "no_such"
 
     def test_schema_404_envelope(self, client: TestClient) -> None:
-        r = client.get("/schema?dataset_id=no_such")
+        r = client.get("/api/v1/datasets/no_such/schema")
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "DATASET_NOT_FOUND"
         assert body["details"]["dataset_id"] == "no_such"
 
     def test_export_post_404_envelope(self, client: TestClient) -> None:
-        r = client.post("/export", json=_export_body(dataset_id="no_such"))
+        r = client.post(EXPORTS_ROOT, json=_export_body(dataset_id="no_such"))
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "DATASET_NOT_FOUND"
 
     def test_export_status_404_envelope(self, client: TestClient) -> None:
-        r = client.get("/export/exp-nonexistent")
+        r = client.get(_export_status_path("exp-nonexistent"))
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "EXPORT_NOT_FOUND"
         assert body["details"]["export_id"] == "exp-nonexistent"
 
     def test_export_download_404_envelope(self, client: TestClient) -> None:
-        r = client.get("/export/exp-nonexistent/download")
+        r = client.get(_export_download_path("exp-nonexistent"))
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "EXPORT_NOT_FOUND"
@@ -93,7 +109,7 @@ class TestErrorResponseSchema:
         store = get_export_service().store
         store.create("exp-pending", "trades_v1")
         store.update_status("exp-pending", "processing")
-        r = client.get("/export/exp-pending/download")
+        r = client.get(_export_download_path("exp-pending"))
         assert r.status_code == 409
         body = r.json()
         assert body["code"] == "EXPORT_NOT_READY"
@@ -106,9 +122,9 @@ class TestErrorResponseSchema:
         store.update_status(
             "exp-gone", "complete",
             file_path="/tmp/nonexistent.csv",
-            download_url="/export/exp-gone/download",
+            download_url=_export_download_path("exp-gone"),
         )
-        r = client.get("/export/exp-gone/download")
+        r = client.get(_export_download_path("exp-gone"))
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "EXPORT_FILE_NOT_FOUND"
@@ -118,13 +134,13 @@ class TestErrorResponseSchema:
         for i in range(5):
             store.create(f"exp-active-{i}", "trades_v1")
             store.update_status(f"exp-active-{i}", "processing")
-        r = client.post("/export", json=_export_body())
+        r = client.post(EXPORTS_ROOT, json=_export_body())
         assert r.status_code == 429
         body = r.json()
         assert body["code"] == "TOO_MANY_EXPORTS"
         assert body["details"]["max_concurrent"] == 5
 
-    @pytest.mark.parametrize("endpoint", ["/query/tuples", "/query/cells", "/query/picklist"])
+    @pytest.mark.parametrize("endpoint", QUERY_ENDPOINTS)
     def test_query_409_dataset_unavailable_envelope(self, client: TestClient, endpoint: str, monkeypatch) -> None:
         import server.routers.query as query_router
 
@@ -150,9 +166,9 @@ class TestErrorResponseSchema:
         monkeypatch.setattr(query_router.db_manager, "execute_sql_async", execute_raise_unavailable)
 
         body = _query_body(dataset_id="not_materialized_ds")
-        if endpoint == "/query/tuples":
+        if endpoint == "tuples":
             body["query"] = {"fields": [{"field": "symbol"}]}
-        elif endpoint == "/query/picklist":
+        elif endpoint == "picklist":
             body["query"] = {"field": "symbol"}
         else:
             body["query"] = {
@@ -163,7 +179,7 @@ class TestErrorResponseSchema:
                 },
             }
 
-        r = client.post(endpoint, json=body)
+        r = client.post(_query_path(endpoint, body["dataset_id"]), json=body)
         assert r.status_code == 409
         payload = r.json()
         assert payload["code"] == "DATASET_UNAVAILABLE"
@@ -182,7 +198,7 @@ class TestErrorResponseSchema:
             lambda dataset_id: {"dataset_id": dataset_id, "fields": [{"name": "symbol"}]},
         )
         monkeypatch.setattr(export_router.db_manager, "table_exists", lambda _dataset_id: False)
-        r = client.post("/export", json=_export_body(dataset_id="not_materialized_ds"))
+        r = client.post(EXPORTS_ROOT, json=_export_body(dataset_id="not_materialized_ds"))
         get_settings.cache_clear()
         assert r.status_code == 409
         payload = r.json()
@@ -194,7 +210,7 @@ class TestValidationErrorEnvelope:
     """422 validation errors wrap Pydantic details in standard envelope."""
 
     def test_missing_required_field(self, client: TestClient) -> None:
-        r = client.post("/query/tuples", json={"query": {}})
+        r = client.post(_query_path("tuples"), json={"query": {}})
         assert r.status_code == 422
         body = r.json()
         assert body["code"] == "VALIDATION_ERROR"
@@ -204,7 +220,7 @@ class TestValidationErrorEnvelope:
         assert len(body["details"]["errors"]) > 0
 
     def test_invalid_date_format(self, client: TestClient) -> None:
-        r = client.post("/query/tuples", json={
+        r = client.post(_query_path("tuples"), json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "not-a-date"},
         })
@@ -213,7 +229,7 @@ class TestValidationErrorEnvelope:
         assert body["code"] == "VALIDATION_ERROR"
 
     def test_invalid_filter_operator(self, client: TestClient) -> None:
-        r = client.post("/query/tuples", json={
+        r = client.post(_query_path("tuples"), json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2024-01-15"},
             "query": {"filters": [{"field": "symbol", "operator": "NOPE", "values": ["X"]}]},
@@ -223,7 +239,7 @@ class TestValidationErrorEnvelope:
         assert body["code"] == "VALIDATION_ERROR"
 
     def test_export_invalid_format(self, client: TestClient) -> None:
-        r = client.post("/export", json={
+        r = client.post(EXPORTS_ROOT, json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2024-01-15"},
             "query": {"format": "xlsx"},
@@ -238,7 +254,7 @@ class TestRequestIdInErrors:
 
     def test_request_id_from_header(self, client: TestClient) -> None:
         r = client.post(
-            "/query/tuples",
+            _query_path("tuples", "no_such"),
             json=_query_body(dataset_id="no_such"),
             headers={"X-Request-ID": "trace-abc"},
         )
@@ -247,7 +263,7 @@ class TestRequestIdInErrors:
         assert body.get("request_id") == "trace-abc"
 
     def test_request_id_auto_generated(self, client: TestClient) -> None:
-        r = client.post("/query/tuples", json=_query_body(dataset_id="no_such"))
+        r = client.post(_query_path("tuples", "no_such"), json=_query_body(dataset_id="no_such"))
         assert r.status_code == 404
         body = r.json()
         assert "request_id" in body
@@ -313,7 +329,7 @@ class TestInternalErrorEnvelope:
         monkeypatch.setattr(query_router.db_manager, "execute_sql_async", boom)
         # raise_server_exceptions=False so we get the HTTP response instead of the re-raised exception
         no_raise_client = TestClient(app, raise_server_exceptions=False)
-        r = no_raise_client.post("/query/cells", json={
+        r = no_raise_client.post(_query_path("cells"), json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "v"}]}},
@@ -339,21 +355,21 @@ class TestHappyPathUnchanged:
         assert r.status_code == 200
 
     def test_schema_success(self, client: TestClient) -> None:
-        r = client.get("/schema?dataset_id=trades_v1")
+        r = client.get("/api/v1/datasets/trades_v1/schema")
         assert r.status_code == 200
         assert "fields" in r.json()
 
     def test_query_tuples_success(self, client: TestClient) -> None:
-        r = client.post("/query/tuples", json=_query_body())
+        r = client.post(_query_path("tuples"), json=_query_body())
         assert r.status_code == 200
         assert "items" in r.json()
 
     def test_query_cells_success(self, client: TestClient) -> None:
-        r = client.post("/query/cells", json=_query_body())
+        r = client.post(_query_path("cells"), json=_query_body())
         assert r.status_code == 200
         assert "cells" in r.json()
 
     def test_query_picklist_success(self, client: TestClient) -> None:
-        r = client.post("/query/picklist", json=_query_body())
+        r = client.post(_query_path("picklist"), json=_query_body())
         assert r.status_code == 200
         assert "values" in r.json()

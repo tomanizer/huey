@@ -7,9 +7,9 @@ Base URL examples:
 
 Interactive OpenAPI:
 
-- `/docs`
-- `/redoc`
-- `/openapi.json`
+- `/api/v1/docs`
+- `/api/v1/redoc`
+- `/api/v1/openapi.json`
 
 ## Conventions
 
@@ -88,20 +88,20 @@ Responses:
 {"status": "unavailable"}
 ```
 
-## `GET /schema`
+## `GET /api/v1/datasets/{dataset_id}/schema`
 
 Returns schema metadata for a configured dataset.
 
 Authentication: conditional API key.
 
-Query parameters:
+Path parameters:
 
 - `dataset_id` (required, string)
 
 Example:
 
 ```bash
-curl 'http://localhost:8000/schema?dataset_id=trades_v1'
+curl 'http://localhost:8000/api/v1/datasets/trades_v1/schema'
 ```
 
 Success `200` example:
@@ -122,7 +122,7 @@ Error statuses:
 - `404` `DATASET_NOT_FOUND`
 - `401` auth failure when auth enabled
 
-## `POST /query/tuples`
+## `POST /api/v1/datasets/{dataset_id}/query/tuples`
 
 Returns distinct tuple values for selected fields.
 
@@ -177,7 +177,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /query/cells`
+## `POST /api/v1/datasets/{dataset_id}/query/cells`
 
 Returns aggregated cells grouped by row/column axes.
 
@@ -235,7 +235,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /query/picklist`
+## `POST /api/v1/datasets/{dataset_id}/query/picklist`
 
 Returns distinct values for one field, typically used for filter UIs.
 
@@ -282,7 +282,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /export`
+## `POST /api/v1/exports`
 
 Submits async export job and returns job id immediately.
 
@@ -329,7 +329,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `GET /export/{export_id}`
+## `GET /api/v1/exports/{export_id}`
 
 Returns export job status.
 
@@ -345,7 +345,7 @@ Success `200` example:
 {
   "export_id": "exp-1234abcd",
   "status": "complete",
-  "download_url": "/export/exp-1234abcd/download"
+  "download_url": "/api/v1/exports/exp-1234abcd/download"
 }
 ```
 
@@ -356,7 +356,7 @@ Error statuses:
 - `404` `EXPORT_NOT_FOUND`
 - `401` auth failure when auth enabled
 
-## `GET /export/{export_id}/download`
+## `GET /api/v1/exports/{export_id}/download`
 
 Downloads completed export artifact.
 

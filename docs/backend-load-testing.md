@@ -4,7 +4,7 @@ This document describes how to run load tests against the QueryService API (C3.1
 
 ## Scope
 
-- Concurrent requests to `/schema`, `/query/tuples`, `/query/cells`, `/query/picklist`.
+- Concurrent requests to `/api/v1/datasets/{dataset_id}/schema`, `/api/v1/datasets/{dataset_id}/query/tuples`, `/api/v1/datasets/{dataset_id}/query/cells`, `/api/v1/datasets/{dataset_id}/query/picklist`.
 - Metrics: request count, success rate, latency percentiles (p50, p90, p99).
 
 ## Prerequisites

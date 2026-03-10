@@ -56,7 +56,8 @@ def _cells_body():
 def test_query_timeout_response(client: TestClient, settings_override) -> None:
     """Queries exceeding the timeout return a 504 with QUERY_TIMEOUT."""
     settings_override(query_timeout_seconds=0.0001)
-    r = client.post("/query/cells", json=_cells_body())
+    request_body = _cells_body()
+    r = client.post(f"/api/v1/datasets/{request_body['dataset_id']}/query/cells", json=request_body)
     assert r.status_code == 504
     body = r.json()
     assert body["code"] == "QUERY_TIMEOUT"
@@ -90,7 +91,7 @@ def test_queue_depth_rejects_overflow(
     def first_request():
         # Separate clients avoid TestClient internal request serialization,
         # which can make this concurrency test nondeterministic.
-        return first_client.post("/query/cells", json=request_body)
+        return first_client.post(f"/api/v1/datasets/{request_body['dataset_id']}/query/cells", json=request_body)
 
     first_client = None
     second_client = None
@@ -102,7 +103,7 @@ def test_queue_depth_rejects_overflow(
             # Wait until the first request has definitely acquired the budget slot
             # before sending the second, so the queue overflow is guaranteed.
             assert in_execute.wait(timeout=5)
-            second_result = second_client.post("/query/cells", json=request_body)
+            second_result = second_client.post(f"/api/v1/datasets/{request_body['dataset_id']}/query/cells", json=request_body)
             first_result = first.result(timeout=10)
     finally:
         if first_client is not None:
@@ -174,9 +175,13 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
         second_client = TestClient(client.app)
 
         with ThreadPoolExecutor(max_workers=1) as pool:
-            first = pool.submit(first_client.post, "/query/cells", json=request_body)
+            first = pool.submit(
+                first_client.post,
+                f"/api/v1/datasets/{request_body['dataset_id']}/query/cells",
+                json=request_body,
+            )
             assert first_started.wait(timeout=5)
-            second_result = second_client.post("/query/cells", json=request_body)
+            second_result = second_client.post(f"/api/v1/datasets/{request_body['dataset_id']}/query/cells", json=request_body)
             first_result = first.result(timeout=10)
     finally:
         if first_client is not None:

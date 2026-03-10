@@ -1,5 +1,5 @@
 """
-Schema endpoint: GET /schema per tech spec.
+Schema endpoint under /api/v1/datasets/{dataset_id}/schema.
 """
 
 from fastapi import APIRouter, Depends
@@ -15,7 +15,7 @@ router = APIRouter(tags=["schema"])
 async def get_schema(dataset_id: str, _api_key: str = Depends(require_api_key)) -> dict:
     """
     Fetch schema metadata for a dataset.
-    GET /schema?dataset_id=trades_v1
+    GET /api/v1/datasets/{dataset_id}/schema
     """
     schema = datasets.get_schema(dataset_id)
     if schema is None:

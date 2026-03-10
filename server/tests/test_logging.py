@@ -92,7 +92,7 @@ class TestAccessLogMiddleware:
 
     def test_logs_post_request(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
-        client.post("/query/tuples", json={
+        client.post("/api/v1/datasets/trades_v1/query/tuples", json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"fields": [{"field": "symbol"}]},
@@ -104,7 +104,7 @@ class TestAccessLogMiddleware:
         for line in lines:
             try:
                 record = json.loads(line)
-                if record.get("path") == "/query/tuples":
+                if record.get("path") == "/api/v1/datasets/trades_v1/query/tuples":
                     access_records.append(record)
             except json.JSONDecodeError:
                 continue
@@ -117,7 +117,7 @@ class TestAccessLogMiddleware:
 class TestQueryExecutionLogging:
     def test_tuples_query_logged(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
-        client.post("/query/tuples", json={
+        client.post("/api/v1/datasets/trades_v1/query/tuples", json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"fields": [{"field": "symbol"}]},
@@ -141,7 +141,7 @@ class TestQueryExecutionLogging:
 
     def test_cells_query_logged(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
-        client.post("/query/cells", json={
+        client.post("/api/v1/datasets/trades_v1/query/cells", json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": []}},
@@ -157,7 +157,7 @@ class TestQueryExecutionLogging:
 
     def test_picklist_query_logged(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
-        client.post("/query/picklist", json={
+        client.post("/api/v1/datasets/trades_v1/query/picklist", json={
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"field": "symbol"},

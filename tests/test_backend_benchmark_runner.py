@@ -14,7 +14,12 @@ from threading import Thread
 class _BenchmarkHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         self.rfile.read(int(self.headers.get("content-length", "0")))
-        if self.path in {"/query/tuples", "/query/cells", "/query/picklist", "/export"}:
+        if self.path in {
+            "/api/v1/datasets/trades_v1/query/tuples",
+            "/api/v1/datasets/trades_v1/query/cells",
+            "/api/v1/datasets/trades_v1/query/picklist",
+            "/api/v1/exports",
+        }:
             payload = b'{"ok":true}'
             self.send_response(200)
             self.send_header("Content-Type", "application/json")

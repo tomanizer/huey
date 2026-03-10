@@ -1,4 +1,4 @@
-"""Tests for POST /query/cells API — functional / happy-path tests."""
+"""Tests for POST /api/v1/datasets/{dataset_id}/query/cells."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,7 +19,7 @@ def test_query_cells_returns_aggregated_data(client: TestClient) -> None:
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
     data = r.json()
     assert len(data["cells"]) > 0
@@ -47,7 +47,7 @@ def test_query_cells_multiple_aggregations(client: TestClient) -> None:
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) > 0
@@ -68,7 +68,7 @@ def test_query_cells_with_filter(client: TestClient) -> None:
             "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL"]}],
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) == 1
@@ -81,14 +81,14 @@ def test_query_cells_empty_axes_returns_empty(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"axes": {"rows": [], "columns": [], "measures": []}},
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
     assert r.json()["cells"] == []
 
 
 def test_query_cells_dataset_not_found(client: TestClient) -> None:
     body = {"dataset_id": "nonexistent", "date_range": {"type": "single", "date": "2026-03-01"}, "query": {}}
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 404
 
 
@@ -105,7 +105,7 @@ def test_query_cells_row_window_limits_results(client: TestClient) -> None:
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) == 1
@@ -129,7 +129,7 @@ def test_query_cells_window_too_large_returns_error(client: TestClient, monkeypa
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 400
     data = r.json()
     assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
@@ -150,7 +150,7 @@ def test_query_cells_no_windows_cap_enforced(client: TestClient, monkeypatch: py
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 400
     data = r.json()
     assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
@@ -179,7 +179,7 @@ def test_query_cells_row_window_only_cap_enforced(client: TestClient, monkeypatc
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 400
     assert r.json()["code"] == "CELLS_WINDOW_TOO_LARGE"
 
@@ -205,7 +205,7 @@ def test_query_cells_col_window_only_cap_enforced(client: TestClient, monkeypatc
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 400
     assert r.json()["code"] == "CELLS_WINDOW_TOO_LARGE"
 
@@ -225,13 +225,13 @@ def test_query_cells_within_cap_succeeds(client: TestClient, monkeypatch: pytest
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
     assert len(r.json()["cells"]) > 0
 
 
 def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
-    """Regression guard: /query/cells must call execute_sql_async exactly once per request."""
+    """Regression guard: the v1 cells endpoint must call execute_sql_async exactly once per request."""
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
@@ -251,6 +251,9 @@ def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> Non
             },
         },
     }
-    r = client.post("/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
-    assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/cells, got {call_count['n']}"
+    assert call_count["n"] == 1, (
+        "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/cells, "
+        f"got {call_count['n']}"
+    )

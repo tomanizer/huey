@@ -103,16 +103,16 @@ Rate-limit identity resolution:
 
 Query cache keys use two deterministic version tokens:
 
-- **`fact_version_token`** (for `/query/tuples` and `/query/cells`)
+- **`fact_version_token`** (for `/api/v1/datasets/{dataset_id}/query/tuples` and `/api/v1/datasets/{dataset_id}/query/cells`)
   - Derived from partition metadata fingerprints for the requested `date_range`.
   - Only partitions intersecting the requested date scope contribute to the token.
   - This preserves cache entries for closed historical ranges when a new COBDATE is published outside the requested scope.
-- **`dim_version_token`** (for `/query/picklist`)
+- **`dim_version_token`** (for `/api/v1/datasets/{dataset_id}/query/picklist`)
   - Derived from dataset config identity + field definitions, with optional external override via `QUERYSERVICE_DIM_VERSION_TOKEN`.
 
 These tokens align with the WORM invariants: fact changes occur at COBDATE boundaries, historical partitions are immutable once finalized, and dimension/reference updates are infrequent.
 
-## Dimension Dictionary Cache (`/query/picklist`)
+## Dimension Dictionary Cache (`/api/v1/datasets/{dataset_id}/query/picklist`)
 
 Picklist / filter-dropdown queries are backed by a dedicated dimension cache
 with a longer default TTL and optional stale-while-revalidate behaviour,
@@ -153,9 +153,9 @@ on a fresh computation.
 
 ## Endpoint cache policy
 
-- `/query/picklist`: aggressive cache policy (long TTL + optional stale-while-revalidate).
-- `/query/tuples`: moderate/aggressive fact cache policy using `fact_version_token`.
-- `/query/cells`: conservative policy (effective TTL and item-size caps are stricter than tuples).
+- `/api/v1/datasets/{dataset_id}/query/picklist`: aggressive cache policy (long TTL + optional stale-while-revalidate).
+- `/api/v1/datasets/{dataset_id}/query/tuples`: moderate/aggressive fact cache policy using `fact_version_token`.
+- `/api/v1/datasets/{dataset_id}/query/cells`: conservative policy (effective TTL and item-size caps are stricter than tuples).
 
 ## Invalidation matrix
 

@@ -175,7 +175,7 @@ class ExportService:
             self._store.update_status(
                 job_id, "complete",
                 file_path=str(file_path),
-                download_url=f"/export/{job_id}/download",
+                download_url=f"/api/v1/exports/{job_id}/download",
                 row_count=row_count,
             )
             logger.info(

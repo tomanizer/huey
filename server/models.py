@@ -215,7 +215,7 @@ class AxesSpec(BaseModel):
 
 # --- Typed query bodies ---
 class TuplesQueryBody(BaseModel):
-    """Body for /query/tuples supporting optional fields, filters, and paging."""
+    """Body for /api/v1/datasets/{dataset_id}/query/tuples."""
 
     axis: str | None = None  # reserved: tech spec multi-axis support
     fields: list[TupleFieldSpec] | None = None
@@ -224,7 +224,7 @@ class TuplesQueryBody(BaseModel):
 
 
 class CellsQueryBody(BaseModel):
-    """Body for /query/cells, driving aggregation axes and filters."""
+    """Body for /api/v1/datasets/{dataset_id}/query/cells."""
 
     rows: WindowSpec | None = None  # virtualized row window (start/count)
     columns: WindowSpec | None = None  # virtualized column window (start/count)
@@ -233,7 +233,7 @@ class CellsQueryBody(BaseModel):
 
 
 class PicklistQueryBody(BaseModel):
-    """Body for /query/picklist, selecting a field and optional search/paging."""
+    """Body for /api/v1/datasets/{dataset_id}/query/picklist."""
 
     field: str | None = None
     search: str | None = ""
@@ -242,7 +242,7 @@ class PicklistQueryBody(BaseModel):
 
 
 class ExportQueryBody(BaseModel):
-    """Body for /export, describing export format, filters, and bounds."""
+    """Body for POST /api/v1/exports."""
 
     export_type: str | None = None
     axes: AxesSpec | None = None
@@ -253,7 +253,7 @@ class ExportQueryBody(BaseModel):
 
 # --- Request models ---
 class QueryTuplesRequest(BaseModel):
-    """POST /query/tuples body (envelope)."""
+    """POST /api/v1/datasets/{dataset_id}/query/tuples body."""
 
     dataset_id: str
     date_range: DateRange
@@ -262,7 +262,7 @@ class QueryTuplesRequest(BaseModel):
 
 
 class QueryCellsRequest(BaseModel):
-    """POST /query/cells body (envelope)."""
+    """POST /api/v1/datasets/{dataset_id}/query/cells body."""
 
     dataset_id: str
     date_range: DateRange
@@ -271,7 +271,7 @@ class QueryCellsRequest(BaseModel):
 
 
 class QueryPicklistRequest(BaseModel):
-    """POST /query/picklist body (envelope)."""
+    """POST /api/v1/datasets/{dataset_id}/query/picklist body."""
 
     dataset_id: str
     date_range: DateRange
@@ -280,7 +280,7 @@ class QueryPicklistRequest(BaseModel):
 
 
 class ExportRequest(BaseModel):
-    """POST /export body (envelope)."""
+    """Request body for POST /api/v1/exports."""
 
     dataset_id: str
     date_range: DateRange
@@ -290,14 +290,14 @@ class ExportRequest(BaseModel):
 
 # --- Response models ---
 class TupleItem(BaseModel):
-    """Single tuple row returned by /query/tuples."""
+    """Single tuple row returned by the v1 tuples endpoint."""
 
     values: list[Any]
     grouping_id: int | None = None  # reserved: tech spec grouping sets
 
 
 class TuplesResponse(BaseModel):
-    """Response envelope for /query/tuples including paging metadata."""
+    """Response envelope for the v1 tuples endpoint."""
 
     total_count: int
     items: list[TupleItem]
@@ -305,13 +305,13 @@ class TuplesResponse(BaseModel):
 
 
 class CellsResponse(BaseModel):
-    """Response envelope for /query/cells."""
+    """Response envelope for the v1 cells endpoint."""
 
     cells: list[dict[str, Any]]
 
 
 class PicklistResponse(BaseModel):
-    """Response envelope for /query/picklist including paging metadata."""
+    """Response envelope for the v1 picklist endpoint."""
 
     total_count: int
     values: list[dict[str, str]]

@@ -13,13 +13,13 @@ def test_full_api_flow(client: TestClient) -> None:
     dataset_id = "trades_v1"
     date_range = {"type": "single", "date": "2026-03-01"}
 
-    r_schema = client.get("/schema", params={"dataset_id": dataset_id})
+    r_schema = client.get(f"/api/v1/datasets/{dataset_id}/schema")
     assert r_schema.status_code == 200
     schema = r_schema.json()
     assert schema["dataset_id"] == dataset_id
     assert len(schema["fields"]) > 0
 
-    r_tuples = client.post("/query/tuples", json={
+    r_tuples = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json={
         "dataset_id": dataset_id,
         "date_range": date_range,
         "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
@@ -29,7 +29,7 @@ def test_full_api_flow(client: TestClient) -> None:
     assert tuples_data["total_count"] > 0
     assert len(tuples_data["items"]) > 0
 
-    r_cells = client.post("/query/cells", json={
+    r_cells = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json={
         "dataset_id": dataset_id,
         "date_range": date_range,
         "query": {
@@ -45,7 +45,7 @@ def test_full_api_flow(client: TestClient) -> None:
     assert len(cells_data["cells"]) > 0
     assert "row_index" in cells_data["cells"][0]
 
-    r_picklist = client.post("/query/picklist", json={
+    r_picklist = client.post(f"/api/v1/datasets/{dataset_id}/query/picklist", json={
         "dataset_id": dataset_id,
         "date_range": date_range,
         "query": {"field": "symbol", "paging": {"limit": 100, "offset": 0}},
@@ -55,7 +55,7 @@ def test_full_api_flow(client: TestClient) -> None:
     assert picklist_data["total_count"] > 0
     assert len(picklist_data["values"]) > 0
 
-    r_export = client.post("/export", json={
+    r_export = client.post("/api/v1/exports", json={
         "dataset_id": dataset_id,
         "date_range": date_range,
         "query": {"export_type": "pivot_results", "axes": {}, "filters": [], "max_rows": 1000, "format": "csv"},
@@ -64,6 +64,6 @@ def test_full_api_flow(client: TestClient) -> None:
     export_data = r_export.json()
     assert export_data["status"] == "pending"
 
-    r_status = client.get(f"/export/{export_data['export_id']}")
+    r_status = client.get(f"/api/v1/exports/{export_data['export_id']}")
     assert r_status.status_code == 200
     assert r_status.json()["status"] in ("pending", "processing", "complete")

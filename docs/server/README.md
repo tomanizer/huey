@@ -13,9 +13,9 @@ This documentation set covers the Huey backend service (`server/`), called **Que
 
 QueryService is a Python FastAPI service that runs analytical SQL against DuckDB and exposes HTTP endpoints for:
 
-- Dataset schema discovery (`/schema`)
-- Distinct tuples, picklists, and aggregated cells (`/query/*`)
-- Async export jobs (`/export*`) with durable job state in SQLite
+- Dataset schema discovery (`/api/v1/datasets/{dataset_id}/schema`)
+- Distinct tuples, picklists, and aggregated cells (`/api/v1/datasets/{dataset_id}/query/*`)
+- Async export jobs (`/api/v1/exports*`) with durable job state in SQLite
 - Health probes (`/health/*`)
 
 In the Huey architecture, this service is the backend execution layer behind the frontend query UI.
@@ -37,9 +37,9 @@ Typical users:
 
 Typical workflows:
 
-1. Discover dataset schema with `GET /schema`.
-2. Build interactive queries with `POST /query/tuples`, `POST /query/cells`, `POST /query/picklist`.
-3. Trigger async export with `POST /export`, poll with `GET /export/{export_id}`, then download.
+1. Discover dataset schema with `GET /api/v1/datasets/{dataset_id}/schema`.
+2. Build interactive queries with `POST /api/v1/datasets/{dataset_id}/query/tuples`, `POST /api/v1/datasets/{dataset_id}/query/cells`, `POST /api/v1/datasets/{dataset_id}/query/picklist`.
+3. Trigger async export with `POST /api/v1/exports`, poll with `GET /api/v1/exports/{export_id}`, then download.
 
 ## 3. Installation and Setup
 
@@ -163,9 +163,9 @@ See [API Reference](./api-reference.md) for full endpoint-by-endpoint request/re
 
 Built-in interactive docs:
 
-- `/docs` (Swagger UI)
-- `/redoc`
-- `/openapi.json`
+- `/api/v1/docs` (Swagger UI)
+- `/api/v1/redoc`
+- `/api/v1/openapi.json`
 
 ## 7. Examples and Recipes
 
@@ -180,13 +180,13 @@ Start service:
 Check schema:
 
 ```bash
-curl 'http://localhost:8000/schema?dataset_id=trades_v1'
+curl 'http://localhost:8000/api/v1/datasets/trades_v1/schema'
 ```
 
 Run tuples query:
 
 ```bash
-curl -X POST 'http://localhost:8000/query/tuples' \
+curl -X POST 'http://localhost:8000/api/v1/datasets/trades_v1/query/tuples' \
   -H 'Content-Type: application/json' \
   -d '{
     "dataset_id": "trades_v1",
@@ -198,7 +198,7 @@ curl -X POST 'http://localhost:8000/query/tuples' \
 Create export (default format is parquet):
 
 ```bash
-curl -X POST 'http://localhost:8000/export' \
+curl -X POST 'http://localhost:8000/api/v1/exports' \
   -H 'Content-Type: application/json' \
   -d '{
     "dataset_id": "trades_v1",
@@ -216,8 +216,8 @@ curl -X POST 'http://localhost:8000/export' \
 Poll + download:
 
 ```bash
-curl 'http://localhost:8000/export/<export_id>'
-curl -OJ 'http://localhost:8000/export/<export_id>/download'
+curl 'http://localhost:8000/api/v1/exports/<export_id>'
+curl -OJ 'http://localhost:8000/api/v1/exports/<export_id>/download'
 ```
 
 ### Example environment profiles

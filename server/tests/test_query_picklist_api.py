@@ -1,4 +1,4 @@
-"""Tests for POST /query/picklist API — functional / happy-path tests."""
+"""Tests for POST /api/v1/datasets/{dataset_id}/query/picklist."""
 
 from fastapi.testclient import TestClient
 
@@ -11,7 +11,7 @@ def test_query_picklist_returns_values(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 100, "offset": 0}},
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] > 0
@@ -29,7 +29,7 @@ def test_query_picklist_search_wildcard(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "search": "A*", "paging": {"limit": 100, "offset": 0}},
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
     data = r.json()
     values = [v["value"] for v in data["values"]]
@@ -48,7 +48,7 @@ def test_query_picklist_with_filter(client: TestClient) -> None:
             "paging": {"limit": 100, "offset": 0},
         },
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
     values = [v["value"] for v in r.json()["values"]]
     assert "AAPL" not in values
@@ -65,7 +65,7 @@ def test_query_picklist_with_search_and_between_filter(client: TestClient) -> No
             "paging": {"limit": 10, "offset": 0},
         },
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] == 1
@@ -79,7 +79,7 @@ def test_query_picklist_paging(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 2, "offset": 0}},
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["paging"]["returned"] == 2
@@ -92,7 +92,7 @@ def test_query_picklist_paging_limit_one(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 1, "offset": 0}},
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["paging"]["limit"] == 1
@@ -106,7 +106,7 @@ def test_query_picklist_empty_page_reports_total(client: TestClient) -> None:
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 5, "offset": 10}},
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["values"] == []
@@ -116,12 +116,12 @@ def test_query_picklist_empty_page_reports_total(client: TestClient) -> None:
 
 def test_query_picklist_dataset_not_found(client: TestClient) -> None:
     body = {"dataset_id": "nonexistent", "date_range": {"type": "single", "date": "2026-03-01"}, "query": {}}
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 404
 
 
 def test_picklist_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
-    """Regression guard: /query/picklist must call execute_sql_async exactly once per request."""
+    """Regression guard: the v1 picklist endpoint must call execute_sql_async exactly once per request."""
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
@@ -135,6 +135,9 @@ def test_picklist_executes_sql_exactly_once(monkeypatch, client: TestClient) -> 
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"field": "symbol", "paging": {"limit": 10, "offset": 0}},
     }
-    r = client.post("/query/picklist", json=body)
+    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
-    assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/picklist, got {call_count['n']}"
+    assert call_count["n"] == 1, (
+        "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/picklist, "
+        f"got {call_count['n']}"
+    )

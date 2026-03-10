@@ -55,7 +55,7 @@ At a high level:
 High-level sequence:
 
 1. User configures a pivot in Huey (dataset, date_range, rows, columns, measures, filters).
-2. Huey sends a `/query/tuples` request to QueryService to fetch row and column headers.
+2. Huey sends a `/api/v1/datasets/{dataset_id}/query/tuples` request to QueryService to fetch row and column headers.
 3. QueryService builds or validates an engine query:
    - Enforces `WHERE date BETWEEN ...` based on date_range.
    - Applies filter predicates.
@@ -63,7 +63,7 @@ High-level sequence:
    - Reads only the relevant date partition(s) from S3.
    - Computes grouped tuples and, optionally, grouping IDs for totals.
 5. QueryService returns a tuple window to Huey.
-6. Huey sends `/query/cells` to obtain cell values for a given window of row and column tuples.
+6. Huey sends `/api/v1/datasets/{dataset_id}/query/cells` to obtain cell values for a given window of row and column tuples.
 7. QueryEngine runs an aggregate query to compute cell values.
 8. QueryService returns cells; Huey renders the pivot.
 9. On scroll, Huey requests additional windows; QueryService reuses engine and data paths.
@@ -123,14 +123,14 @@ sequenceDiagram
   participant X as S3Parquet
 
   U->>H: Configure pivot (dataset, date_range, axes, filters)
-  H->>S: POST /query/tuples
+  H->>S: POST /api/v1/datasets/{dataset_id}/query/tuples
   S->>E: Build/execute tuple query (with date predicates)
   E->>X: Read partitioned parquet
   X-->>E: Columnar data
   E-->>S: Tuple result set
   S-->>H: Tuple window
 
-  H->>S: POST /query/cells (rows x columns window)
+  H->>S: POST /api/v1/datasets/{dataset_id}/query/cells (rows x columns window)
   S->>E: Build/execute cell aggregate query
   E->>X: Read necessary columns
   X-->>E: Data
@@ -202,7 +202,7 @@ Deliverables:
 
 **Epic 3: Tuple queries**
 
-- Implement `POST /query/tuples`:
+- Implement `POST /api/v1/datasets/{dataset_id}/query/tuples`:
   - Support single-dimension grouping, day-scoped queries, limit/offset.
   - Apply filters and date predicates.
 - Add tests using synthetic data approximating 50 GB/day partitions.
@@ -215,14 +215,14 @@ Deliverables:
   - API base URL.
   - Dataset IDs.
 - Implement `RemoteDatasource` in Huey:
-  - Calls `/schema` for attribute lists.
-  - Calls `/query/tuples` and `/query/cells` to drive the pivot table.
+  - Calls `/api/v1/datasets/{dataset_id}/schema` for attribute lists.
+  - Calls `/api/v1/datasets/{dataset_id}/query/tuples` and `/api/v1/datasets/{dataset_id}/query/cells` to drive the pivot table.
 - Feature flag:
   - Allow switching between local/WASM and remote modes per dataset.
 
 **Epic 5: Filter UI integration**
 
-- Wire Filter UI picklists to `/query/picklist`.
+- Wire Filter UI picklists to `/api/v1/datasets/{dataset_id}/query/picklist`.
 - Ensure global filters are propagated to all tuple and cell requests.
 - Optimize picklist paging, search behavior, and user feedback.
 
@@ -240,7 +240,7 @@ Deliverables:
 
 **Epic 7: Exports and saved views**
 
-- Implement `/export` endpoint and background export jobs.
+- Implement `/api/v1/exports` endpoint and background export jobs.
 - Wire Huey’s export capabilities to remote exports:
   - Respect row/size limits.
   - Avoid overloading the browser with large downloads.
@@ -275,4 +275,3 @@ Deliverables:
   - Backup and recovery strategies for configuration and logs.
   - Observability practices (dashboards and alerts).
 - Roll out to broader user base and treat feature as generally available.
-

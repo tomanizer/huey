@@ -52,18 +52,18 @@ def _export_body() -> dict:
 def test_rate_limit_exceeded(rate_limited_client: TestClient) -> None:
     body = _query_body()
     for _ in range(2):
-        rate_limited_client.post("/query/tuples", json=body)
+        rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
 
-    response = rate_limited_client.post("/query/tuples", json=body)
+    response = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert response.status_code == 429
 
 
 def test_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None:
     body = _query_body()
-    rate_limited_client.post("/query/tuples", json=body)
-    rate_limited_client.post("/query/tuples", json=body)
+    rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
 
-    response = rate_limited_client.post("/query/tuples", json=body)
+    response = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert response.status_code == 429
     retry_after = response.headers.get("Retry-After")
     assert retry_after is not None
@@ -71,18 +71,18 @@ def test_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None
 
 
 def test_export_rate_limit_exceeded(rate_limited_client: TestClient) -> None:
-    """POST /export is rate-limited; exceeding the limit returns 429."""
+    """POST /exports is rate-limited; exceeding the limit returns 429."""
     # RATE_LIMIT_EXPORT = "1/minute", so two requests should exceed it
-    rate_limited_client.post("/export", json=_export_body())
+    rate_limited_client.post("/api/v1/exports", json=_export_body())
 
-    response = rate_limited_client.post("/export", json=_export_body())
+    response = rate_limited_client.post("/api/v1/exports", json=_export_body())
     assert response.status_code == 429
 
 
 def test_export_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None:
     """Exceeded export rate limit includes a Retry-After header."""
-    rate_limited_client.post("/export", json=_export_body())
-    response = rate_limited_client.post("/export", json=_export_body())
+    rate_limited_client.post("/api/v1/exports", json=_export_body())
+    response = rate_limited_client.post("/api/v1/exports", json=_export_body())
     assert response.status_code == 429
     retry_after = response.headers.get("Retry-After")
     assert retry_after is not None
@@ -100,11 +100,12 @@ def test_rate_limiting_disabled(monkeypatch) -> None:
         client = TestClient(app)
         # Query: two calls exceed the "1/minute" limit but limiting is off
         for _ in range(2):
-            r = client.post("/query/tuples", json=_query_body())
+            body = _query_body()
+            r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
             assert r.status_code == 200
         # Export: two calls exceed the "1/minute" limit but limiting is off
         for _ in range(2):
-            r = client.post("/export", json=_export_body())
+            r = client.post("/api/v1/exports", json=_export_body())
             assert r.status_code == 200
     finally:
         get_settings.cache_clear()

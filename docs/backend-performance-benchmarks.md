@@ -9,10 +9,10 @@ python scripts/backend_benchmark_runner.py \
 ```
 
 This runs benchmark workloads for:
-- `POST /query/tuples`
-- `POST /query/cells`
-- `POST /query/picklist`
-- `POST /export`
+- `POST /api/v1/datasets/{dataset_id}/query/tuples`
+- `POST /api/v1/datasets/{dataset_id}/query/cells`
+- `POST /api/v1/datasets/{dataset_id}/query/picklist`
+- `POST /api/v1/exports`
 
 Outputs:
 - `benchmark-report.json` (machine-readable full report)

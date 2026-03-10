@@ -55,12 +55,12 @@ class TestUpdateStatus:
         job = store.update_status(
             "exp-1", "complete",
             file_path="/tmp/exp-1.csv",
-            download_url="/export/exp-1/download",
+            download_url="/api/v1/exports/exp-1/download",
             row_count=42,
         )
         assert job.status == "complete"
         assert job.file_path == "/tmp/exp-1.csv"
-        assert job.download_url == "/export/exp-1/download"
+        assert job.download_url == "/api/v1/exports/exp-1/download"
         assert job.row_count == 42
 
     def test_transition_to_failed_with_error(self, store: ExportJobStore) -> None:

@@ -3,7 +3,7 @@
     {
       "name": "tuples_symbol",
       "method": "POST",
-      "path": "/query/tuples",
+      "path": "/api/v1/datasets/trades_v1/query/tuples",
       "warmup_requests": 2,
       "body": {
         "query": {
@@ -15,7 +15,7 @@
     {
       "name": "tuples_symbol_filtered",
       "method": "POST",
-      "path": "/query/tuples",
+      "path": "/api/v1/datasets/trades_v1/query/tuples",
       "warmup_requests": 2,
       "body": {
         "query": {
@@ -28,7 +28,7 @@
     {
       "name": "cells_symbol_sum_volume",
       "method": "POST",
-      "path": "/query/cells",
+      "path": "/api/v1/datasets/trades_v1/query/cells",
       "warmup_requests": 2,
       "body": {
         "query": {
@@ -43,7 +43,7 @@
     {
       "name": "cells_date_symbol_sum_volume",
       "method": "POST",
-      "path": "/query/cells",
+      "path": "/api/v1/datasets/trades_v1/query/cells",
       "warmup_requests": 2,
       "body": {
         "query": {
@@ -58,7 +58,7 @@
     {
       "name": "picklist_symbol",
       "method": "POST",
-      "path": "/query/picklist",
+      "path": "/api/v1/datasets/trades_v1/query/picklist",
       "warmup_requests": 2,
       "body": {
         "query": {
@@ -72,7 +72,7 @@
     {
       "name": "picklist_symbol_search",
       "method": "POST",
-      "path": "/query/picklist",
+      "path": "/api/v1/datasets/trades_v1/query/picklist",
       "warmup_requests": 2,
       "body": {
         "query": {
@@ -86,7 +86,7 @@
     {
       "name": "export_csv_symbol_volume",
       "method": "POST",
-      "path": "/export",
+      "path": "/api/v1/exports",
       "body": {
         "query": {
           "export_type": "pivot_results",
