@@ -32,6 +32,18 @@ class RequestResult:
     timed_out: bool
 
 
+def _endpoint_category(endpoint: str) -> str:
+    if endpoint.startswith("tuples"):
+        return "tuples"
+    if endpoint.startswith("cells"):
+        return "cells"
+    if endpoint.startswith("picklist"):
+        return "picklist"
+    if endpoint.startswith("export"):
+        return "export"
+    return endpoint
+
+
 def _percentile(values: list[float], q: float) -> float:
     if not values:
         return 0.0
@@ -114,13 +126,25 @@ def _run(
     timeout: float,
 ) -> tuple[dict[str, list[RequestResult]], float]:
     by_endpoint: dict[str, list[RequestResult]] = {w["name"]: [] for w in workloads}
-    tasks = [w for w in workloads for _ in range(requests_per_endpoint)]
     started = time.perf_counter()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
-        futures = [executor.submit(_request, base_url, workload, timeout) for workload in tasks]
-        for future in as_completed(futures):
-            result = future.result()
-            by_endpoint[result.endpoint].append(result)
+        for workload in workloads:
+            warmup_requests = max(0, int(workload.get("warmup_requests", 0)))
+            if warmup_requests:
+                warmup_futures = [
+                    executor.submit(_request, base_url, workload, timeout)
+                    for _ in range(warmup_requests)
+                ]
+                for future in as_completed(warmup_futures):
+                    future.result()
+
+            futures = [
+                executor.submit(_request, base_url, workload, timeout)
+                for _ in range(requests_per_endpoint)
+            ]
+            for future in as_completed(futures):
+                result = future.result()
+                by_endpoint[result.endpoint].append(result)
     duration = max(time.perf_counter() - started, 1e-6)
     return by_endpoint, duration
 
@@ -159,7 +183,7 @@ def _summarize(
         }
         summary[endpoint] = metrics
 
-        endpoint_threshold = thresholds.get("endpoints", {}).get(endpoint, {})
+        endpoint_threshold = thresholds.get("endpoints", {}).get(_endpoint_category(endpoint), {})
         max_p95 = endpoint_threshold.get("max_p95_ms")
         max_timeout_error_rate = endpoint_threshold.get("max_timeout_error_rate")
         if max_p95 is not None and metrics["latency_ms"]["p95"] > max_p95:

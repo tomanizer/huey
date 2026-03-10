@@ -1,9 +1,10 @@
 {
   "workloads": [
     {
-      "name": "tuples",
+      "name": "tuples_symbol",
       "method": "POST",
       "path": "/query/tuples",
+      "warmup_requests": 2,
       "body": {
         "query": {
           "fields": [{"field": "symbol"}],
@@ -12,9 +13,23 @@
       }
     },
     {
-      "name": "cells",
+      "name": "tuples_symbol_filtered",
+      "method": "POST",
+      "path": "/query/tuples",
+      "warmup_requests": 2,
+      "body": {
+        "query": {
+          "fields": [{"field": "symbol"}],
+          "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
+          "paging": {"limit": 50, "offset": 0}
+        }
+      }
+    },
+    {
+      "name": "cells_symbol_sum_volume",
       "method": "POST",
       "path": "/query/cells",
+      "warmup_requests": 2,
       "body": {
         "query": {
           "axes": {
@@ -26,9 +41,25 @@
       }
     },
     {
-      "name": "picklist",
+      "name": "cells_date_symbol_sum_volume",
+      "method": "POST",
+      "path": "/query/cells",
+      "warmup_requests": 2,
+      "body": {
+        "query": {
+          "axes": {
+            "rows": [{"field": "date"}],
+            "columns": [{"field": "symbol"}],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
+          }
+        }
+      }
+    },
+    {
+      "name": "picklist_symbol",
       "method": "POST",
       "path": "/query/picklist",
+      "warmup_requests": 2,
       "body": {
         "query": {
           "field": "symbol",
@@ -39,9 +70,24 @@
       }
     },
     {
-      "name": "export",
+      "name": "picklist_symbol_search",
+      "method": "POST",
+      "path": "/query/picklist",
+      "warmup_requests": 2,
+      "body": {
+        "query": {
+          "field": "symbol",
+          "search": "A*",
+          "filters": [],
+          "paging": {"limit": 100, "offset": 0}
+        }
+      }
+    },
+    {
+      "name": "export_csv_symbol_volume",
       "method": "POST",
       "path": "/export",
+      "warmup_requests": 1,
       "body": {
         "query": {
           "export_type": "pivot_results",

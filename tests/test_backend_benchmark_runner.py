@@ -79,7 +79,15 @@ def test_benchmark_runner_smoke(tmp_path: Path) -> None:
     assert summary_md.exists()
 
     report = json.loads(report_json.read_text(encoding="utf-8"))
-    assert set(report["summary"]) == {"tuples", "cells", "picklist", "export"}
+    assert set(report["summary"]) == {
+        "tuples_symbol",
+        "tuples_symbol_filtered",
+        "cells_symbol_sum_volume",
+        "cells_date_symbol_sum_volume",
+        "picklist_symbol",
+        "picklist_symbol_search",
+        "export_csv_symbol_volume",
+    }
 
 
 def test_benchmark_workflow_upload_path() -> None:
