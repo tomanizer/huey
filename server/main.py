@@ -15,7 +15,7 @@ from server.runtime import ensure_supported_python
 
 ensure_supported_python()
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -120,10 +120,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 from server.routers import export, health, query, schema  # noqa: E402
 
+v1_router = APIRouter(prefix="/api/v1")
+v1_router.include_router(export.router)
+v1_router.include_router(query.router, prefix="/datasets/{dataset_id}")
+v1_router.include_router(schema.router, prefix="/datasets/{dataset_id}")
+
 app.include_router(health.router)
-app.include_router(export.router, prefix="/api/v1", include_in_schema=True)
-app.include_router(query.router, prefix="/api/v1/datasets/{dataset_id}", include_in_schema=True)
-app.include_router(schema.router, prefix="/api/v1/datasets/{dataset_id}", include_in_schema=True)
+app.include_router(v1_router)
 
 
 @app.get("/api/v1", include_in_schema=False)
