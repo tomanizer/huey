@@ -230,7 +230,13 @@ export class ExportUi {
   }
   
   static getExportSqlForQueryModel(queryModel, exportSettings, exportType){
-    
+
+    const sqlOptions = {
+      keywordLettercase: exportSettings[exportType + 'KeywordLettercase'],
+      alwaysQuoteIdentifiers: exportSettings[exportType + 'AlwaysQuoteIdentifiers'],
+      commaStyle: exportSettings[exportType + 'CommaStyle']
+    };
+
     let sql, _structure;
     if (exportSettings.exportResultShapePivot){
       _structure = 'pivot';
@@ -241,12 +247,6 @@ export class ExportUi {
       _structure = 'table';
       sql = ExportUi.getSqlForTabularExport(queryModel, sqlOptions);
     }
-
-    const sqlOptions = {
-      keywordLettercase: exportSettings[exportType + 'KeywordLettercase'],
-      alwaysQuoteIdentifiers: exportSettings[exportType + 'AlwaysQuoteIdentifiers'],
-      commaStyle: exportSettings[exportType + 'CommaStyle']
-    };
     if (sqlOptions) {
       sql = [
         `/***********************************`,
