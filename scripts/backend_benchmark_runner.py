@@ -33,6 +33,7 @@ class RequestResult:
 
 
 def _endpoint_category(endpoint: str) -> str:
+    """Map a scenario name back to the base endpoint threshold bucket."""
     if endpoint.startswith("tuples"):
         return "tuples"
     if endpoint.startswith("cells"):
@@ -126,7 +127,7 @@ def _run(
     timeout: float,
 ) -> tuple[dict[str, list[RequestResult]], float]:
     by_endpoint: dict[str, list[RequestResult]] = {w["name"]: [] for w in workloads}
-    started = time.perf_counter()
+    measured_started = None
     with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
         for workload in workloads:
             warmup_requests = max(0, int(workload.get("warmup_requests", 0)))
@@ -136,8 +137,16 @@ def _run(
                     for _ in range(warmup_requests)
                 ]
                 for future in as_completed(warmup_futures):
-                    future.result()
+                    warmup_result = future.result()
+                    if not warmup_result.ok:
+                        print(
+                            f"WARMUP WARN: endpoint={warmup_result.endpoint} status={warmup_result.status_code} "
+                            f"timed_out={warmup_result.timed_out}",
+                            file=sys.stderr,
+                        )
 
+            if measured_started is None:
+                measured_started = time.perf_counter()
             futures = [
                 executor.submit(_request, base_url, workload, timeout)
                 for _ in range(requests_per_endpoint)
@@ -145,7 +154,9 @@ def _run(
             for future in as_completed(futures):
                 result = future.result()
                 by_endpoint[result.endpoint].append(result)
-    duration = max(time.perf_counter() - started, 1e-6)
+    if measured_started is None:
+        measured_started = time.perf_counter()
+    duration = max(time.perf_counter() - measured_started, 1e-6)
     return by_endpoint, duration
 
 
