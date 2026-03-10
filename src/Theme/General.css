@@ -441,7 +441,8 @@ menu[role=menu][popover] {
 }
 
 menu[role=menu][popover] {
-  position:absolute;
+  position: fixed;
+  inset: auto;
   padding: 0px;
   margin: 0px;
   border-width: 1px;
