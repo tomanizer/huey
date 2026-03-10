@@ -141,15 +141,6 @@ DateRange = Annotated[
 ]
 
 
-# --- Common envelope ---
-class ClientContext(BaseModel):
-    """Optional client metadata propagated through logs and responses."""
-
-    user_id: str | None = None
-    request_id: str | None = None
-    huey_version: str | None = None
-
-
 # --- Shared query components ---
 class TupleFieldSpec(BaseModel):
     """Dimension or measure requested in tuple queries, with sort/totals flags."""
@@ -258,7 +249,6 @@ class QueryTuplesRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: TuplesQueryBody = TuplesQueryBody()
-    client_context: ClientContext | None = None
 
 
 class QueryCellsRequest(BaseModel):
@@ -267,7 +257,6 @@ class QueryCellsRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: CellsQueryBody = CellsQueryBody()
-    client_context: ClientContext | None = None
 
 
 class QueryPicklistRequest(BaseModel):
@@ -276,7 +265,6 @@ class QueryPicklistRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: PicklistQueryBody = PicklistQueryBody()
-    client_context: ClientContext | None = None
 
 
 class ExportRequest(BaseModel):
@@ -285,7 +273,6 @@ class ExportRequest(BaseModel):
     dataset_id: str
     date_range: DateRange
     query: ExportQueryBody = ExportQueryBody()
-    client_context: ClientContext | None = None
 
 
 # --- Response models ---

@@ -31,16 +31,12 @@ function normalizeDateRange(dateRange) {
   return { type: 'single', date };
 }
 
-function buildEnvelope(datasetId, dateRange, query, clientContext) {
-  const envelope = {
+function buildEnvelope(datasetId, dateRange, query) {
+  return {
     dataset_id: datasetId,
     date_range: normalizeDateRange(dateRange),
     query: query || {}
   };
-  if (clientContext) {
-    envelope.client_context = clientContext;
-  }
-  return envelope;
 }
 
 function buildDatasetPath(datasource, suffix) {
@@ -49,7 +45,7 @@ function buildDatasetPath(datasource, suffix) {
   return `${baseUrl}/api/v1/datasets/${encodeURIComponent(datasetId)}${suffix}`;
 }
 
-function buildHeaders(datasource, includeJson) {
+function buildHeaders(datasource, includeJson, clientContext) {
   const headers = {};
   if (includeJson) {
     headers['Content-Type'] = 'application/json';
@@ -57,6 +53,12 @@ function buildHeaders(datasource, includeJson) {
   const apiKey = datasource.getApiKey && datasource.getApiKey();
   if (apiKey) {
     headers['X-API-Key'] = apiKey;
+  }
+  if (clientContext && typeof clientContext.request_id === 'string' && clientContext.request_id) {
+    headers['X-Request-ID'] = clientContext.request_id;
+  }
+  if (clientContext && typeof clientContext.huey_version === 'string' && clientContext.huey_version) {
+    headers['X-Client-Version'] = clientContext.huey_version;
   }
   return headers;
 }
@@ -103,11 +105,11 @@ class RemoteConnection {
 
   fetchTuples(dateRange, query, clientContext) {
     const datasetId = this.#datasource.getDatasetId();
-    const envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
+    const envelope = buildEnvelope(datasetId, dateRange, query);
     this.#abortController = new AbortController();
     return fetch(buildDatasetPath(this.#datasource, '/query/tuples'), {
       method: 'POST',
-      headers: buildHeaders(this.#datasource, true),
+      headers: buildHeaders(this.#datasource, true, clientContext),
       body: JSON.stringify(envelope),
       signal: this.#abortController.signal
     }).then((res) => {
@@ -129,11 +131,11 @@ class RemoteConnection {
 
   fetchCells(dateRange, query, clientContext) {
     const datasetId = this.#datasource.getDatasetId();
-    const envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
+    const envelope = buildEnvelope(datasetId, dateRange, query);
     this.#abortController = new AbortController();
     return fetch(buildDatasetPath(this.#datasource, '/query/cells'), {
       method: 'POST',
-      headers: buildHeaders(this.#datasource, true),
+      headers: buildHeaders(this.#datasource, true, clientContext),
       body: JSON.stringify(envelope),
       signal: this.#abortController.signal
     }).then((res) => {
@@ -155,11 +157,11 @@ class RemoteConnection {
 
   fetchPicklist(dateRange, query, clientContext) {
     const datasetId = this.#datasource.getDatasetId();
-    const envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
+    const envelope = buildEnvelope(datasetId, dateRange, query);
     this.#abortController = new AbortController();
     return fetch(buildDatasetPath(this.#datasource, '/query/picklist'), {
       method: 'POST',
-      headers: buildHeaders(this.#datasource, true),
+      headers: buildHeaders(this.#datasource, true, clientContext),
       body: JSON.stringify(envelope),
       signal: this.#abortController.signal
     }).then((res) => {

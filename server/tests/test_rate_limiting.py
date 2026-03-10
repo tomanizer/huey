@@ -51,8 +51,13 @@ def _export_body() -> dict:
 
 def test_rate_limit_exceeded(rate_limited_client: TestClient) -> None:
     body = _query_body()
-    for _ in range(2):
-        rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    first = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    assert first.headers["X-API-Version"] == "1"
+    assert "X-RateLimit-Limit" in first.headers
+    assert "X-RateLimit-Remaining" in first.headers
+    assert "X-RateLimit-Reset" in first.headers
+    second = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    assert "X-RateLimit-Limit" in second.headers
 
     response = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert response.status_code == 429
@@ -65,6 +70,7 @@ def test_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None
 
     response = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert response.status_code == 429
+    assert response.headers["X-API-Version"] == "1"
     retry_after = response.headers.get("Retry-After")
     assert retry_after is not None
     assert retry_after.isdigit()
@@ -73,7 +79,9 @@ def test_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None
 def test_export_rate_limit_exceeded(rate_limited_client: TestClient) -> None:
     """POST /exports is rate-limited; exceeding the limit returns 429."""
     # RATE_LIMIT_EXPORT = "1/minute", so two requests should exceed it
-    rate_limited_client.post("/api/v1/exports", json=_export_body())
+    first = rate_limited_client.post("/api/v1/exports", json=_export_body())
+    assert first.headers["X-API-Version"] == "1"
+    assert "X-RateLimit-Limit" in first.headers
 
     response = rate_limited_client.post("/api/v1/exports", json=_export_body())
     assert response.status_code == 429
@@ -84,6 +92,7 @@ def test_export_rate_limit_returns_retry_after(rate_limited_client: TestClient) 
     rate_limited_client.post("/api/v1/exports", json=_export_body())
     response = rate_limited_client.post("/api/v1/exports", json=_export_body())
     assert response.status_code == 429
+    assert response.headers["X-API-Version"] == "1"
     retry_after = response.headers.get("Retry-After")
     assert retry_after is not None
     assert retry_after.isdigit()

@@ -33,7 +33,6 @@ from server.query_builder import (
     build_tuples_sql,
 )
 from server.rate_limit import limiter
-from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
@@ -67,14 +66,6 @@ def _canonical_dataset_id(request: Request, body_dataset_id: str) -> str:
     return path_dataset_id
 
 
-def _apply_client_request_id(body, request: Request) -> None:
-    """Override correlation ID with client_context.request_id when provided."""
-    if body.client_context and body.client_context.request_id:
-        rid = body.client_context.request_id
-        set_request_id(rid)
-        request.state.request_id = rid
-
-
 def _time_filter_metadata(dataset_id: str) -> tuple[bool, str | None]:
     """Describe whether date_range is actively applied for dataset execution."""
     settings = get_settings()
@@ -105,7 +96,6 @@ async def post_query_tuples(
     _api_key: str = Depends(require_api_key),
 ) -> TuplesResponse:
     """POST /api/v1/datasets/{dataset_id}/query/tuples."""
-    _apply_client_request_id(body, request)
     dataset_id = _canonical_dataset_id(request, body.dataset_id)
     body.dataset_id = dataset_id
     settings = get_settings()
@@ -222,7 +212,6 @@ async def post_query_cells(
     _api_key: str = Depends(require_api_key),
 ) -> CellsResponse:
     """POST /api/v1/datasets/{dataset_id}/query/cells."""
-    _apply_client_request_id(body, request)
     dataset_id = _canonical_dataset_id(request, body.dataset_id)
     body.dataset_id = dataset_id
     settings = get_settings()
@@ -369,7 +358,6 @@ async def post_query_picklist(
     _api_key: str = Depends(require_api_key),
 ) -> PicklistResponse:
     """POST /api/v1/datasets/{dataset_id}/query/picklist."""
-    _apply_client_request_id(body, request)
     dataset_id = _canonical_dataset_id(request, body.dataset_id)
     body.dataset_id = dataset_id
     settings = get_settings()

@@ -13,7 +13,7 @@ import sys
 
 from pythonjsonlogger.json import JsonFormatter
 
-from server.request_context import get_request_id
+from server.request_context import get_client_version, get_request_id
 
 
 class RequestIdFilter(logging.Filter):
@@ -22,6 +22,7 @@ class RequestIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         """Attach request_id (if any) so formatters can include it."""
         record.request_id = get_request_id()  # type: ignore[attr-defined]
+        record.client_version = get_client_version()  # type: ignore[attr-defined]
         return True
 
 
