@@ -28,6 +28,7 @@ import { FilterDialog } from '../FilterUi/FilterUi.js';
 import { PivotTableUiHighlighting } from './PivotTableUiHighlighting.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
+import { ExportUi } from '../ExportUi/ExportDialog.js';
 import { copyToClipboard } from '../util/clipboard/clipboard.js';
 import { getDuckDbLiteralForValue, quoteStringLiteral } from '../util/sql/SQLHelper.js';
 import {
