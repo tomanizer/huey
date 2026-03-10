@@ -118,12 +118,12 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-from server.routers import export, health, query, schema  # noqa: E402
+from server.routers import datasets, export, health, query  # noqa: E402
 
 v1_router = APIRouter(prefix="/api/v1")
+v1_router.include_router(datasets.router)
 v1_router.include_router(export.router)
 v1_router.include_router(query.router, prefix="/datasets/{dataset_id}")
-v1_router.include_router(schema.router, prefix="/datasets/{dataset_id}")
 
 app.include_router(health.router)
 app.include_router(v1_router)
@@ -139,6 +139,7 @@ async def api_root(request: Request) -> dict[str, object]:
         "api_version": "1",
         "build": build,
         "links": {
+            "datasets": "/api/v1/datasets",
             "exports": "/api/v1/exports",
             "openapi": "/api/v1/openapi.json",
             "docs": "/api/v1/docs",
