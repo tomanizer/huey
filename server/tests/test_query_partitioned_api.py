@@ -101,7 +101,7 @@ def test_partition_config_error_cells_no_bucket_or_path(
     partitioned_no_storage, client: TestClient
 ) -> None:
     """When execution_mode=parquet_partitioned but no bucket/path is set,
-    /query/cells returns 500 PARTITION_CONFIG_ERROR."""
+    the v1 cells endpoint returns 500 PARTITION_CONFIG_ERROR."""
     body = _cells_body()
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 500
@@ -112,7 +112,7 @@ def test_partition_config_error_cells_no_bucket_or_path(
 def test_partition_config_error_tuples_no_bucket_or_path(
     partitioned_no_storage, client: TestClient
 ) -> None:
-    """Same PARTITION_CONFIG_ERROR check for /query/tuples."""
+    """Same PARTITION_CONFIG_ERROR check for the v1 tuples endpoint."""
     body = _tuples_body()
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 500
@@ -123,7 +123,7 @@ def test_partition_config_error_tuples_no_bucket_or_path(
 def test_partition_config_error_picklist_no_bucket_or_path(
     partitioned_no_storage, client: TestClient
 ) -> None:
-    """Same PARTITION_CONFIG_ERROR check for /query/picklist."""
+    """Same PARTITION_CONFIG_ERROR check for the v1 picklist endpoint."""
     body = _picklist_body()
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 500
@@ -135,7 +135,7 @@ def test_partition_not_found_cells_missing_date(
     partitioned_empty_base_path, client: TestClient
 ) -> None:
     """When execution_mode=parquet_partitioned with a base path but the
-    requested date partition directory does not exist, /query/cells returns
+    requested date partition directory does not exist, the v1 cells endpoint returns
     404 PARTITION_NOT_FOUND."""
     body = _cells_body()
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
@@ -149,7 +149,7 @@ def test_partition_not_found_cells_missing_date(
 def test_partition_not_found_tuples_missing_date(
     partitioned_empty_base_path, client: TestClient
 ) -> None:
-    """Same PARTITION_NOT_FOUND check for /query/tuples."""
+    """Same PARTITION_NOT_FOUND check for the v1 tuples endpoint."""
     body = _tuples_body()
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 404
@@ -160,7 +160,7 @@ def test_partition_not_found_tuples_missing_date(
 def test_partition_not_found_picklist_missing_date(
     partitioned_empty_base_path, client: TestClient
 ) -> None:
-    """Same PARTITION_NOT_FOUND check for /query/picklist."""
+    """Same PARTITION_NOT_FOUND check for the v1 picklist endpoint."""
     body = _picklist_body()
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 404

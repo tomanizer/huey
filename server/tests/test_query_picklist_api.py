@@ -1,4 +1,4 @@
-"""Tests for POST /query/picklist API — functional / happy-path tests."""
+"""Tests for POST /api/v1/datasets/{dataset_id}/query/picklist."""
 
 from fastapi.testclient import TestClient
 
@@ -121,7 +121,7 @@ def test_query_picklist_dataset_not_found(client: TestClient) -> None:
 
 
 def test_picklist_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
-    """Regression guard: /query/picklist must call execute_sql_async exactly once per request."""
+    """Regression guard: the v1 picklist endpoint must call execute_sql_async exactly once per request."""
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
@@ -137,4 +137,7 @@ def test_picklist_executes_sql_exactly_once(monkeypatch, client: TestClient) -> 
     }
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
     assert r.status_code == 200
-    assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/picklist, got {call_count['n']}"
+    assert call_count["n"] == 1, (
+        "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/picklist, "
+        f"got {call_count['n']}"
+    )

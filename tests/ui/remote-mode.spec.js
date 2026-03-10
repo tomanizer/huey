@@ -51,10 +51,10 @@ test.describe('Remote mode UI', () => {
       ],
     };
 
-    await page.route('**/schema?dataset_id=*', (route) => route.fulfill({ status: 200, body: JSON.stringify(schemaResponse) }));
-    await page.route('**/query/tuples', (route) => route.fulfill({ status: 200, body: JSON.stringify(tuplesResponse) }));
-    await page.route('**/query/cells', (route) => route.fulfill({ status: 200, body: JSON.stringify(cellsResponse) }));
-    await page.route('**/query/picklist', (route) => route.fulfill({ status: 200, body: JSON.stringify({ total_count: 3, values: [{ value: 'AAPL', label: 'AAPL' }], paging: { limit: 100, offset: 0, returned: 1 } }) }));
+    await page.route('**/api/v1/datasets/*/schema', (route) => route.fulfill({ status: 200, body: JSON.stringify(schemaResponse) }));
+    await page.route('**/api/v1/datasets/*/query/tuples', (route) => route.fulfill({ status: 200, body: JSON.stringify(tuplesResponse) }));
+    await page.route('**/api/v1/datasets/*/query/cells', (route) => route.fulfill({ status: 200, body: JSON.stringify(cellsResponse) }));
+    await page.route('**/api/v1/datasets/*/query/picklist', (route) => route.fulfill({ status: 200, body: JSON.stringify({ total_count: 3, values: [{ value: 'AAPL', label: 'AAPL' }], paging: { limit: 100, offset: 0, returned: 1 } }) }));
 
     await waitForAppReady(page);
     await expect(page.locator('#addRemoteDatasource')).toBeVisible({ timeout: 10000 });

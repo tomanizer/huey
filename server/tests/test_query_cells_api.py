@@ -1,4 +1,4 @@
-"""Tests for POST /query/cells API — functional / happy-path tests."""
+"""Tests for POST /api/v1/datasets/{dataset_id}/query/cells."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -231,7 +231,7 @@ def test_query_cells_within_cap_succeeds(client: TestClient, monkeypatch: pytest
 
 
 def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
-    """Regression guard: /query/cells must call execute_sql_async exactly once per request."""
+    """Regression guard: the v1 cells endpoint must call execute_sql_async exactly once per request."""
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
@@ -253,4 +253,7 @@ def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> Non
     }
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
     assert r.status_code == 200
-    assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/cells, got {call_count['n']}"
+    assert call_count["n"] == 1, (
+        "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/cells, "
+        f"got {call_count['n']}"
+    )

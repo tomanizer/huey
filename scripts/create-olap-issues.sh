@@ -44,8 +44,8 @@ issue "A2.1" "Dataset configuration loader" \
 
 $(body_brd)" "area:backend"
 
-issue "A2.2" "Implement GET /schema endpoint" \
-"Implement \`GET /schema?dataset_id=...\` returning field names, types, dimension/measure flags. Unit tests for valid and unknown dataset IDs.
+issue "A2.2" "Implement GET /api/v1/datasets/{dataset_id}/schema endpoint" \
+"Implement \`GET /api/v1/datasets/{dataset_id}/schema\` returning field names, types, dimension/measure flags. Unit tests for valid and unknown dataset IDs.
 
 $(body_brd)" "area:backend"
 
@@ -59,22 +59,22 @@ issue "A3.2" "S3 connectivity" \
 
 $(body_brd)" "area:backend"
 
-issue "A4.1" "Implement POST /query/tuples (basic)" \
+issue "A4.1" "Implement POST /api/v1/datasets/{dataset_id}/query/tuples (basic)" \
 "Accept single axis (rows/columns), single field, simple IN filters, single-day date_range. Translate to GROUP BY + LIMIT/OFFSET; return values and total_count. Unit tests for happy path and unknown fields/datasets.
 
 $(body_brd)" "area:backend"
 
-issue "A4.2" "Implement POST /query/cells (basic)" \
+issue "A4.2" "Implement POST /api/v1/datasets/{dataset_id}/query/cells (basic)" \
 "Support single row field, single column field, 1–2 measures (SUM/COUNT). Grouped aggregate; map results to row/column indexes. Tests with deterministic sample data.
 
 $(body_brd)" "area:backend"
 
-issue "A5.1" "Implement POST /query/picklist" \
+issue "A5.1" "Implement POST /api/v1/datasets/{dataset_id}/query/picklist" \
 "Distinct values for a field with date_range + filters, paging (limit/offset), optional search. Tests for high-cardinality and filter interaction.
 
 $(body_brd)" "area:backend"
 
-issue "A5.2" "Implement POST /export (MVP)" \
+issue "A5.2" "Implement POST /api/v1/exports (MVP)" \
 "Synchronous export for small result sets, CSV output. Refactor to async jobs later.
 
 $(body_brd)" "area:backend"
@@ -110,23 +110,23 @@ issue "B1.2" "RemoteDatasource abstraction" \
 
 $(body_brd)" "area:frontend"
 
-issue "B2.1" "Attribute UI backed by /schema" \
-"Integrate Attribute UI with RemoteDataSource: fetch fields from /schema, display dimension/measure metadata. Consistent derived attributes/aggregations (subset ok initially).
+issue "B2.1" "Attribute UI backed by /api/v1/datasets/{dataset_id}/schema" \
+"Integrate Attribute UI with RemoteDataSource: fetch fields from /api/v1/datasets/{dataset_id}/schema, display dimension/measure metadata. Consistent derived attributes/aggregations (subset ok initially).
 
 $(body_brd)" "area:frontend"
 
-issue "B3.1" "Tuple fetching via /query/tuples" \
-"Update TupleSet (or equivalent) to fetch tuples from RemoteDataSource for remote datasets. Map axis definitions to /query/tuples request body. Scrolling requests appropriate windows.
+issue "B3.1" "Tuple fetching via /api/v1/datasets/{dataset_id}/query/tuples" \
+"Update TupleSet (or equivalent) to fetch tuples from RemoteDataSource for remote datasets. Map axis definitions to /api/v1/datasets/{dataset_id}/query/tuples request body. Scrolling requests appropriate windows.
 
 $(body_brd)" "area:frontend"
 
-issue "B3.2" "Cell fetching via /query/cells" \
-"Update CellSet to request cells via /query/cells. Scrolling and viewport-based fetching work with correct row/column windows.
+issue "B3.2" "Cell fetching via /api/v1/datasets/{dataset_id}/query/cells" \
+"Update CellSet to request cells via /api/v1/datasets/{dataset_id}/query/cells. Scrolling and viewport-based fetching work with correct row/column windows.
 
 $(body_brd)" "area:frontend"
 
-issue "B4.1" "Filter picklists via /query/picklist" \
-"Wire filter dialog to /query/picklist for remote datasets. Global filters included in picklist queries.
+issue "B4.1" "Filter picklists via /api/v1/datasets/{dataset_id}/query/picklist" \
+"Wire filter dialog to /api/v1/datasets/{dataset_id}/query/picklist for remote datasets. Global filters included in picklist queries.
 
 $(body_brd)" "area:frontend"
 
@@ -152,7 +152,7 @@ issue "C1.1" "Backend unit tests" \
 $(body_brd)" "area:backend"
 
 issue "C1.2" "Backend integration tests" \
-"E2E tests with local S3-compatible store or fixtures. Verify /schema, /query/tuples, /query/cells on synthetic data.
+"E2E tests with local S3-compatible store or fixtures. Verify /api/v1/datasets/{dataset_id}/schema, /api/v1/datasets/{dataset_id}/query/tuples, /api/v1/datasets/{dataset_id}/query/cells on synthetic data.
 
 $(body_brd)" "area:backend"
 

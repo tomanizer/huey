@@ -43,6 +43,12 @@ function buildEnvelope(datasetId, dateRange, query, clientContext) {
   return envelope;
 }
 
+function buildDatasetPath(datasource, suffix) {
+  const baseUrl = datasource.getBaseUrl();
+  const datasetId = datasource.getDatasetId();
+  return `${baseUrl}/api/v1/datasets/${encodeURIComponent(datasetId)}${suffix}`;
+}
+
 function buildHeaders(datasource, includeJson) {
   const headers = {};
   if (includeJson) {
@@ -73,9 +79,7 @@ class RemoteConnection {
   }
 
   getSchema() {
-    const baseUrl = this.#datasource.getBaseUrl();
-    const datasetId = this.#datasource.getDatasetId();
-    const url = `${baseUrl}/schema?dataset_id=${encodeURIComponent(datasetId)}`;
+    const url = buildDatasetPath(this.#datasource, '/schema');
     this.#abortController = new AbortController();
     return fetch(url, {
       signal: this.#abortController.signal,
@@ -98,11 +102,10 @@ class RemoteConnection {
   }
 
   fetchTuples(dateRange, query, clientContext) {
-    const baseUrl = this.#datasource.getBaseUrl();
     const datasetId = this.#datasource.getDatasetId();
     const envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
     this.#abortController = new AbortController();
-    return fetch(`${baseUrl}/query/tuples`, {
+    return fetch(buildDatasetPath(this.#datasource, '/query/tuples'), {
       method: 'POST',
       headers: buildHeaders(this.#datasource, true),
       body: JSON.stringify(envelope),
@@ -125,11 +128,10 @@ class RemoteConnection {
   }
 
   fetchCells(dateRange, query, clientContext) {
-    const baseUrl = this.#datasource.getBaseUrl();
     const datasetId = this.#datasource.getDatasetId();
     const envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
     this.#abortController = new AbortController();
-    return fetch(`${baseUrl}/query/cells`, {
+    return fetch(buildDatasetPath(this.#datasource, '/query/cells'), {
       method: 'POST',
       headers: buildHeaders(this.#datasource, true),
       body: JSON.stringify(envelope),
@@ -152,11 +154,10 @@ class RemoteConnection {
   }
 
   fetchPicklist(dateRange, query, clientContext) {
-    const baseUrl = this.#datasource.getBaseUrl();
     const datasetId = this.#datasource.getDatasetId();
     const envelope = buildEnvelope(datasetId, dateRange, query, clientContext);
     this.#abortController = new AbortController();
-    return fetch(`${baseUrl}/query/picklist`, {
+    return fetch(buildDatasetPath(this.#datasource, '/query/picklist'), {
       method: 'POST',
       headers: buildHeaders(this.#datasource, true),
       body: JSON.stringify(envelope),

@@ -1,4 +1,4 @@
-"""Tests for POST /query/tuples API — functional / happy-path tests."""
+"""Tests for POST /api/v1/datasets/{dataset_id}/query/tuples."""
 
 from fastapi.testclient import TestClient
 
@@ -168,7 +168,7 @@ def test_query_tuples_dataset_not_found(client: TestClient) -> None:
 
 
 def test_tuples_executes_sql_exactly_once(monkeypatch, client: TestClient) -> None:
-    """Regression guard: /query/tuples must call execute_sql_async exactly once per request."""
+    """Regression guard: the v1 tuples endpoint must call execute_sql_async exactly once per request."""
     call_count = {"n": 0}
     original = db_manager.execute_sql_async
 
@@ -184,4 +184,7 @@ def test_tuples_executes_sql_exactly_once(monkeypatch, client: TestClient) -> No
     }
     r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
     assert r.status_code == 200
-    assert call_count["n"] == 1, f"Expected exactly 1 SQL execution for /query/tuples, got {call_count['n']}"
+    assert call_count["n"] == 1, (
+        "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/tuples, "
+        f"got {call_count['n']}"
+    )

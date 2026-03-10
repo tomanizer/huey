@@ -4,7 +4,7 @@
  *
  * Config shape:
  * - type: 'remote'
- * - baseUrl: string (QueryService base URL, e.g. 'https://api.example.com')
+ * - baseUrl: string (QueryService base URL, e.g. 'https://api.example.com'; v1 paths are appended automatically)
  * - datasetId: string (logical dataset id, e.g. 'trades_v1')
  * - id: string (optional; stable id for this datasource instance in the UI)
  */

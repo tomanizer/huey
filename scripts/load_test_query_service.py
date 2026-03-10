@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Load test script for QueryService (schema, tuples, cells, picklist).
+Load test script for QueryService v1 (schema, tuples, cells, picklist).
 Uses stdlib only. Run with the server up: python scripts/load_test_query_service.py --base-url http://127.0.0.1:8000
 """
 
@@ -31,13 +31,13 @@ def request(base_url: str, path: str, method: str = "GET", body: dict | None = N
 
 def run_one(base_url: str, dataset_id: str, date_range: dict) -> list[tuple[str, bool, float]]:
     results = []
-    # GET /schema
-    ok, lat = request(base_url, f"/schema?dataset_id={dataset_id}")
+    # GET /api/v1/datasets/{dataset_id}/schema
+    ok, lat = request(base_url, f"/api/v1/datasets/{dataset_id}/schema")
     results.append(("schema", ok, lat))
-    # POST /query/tuples
+    # POST /api/v1/datasets/{dataset_id}/query/tuples
     ok, lat = request(
         base_url,
-        "/query/tuples",
+        f"/api/v1/datasets/{dataset_id}/query/tuples",
         method="POST",
         body={
             "dataset_id": dataset_id,
@@ -46,10 +46,10 @@ def run_one(base_url: str, dataset_id: str, date_range: dict) -> list[tuple[str,
         },
     )
     results.append(("tuples", ok, lat))
-    # POST /query/cells
+    # POST /api/v1/datasets/{dataset_id}/query/cells
     ok, lat = request(
         base_url,
-        "/query/cells",
+        f"/api/v1/datasets/{dataset_id}/query/cells",
         method="POST",
         body={
             "dataset_id": dataset_id,
@@ -63,10 +63,10 @@ def run_one(base_url: str, dataset_id: str, date_range: dict) -> list[tuple[str,
         },
     )
     results.append(("cells", ok, lat))
-    # POST /query/picklist
+    # POST /api/v1/datasets/{dataset_id}/query/picklist
     ok, lat = request(
         base_url,
-        "/query/picklist",
+        f"/api/v1/datasets/{dataset_id}/query/picklist",
         method="POST",
         body={
             "dataset_id": dataset_id,
