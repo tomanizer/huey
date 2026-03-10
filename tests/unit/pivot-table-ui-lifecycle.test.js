@@ -35,6 +35,10 @@ vi.mock('../../src/ContextMenu/ContextMenu.js', () => ({
   ContextMenu: class ContextMenu {},
 }));
 
+vi.mock('../../src/DataSet/SqlQueryGenerator.js', () => ({
+  SqlQueryGenerator: class SqlQueryGenerator {},
+}));
+
 vi.mock('../../src/DataSet/TupleSet.js', () => {
   class TupleSet {
     static groupingIdAlias = '__grouping_id';

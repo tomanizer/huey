@@ -2611,8 +2611,8 @@ export class PivotTableUi extends EventEmitter {
       showErrorDialog(error);
     }
     finally {
+      busyDialog.close();
     }
-    busyDialog.close();
   }
 }
 
