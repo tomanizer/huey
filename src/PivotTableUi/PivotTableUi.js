@@ -2440,7 +2440,7 @@ export class PivotTableUi extends EventEmitter {
       case 'pivotTableContextMenuItemCopyTable':
         exportSettings.exportResultShapePivot = !(exportSettings.exportResultShapeTable = false);
         break;
-      case 'pivotTableContextMenuItemCopyColumn':
+      case 'pivotTableContextMenuItemCopyColumn': {
         // find the physical column index
         let columnIndex = 0;
         let cell = contextMenuContext;
@@ -2510,7 +2510,8 @@ export class PivotTableUi extends EventEmitter {
           }
         }
         break;
-      case 'pivotTableContextMenuItemCopyRow':
+      }
+      case 'pivotTableContextMenuItemCopyRow': {
 
         // find the physical row index
         let row = contextMenuContext.parentNode;
@@ -2586,6 +2587,7 @@ export class PivotTableUi extends EventEmitter {
         else {
         }
         break;
+      }
       default:
         // we didn't expect This
         throw new Error(`Unrecognized context menu option "${id}"`);
