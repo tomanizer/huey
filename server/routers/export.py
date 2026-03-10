@@ -1,5 +1,5 @@
 """
-Export endpoints: POST /exports, GET /exports/{id}, GET /exports/{id}/download.
+Export endpoints under /api/v1/exports.
 
 Delegates to ExportService for durable job management backed by SQLite.
 Background processing is dispatched via FastAPI BackgroundTasks.
@@ -36,7 +36,7 @@ async def post_export(
     background_tasks: BackgroundTasks,
     _api_key: str = Depends(require_api_key),
 ) -> ExportResponse:
-    """POST /exports: submit export job with background processing."""
+    """POST /api/v1/exports."""
     if body.client_context and body.client_context.request_id:
         rid = body.client_context.request_id
         set_request_id(rid)
@@ -56,7 +56,7 @@ async def post_export(
 
 @router.get("/{export_id}", response_model=ExportStatusResponse)
 async def get_export_status(export_id: str, _api_key: str = Depends(require_api_key)) -> ExportStatusResponse:
-    """GET /exports/{id}: return export job status (and download_url when complete)."""
+    """GET /api/v1/exports/{export_id}."""
     service = get_export_service()
     job = service.get_status(export_id)
     return ExportStatusResponse(
@@ -69,7 +69,7 @@ async def get_export_status(export_id: str, _api_key: str = Depends(require_api_
 
 @router.get("/{export_id}/download")
 async def download_export(export_id: str, _api_key: str = Depends(require_api_key)) -> FileResponse:
-    """GET /exports/{id}/download: download the completed export file."""
+    """GET /api/v1/exports/{export_id}/download."""
     service = get_export_service()
     file_path = service.get_download_path(export_id)
     suffix = Path(file_path).suffix.lower()

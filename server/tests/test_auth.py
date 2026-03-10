@@ -8,7 +8,7 @@ INVALID_KEY = "wrong-key"
 
 # (method, path, minimal_body) for every protected endpoint
 _PROTECTED_ENDPOINTS = [
-    ("GET", "/api/v1/datasets/trades_v1/schema", None, {"dataset_id": "trades_v1"}),
+    ("GET", "/api/v1/datasets/trades_v1/schema", None, {}),
     ("POST", "/api/v1/datasets/trades_v1/query/tuples", {
         "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
@@ -66,7 +66,7 @@ def test_invalid_key_returns_401_envelope(auth_client: TestClient, method, path,
 
 
 def test_valid_key_schema_returns_200(auth_client: TestClient):
-    r = auth_client.get("/api/v1/datasets/trades_v1/schema", params={"dataset_id": "trades_v1"}, headers={"X-API-Key": VALID_KEY})
+    r = auth_client.get("/api/v1/datasets/trades_v1/schema", headers={"X-API-Key": VALID_KEY})
     assert r.status_code == 200
 
 

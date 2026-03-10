@@ -88,20 +88,20 @@ Responses:
 {"status": "unavailable"}
 ```
 
-## `GET /schema`
+## `GET /api/v1/datasets/{dataset_id}/schema`
 
 Returns schema metadata for a configured dataset.
 
 Authentication: conditional API key.
 
-Query parameters:
+Path parameters:
 
 - `dataset_id` (required, string)
 
 Example:
 
 ```bash
-curl 'http://localhost:8000/schema?dataset_id=trades_v1'
+curl 'http://localhost:8000/api/v1/datasets/trades_v1/schema'
 ```
 
 Success `200` example:
@@ -122,7 +122,7 @@ Error statuses:
 - `404` `DATASET_NOT_FOUND`
 - `401` auth failure when auth enabled
 
-## `POST /query/tuples`
+## `POST /api/v1/datasets/{dataset_id}/query/tuples`
 
 Returns distinct tuple values for selected fields.
 
@@ -177,7 +177,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /query/cells`
+## `POST /api/v1/datasets/{dataset_id}/query/cells`
 
 Returns aggregated cells grouped by row/column axes.
 
@@ -235,7 +235,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /query/picklist`
+## `POST /api/v1/datasets/{dataset_id}/query/picklist`
 
 Returns distinct values for one field, typically used for filter UIs.
 

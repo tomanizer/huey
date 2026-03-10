@@ -27,7 +27,7 @@ Smoke checks:
 
 ```bash
 curl http://localhost:8000/health/liveness
-curl 'http://localhost:8000/schema?dataset_id=trades_v1'
+curl 'http://localhost:8000/api/v1/datasets/trades_v1/schema'
 ```
 
 Run tests:

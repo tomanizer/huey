@@ -13,8 +13,8 @@ This documentation set covers the Huey backend service (`server/`), called **Que
 
 QueryService is a Python FastAPI service that runs analytical SQL against DuckDB and exposes HTTP endpoints for:
 
-- Dataset schema discovery (`/schema`)
-- Distinct tuples, picklists, and aggregated cells (`/query/*`)
+- Dataset schema discovery (`/api/v1/datasets/{dataset_id}/schema`)
+- Distinct tuples, picklists, and aggregated cells (`/api/v1/datasets/{dataset_id}/query/*`)
 - Async export jobs (`/api/v1/exports*`) with durable job state in SQLite
 - Health probes (`/health/*`)
 

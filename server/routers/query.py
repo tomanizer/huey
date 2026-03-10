@@ -1,5 +1,5 @@
 """
-Query endpoints: /query/tuples, /query/cells, /query/picklist (tech spec).
+Query endpoints under /api/v1/datasets/{dataset_id}/query/*.
 """
 
 import logging
@@ -39,15 +39,12 @@ logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
 
 
-def _resolve_dataset_id(path_dataset_id: str | None, body_dataset_id: str) -> str:
-    """Prefer the versioned path dataset id when present."""
-    return path_dataset_id or body_dataset_id
-
-
-def _get_path_dataset_id(request: Request) -> str | None:
-    """Return the dataset id from the versioned path when present."""
+def _path_dataset_id(request: Request) -> str:
+    """Return the required dataset id from the v1 route path."""
     value = request.path_params.get("dataset_id")
-    return value if isinstance(value, str) and value else None
+    if isinstance(value, str) and value:
+        return value
+    raise RuntimeError("v1 query routes require a dataset_id path parameter")
 
 
 def _apply_client_request_id(body, request: Request) -> None:
@@ -87,9 +84,9 @@ async def post_query_tuples(
     response: Response,
     _api_key: str = Depends(require_api_key),
 ) -> TuplesResponse:
-    """POST /query/tuples: fetch distinct dimension values for one axis."""
+    """POST /api/v1/datasets/{dataset_id}/query/tuples."""
     _apply_client_request_id(body, request)
-    dataset_id = _resolve_dataset_id(_get_path_dataset_id(request), body.dataset_id)
+    dataset_id = _path_dataset_id(request)
     body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
@@ -204,9 +201,9 @@ async def post_query_cells(
     response: Response,
     _api_key: str = Depends(require_api_key),
 ) -> CellsResponse:
-    """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
+    """POST /api/v1/datasets/{dataset_id}/query/cells."""
     _apply_client_request_id(body, request)
-    dataset_id = _resolve_dataset_id(_get_path_dataset_id(request), body.dataset_id)
+    dataset_id = _path_dataset_id(request)
     body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
@@ -351,9 +348,9 @@ async def post_query_picklist(
     response: Response,
     _api_key: str = Depends(require_api_key),
 ) -> PicklistResponse:
-    """POST /query/picklist: fetch distinct values for a field (filter UI)."""
+    """POST /api/v1/datasets/{dataset_id}/query/picklist."""
     _apply_client_request_id(body, request)
-    dataset_id = _resolve_dataset_id(_get_path_dataset_id(request), body.dataset_id)
+    dataset_id = _path_dataset_id(request)
     body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
