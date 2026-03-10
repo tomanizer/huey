@@ -139,7 +139,7 @@ async def api_root() -> dict[str, object]:
         "build": build,
         "links": {
             "datasets": "/api/v1/datasets",
-            "exports": "/api/v1/export",
+            "exports": "/api/v1/exports",
             "openapi": "/api/v1/openapi.json",
             "docs": "/api/v1/docs",
         },

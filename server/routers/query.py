@@ -44,6 +44,12 @@ def _resolve_dataset_id(path_dataset_id: str | None, body_dataset_id: str) -> st
     return path_dataset_id or body_dataset_id
 
 
+def _get_path_dataset_id(request: Request) -> str | None:
+    """Return the dataset id from the versioned path when present."""
+    value = request.path_params.get("dataset_id")
+    return value if isinstance(value, str) and value else None
+
+
 def _apply_client_request_id(body, request: Request) -> None:
     """Override correlation ID with client_context.request_id when provided."""
     if body.client_context and body.client_context.request_id:
@@ -79,12 +85,12 @@ async def post_query_tuples(
     request: Request,
     body: QueryTuplesRequest,
     response: Response,
-    dataset_id: str | None = None,
     _api_key: str = Depends(require_api_key),
 ) -> TuplesResponse:
     """POST /query/tuples: fetch distinct dimension values for one axis."""
     _apply_client_request_id(body, request)
-    dataset_id = _resolve_dataset_id(dataset_id, body.dataset_id)
+    dataset_id = _resolve_dataset_id(_get_path_dataset_id(request), body.dataset_id)
+    body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
         raise DatasetNotFoundError(dataset_id)
@@ -196,12 +202,12 @@ async def post_query_cells(
     request: Request,
     body: QueryCellsRequest,
     response: Response,
-    dataset_id: str | None = None,
     _api_key: str = Depends(require_api_key),
 ) -> CellsResponse:
     """POST /query/cells: fetch aggregated cell values grouped by dimensions."""
     _apply_client_request_id(body, request)
-    dataset_id = _resolve_dataset_id(dataset_id, body.dataset_id)
+    dataset_id = _resolve_dataset_id(_get_path_dataset_id(request), body.dataset_id)
+    body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
         raise DatasetNotFoundError(dataset_id)
@@ -343,12 +349,12 @@ async def post_query_picklist(
     request: Request,
     body: QueryPicklistRequest,
     response: Response,
-    dataset_id: str | None = None,
     _api_key: str = Depends(require_api_key),
 ) -> PicklistResponse:
     """POST /query/picklist: fetch distinct values for a field (filter UI)."""
     _apply_client_request_id(body, request)
-    dataset_id = _resolve_dataset_id(dataset_id, body.dataset_id)
+    dataset_id = _resolve_dataset_id(_get_path_dataset_id(request), body.dataset_id)
+    body.dataset_id = dataset_id
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
         raise DatasetNotFoundError(dataset_id)
