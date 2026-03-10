@@ -9,8 +9,10 @@ def test_schema_found(client: TestClient) -> None:
     assert r.status_code == 200
     data = r.json()
     assert data["dataset_id"] == "trades_v1"
+    assert "version" in data
     assert "fields" in data
     assert any(f["name"] == "symbol" for f in data["fields"])
+    assert any(f["role"] == "dimension" for f in data["fields"] if f["name"] == "symbol")
 
 
 def test_schema_not_found(client: TestClient) -> None:

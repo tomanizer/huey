@@ -95,6 +95,98 @@ Responses:
 {"status": "unavailable"}
 ```
 
+## `GET /api/v1/datasets`
+
+Returns registered datasets with summary metadata and discovery links.
+
+Authentication: conditional API key.
+
+Query parameters:
+
+- `limit` (`1..200`, default `50`)
+- `cursor` (opaque pagination cursor)
+
+Success `200` example:
+
+```json
+{
+  "items": [
+    {
+      "id": "trades_v1",
+      "display_name": "Equity Trades",
+      "description": "Daily equity trade records",
+      "field_count": 3,
+      "row_count": 8,
+      "time_dimension": {
+        "field": "date",
+        "min": "2026-03-01",
+        "max": "2026-03-02",
+        "max_range_days": 365
+      },
+      "links": {
+        "self": "/api/v1/datasets/trades_v1",
+        "schema": "/api/v1/datasets/trades_v1/schema",
+        "tuples": "/api/v1/datasets/trades_v1/query/tuples",
+        "cells": "/api/v1/datasets/trades_v1/query/cells",
+        "picklist": "/api/v1/datasets/trades_v1/query/picklist"
+      }
+    }
+  ],
+  "cursor": null,
+  "total_count": 1
+}
+```
+
+## `GET /api/v1/datasets/{dataset_id}`
+
+Returns full discovery metadata for one dataset.
+
+Authentication: conditional API key.
+
+Path parameters:
+
+- `dataset_id` (required, string)
+
+Response headers:
+
+- `ETag`
+- `Cache-Control: private, max-age=60`
+
+Success `200` example:
+
+```json
+{
+  "id": "trades_v1",
+  "display_name": "Equity Trades",
+  "description": "Daily equity trade records",
+  "source_kind": "sample_table",
+  "row_count": 8,
+  "version": "v1-1234abcd",
+  "time_dimension": {
+    "field": "date",
+    "min": "2026-03-01",
+    "max": "2026-03-02",
+    "max_range_days": 365
+  },
+  "fields": [
+    { "name": "date", "type": "date", "role": "dimension", "nullable": null, "distinct_count": 2 },
+    { "name": "symbol", "type": "string", "role": "dimension", "nullable": null, "distinct_count": 5 },
+    { "name": "volume", "type": "int64", "role": "measure", "nullable": null, "distinct_count": 8 }
+  ],
+  "links": {
+    "self": "/api/v1/datasets/trades_v1",
+    "schema": "/api/v1/datasets/trades_v1/schema",
+    "tuples": "/api/v1/datasets/trades_v1/query/tuples",
+    "cells": "/api/v1/datasets/trades_v1/query/cells",
+    "picklist": "/api/v1/datasets/trades_v1/query/picklist"
+  }
+}
+```
+
+Conditional GET:
+
+- Send `If-None-Match` with the current `ETag` to receive `304 Not Modified`.
+
 ## `GET /api/v1/datasets/{dataset_id}/schema`
 
 Returns schema metadata for a configured dataset.
@@ -116,10 +208,11 @@ Success `200` example:
 ```json
 {
   "dataset_id": "trades_v1",
+  "version": "v1-1234abcd",
   "fields": [
-    {"name": "date", "type": "date", "is_dimension": true},
-    {"name": "symbol", "type": "string", "is_dimension": true},
-    {"name": "volume", "type": "int64", "is_measure": true}
+    {"name": "date", "type": "date", "role": "dimension"},
+    {"name": "symbol", "type": "string", "role": "dimension"},
+    {"name": "volume", "type": "int64", "role": "measure"}
   ]
 }
 ```
@@ -128,6 +221,7 @@ Error statuses:
 
 - `404` `DATASET_NOT_FOUND`
 - `401` auth failure when auth enabled
+- `304` when `If-None-Match` matches the current `ETag`
 
 ## `POST /api/v1/datasets/{dataset_id}/query/tuples`
 

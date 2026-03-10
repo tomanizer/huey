@@ -3,6 +3,8 @@
 
 datasets:
   - dataset_id: trades_v1
+    display_name: Equity Trades
+    description: Daily equity trade records
     fields:
       - name: date
         type: date
@@ -15,6 +17,8 @@ datasets:
         is_measure: true
 
   - dataset_id: "v1.0/btc/blocks"
+    display_name: Bitcoin Blocks
+    description: Bitcoin block metadata snapshot
     fields:
       - name: date
         type: date

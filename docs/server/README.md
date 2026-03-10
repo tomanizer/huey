@@ -13,6 +13,7 @@ This documentation set covers the Huey backend service (`server/`), called **Que
 
 QueryService is a Python FastAPI service that runs analytical SQL against DuckDB and exposes HTTP endpoints for:
 
+- Dataset discovery (`/api/v1/datasets`, `/api/v1/datasets/{dataset_id}`)
 - Dataset schema discovery (`/api/v1/datasets/{dataset_id}/schema`)
 - Distinct tuples, picklists, and aggregated cells (`/api/v1/datasets/{dataset_id}/query/*`)
 - Async export jobs (`/api/v1/exports*`) with durable job state in SQLite
@@ -37,9 +38,10 @@ Typical users:
 
 Typical workflows:
 
-1. Discover dataset schema with `GET /api/v1/datasets/{dataset_id}/schema`.
-2. Build interactive queries with `POST /api/v1/datasets/{dataset_id}/query/tuples`, `POST /api/v1/datasets/{dataset_id}/query/cells`, `POST /api/v1/datasets/{dataset_id}/query/picklist`.
-3. Trigger async export with `POST /api/v1/exports`, poll with `GET /api/v1/exports/{export_id}`, then download.
+1. Discover datasets with `GET /api/v1/datasets` and inspect metadata with `GET /api/v1/datasets/{dataset_id}`.
+2. Fetch the lightweight field list with `GET /api/v1/datasets/{dataset_id}/schema`.
+3. Build interactive queries with `POST /api/v1/datasets/{dataset_id}/query/tuples`, `POST /api/v1/datasets/{dataset_id}/query/cells`, `POST /api/v1/datasets/{dataset_id}/query/picklist`.
+4. Trigger async export with `POST /api/v1/exports`, poll with `GET /api/v1/exports/{export_id}`, then download.
 
 ## 3. Installation and Setup
 
@@ -187,6 +189,8 @@ Start service:
 Check schema:
 
 ```bash
+curl 'http://localhost:8000/api/v1/datasets'
+curl 'http://localhost:8000/api/v1/datasets/trades_v1'
 curl 'http://localhost:8000/api/v1/datasets/trades_v1/schema'
 ```
 
