@@ -128,8 +128,7 @@ Success `200` example:
         "schema": "/api/v1/datasets/trades_v1/schema",
         "tuples": "/api/v1/datasets/trades_v1/query/tuples",
         "cells": "/api/v1/datasets/trades_v1/query/cells",
-        "members": "/api/v1/datasets/trades_v1/query/members",
-        "exports": "/api/v1/datasets/trades_v1/exports"
+        "picklist": "/api/v1/datasets/trades_v1/query/picklist"
       }
     }
   ],
@@ -179,8 +178,7 @@ Success `200` example:
     "schema": "/api/v1/datasets/trades_v1/schema",
     "tuples": "/api/v1/datasets/trades_v1/query/tuples",
     "cells": "/api/v1/datasets/trades_v1/query/cells",
-    "members": "/api/v1/datasets/trades_v1/query/members",
-    "exports": "/api/v1/datasets/trades_v1/exports"
+    "picklist": "/api/v1/datasets/trades_v1/query/picklist"
   }
 }
 ```

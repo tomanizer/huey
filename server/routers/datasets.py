@@ -61,10 +61,9 @@ def _dataset_cache_headers(dataset_id: str) -> dict[str, str]:
     }
 
 
-def _not_modified_if_match(request: Request, dataset_id: str) -> Response | None:
-    etag = datasets.get_dataset_etag(dataset_id)
+def _not_modified_if_match(request: Request, etag: str, cache_headers: dict[str, str]) -> Response | None:
     if request.headers.get("If-None-Match") == etag:
-        return Response(status_code=304, headers=_dataset_cache_headers(dataset_id))
+        return Response(status_code=304, headers=cache_headers)
     return None
 
 
@@ -90,24 +89,7 @@ async def list_datasets(
     }
 
 
-@router.get("/{dataset_id}")
-@limiter.limit(lambda: get_settings().rate_limit_query)
-async def get_dataset(
-    request: Request,
-    dataset_id: str,
-    _api_key: str = Depends(require_api_key),
-) -> Response:
-    """GET /api/v1/datasets/{dataset_id}."""
-    cached = _not_modified_if_match(request, dataset_id)
-    if cached is not None:
-        return cached
-    details = datasets.get_dataset_details(dataset_id)
-    if details is None:
-        raise DatasetNotFoundError(dataset_id)
-    return JSONResponse(content=details, headers=_dataset_cache_headers(dataset_id))
-
-
-@router.get("/{dataset_id}/schema")
+@router.get("/{dataset_id:path}/schema")
 @limiter.limit(lambda: get_settings().rate_limit_query)
 async def get_dataset_schema(
     request: Request,
@@ -115,10 +97,29 @@ async def get_dataset_schema(
     _api_key: str = Depends(require_api_key),
 ) -> Response:
     """GET /api/v1/datasets/{dataset_id}/schema."""
-    cached = _not_modified_if_match(request, dataset_id)
-    if cached is not None:
-        return cached
     schema = datasets.get_discovery_schema(dataset_id)
     if schema is None:
         raise DatasetNotFoundError(dataset_id)
-    return JSONResponse(content=schema, headers=_dataset_cache_headers(dataset_id))
+    cache_headers = _dataset_cache_headers(dataset_id)
+    cached = _not_modified_if_match(request, cache_headers["ETag"], cache_headers)
+    if cached is not None:
+        return cached
+    return JSONResponse(content=schema, headers=cache_headers)
+
+
+@router.get("/{dataset_id:path}")
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def get_dataset(
+    request: Request,
+    dataset_id: str,
+    _api_key: str = Depends(require_api_key),
+) -> Response:
+    """GET /api/v1/datasets/{dataset_id}."""
+    details = datasets.get_dataset_details(dataset_id)
+    if details is None:
+        raise DatasetNotFoundError(dataset_id)
+    cache_headers = _dataset_cache_headers(dataset_id)
+    cached = _not_modified_if_match(request, cache_headers["ETag"], cache_headers)
+    if cached is not None:
+        return cached
+    return JSONResponse(content=details, headers=cache_headers)

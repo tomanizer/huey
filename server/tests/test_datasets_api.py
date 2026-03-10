@@ -12,7 +12,7 @@ def test_list_datasets_returns_links_and_cursor(client: TestClient) -> None:
     item = next(item for item in body["items"] if item["id"] == "trades_v1")
     assert item["links"]["self"] == "/api/v1/datasets/trades_v1"
     assert item["links"]["schema"] == "/api/v1/datasets/trades_v1/schema"
-    assert item["links"]["members"] == "/api/v1/datasets/trades_v1/query/members"
+    assert item["links"]["picklist"] == "/api/v1/datasets/trades_v1/query/picklist"
 
 
 def test_list_datasets_cursor_paginates(client: TestClient) -> None:
@@ -77,3 +77,17 @@ def test_get_dataset_schema_not_found(client: TestClient) -> None:
     r = client.get("/api/v1/datasets/no_such/schema")
     assert r.status_code == 404
     assert r.json()["code"] == "DATASET_NOT_FOUND"
+
+
+def test_dataset_routes_support_slashes_in_dataset_id(client: TestClient) -> None:
+    dataset_id = "v1.0/btc/blocks"
+    encoded = "v1.0%2Fbtc%2Fblocks"
+    details = client.get(f"/api/v1/datasets/{encoded}")
+    assert details.status_code == 200
+    body = details.json()
+    assert body["id"] == dataset_id
+    assert body["links"]["self"] == f"/api/v1/datasets/{encoded}"
+
+    schema = client.get(f"/api/v1/datasets/{encoded}/schema")
+    assert schema.status_code == 200
+    assert schema.json()["dataset_id"] == dataset_id

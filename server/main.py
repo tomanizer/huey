@@ -123,7 +123,7 @@ from server.routers import datasets, export, health, query  # noqa: E402
 v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(datasets.router)
 v1_router.include_router(export.router)
-v1_router.include_router(query.router, prefix="/datasets/{dataset_id}")
+v1_router.include_router(query.router, prefix="/datasets/{dataset_id:path}")
 
 app.include_router(health.router)
 app.include_router(v1_router)

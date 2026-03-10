@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import quote
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -40,6 +41,7 @@ class _SchemaCacheEntry:
 class _DatasetProfileCacheEntry:
     profile: dict[str, Any]
     loaded_at: float
+    includes_distinct_counts: bool
 
 
 class DatasetSourceReadOptions(BaseModel):
@@ -548,8 +550,13 @@ def _infer_time_dimension(
             time_dimension["max"] = profile["time_max"]
     return time_dimension
 
-
-def _compute_dataset_profile(dataset_id: str, dataset_entry: dict[str, Any], source: DatasetSourceConfig | None) -> dict[str, Any]:
+def _compute_dataset_profile(
+    dataset_id: str,
+    dataset_entry: dict[str, Any],
+    source: DatasetSourceConfig | None,
+    *,
+    include_distinct_counts: bool,
+) -> dict[str, Any]:
     profile: dict[str, Any] = {
         "row_count": dataset_entry.get("row_count"),
         "distinct_counts": {},
@@ -570,7 +577,7 @@ def _compute_dataset_profile(dataset_id: str, dataset_entry: dict[str, Any], sou
         if isinstance(field, dict) and field.get("name")
     ]
     field_names = set(fields_to_profile)
-    if fields_to_profile:
+    if include_distinct_counts and fields_to_profile:
         distinct_counts_selects = ", ".join(
             f"COUNT(DISTINCT {quote_identifier(field_name)})" for field_name in fields_to_profile
         )
@@ -595,7 +602,7 @@ def _compute_dataset_profile(dataset_id: str, dataset_entry: dict[str, Any], sou
     return profile
 
 
-def get_dataset_profile(dataset_id: str) -> dict[str, Any]:
+def get_dataset_profile(dataset_id: str, *, include_distinct_counts: bool = False) -> dict[str, Any]:
     """Return cached discovery/profile metadata for a dataset."""
     entry = get_dataset_entry(dataset_id)
     if entry is None:
@@ -608,14 +615,24 @@ def get_dataset_profile(dataset_id: str) -> dict[str, Any]:
     source = get_dataset_source(dataset_id)
     with _schema_cache._lock:
         cached = _schema_cache._dataset_profiles.get(dataset_id)
-        if cached and not _schema_cache._is_expired(cached.loaded_at):
+        if (
+            cached
+            and not _schema_cache._is_expired(cached.loaded_at)
+            and (not include_distinct_counts or cached.includes_distinct_counts)
+        ):
             return dict(cached.profile)
 
-    profile = _compute_dataset_profile(dataset_id, entry, source)
+    profile = _compute_dataset_profile(
+        dataset_id,
+        entry,
+        source,
+        include_distinct_counts=include_distinct_counts,
+    )
     with _schema_cache._lock:
         _schema_cache._dataset_profiles[dataset_id] = _DatasetProfileCacheEntry(
             profile=dict(profile),
             loaded_at=time.monotonic(),
+            includes_distinct_counts=include_distinct_counts,
         )
     return dict(profile)
 
@@ -639,14 +656,14 @@ def get_dataset_etag(dataset_id: str) -> str:
 
 def build_dataset_links(dataset_id: str) -> dict[str, str]:
     """Return canonical v1 links for a dataset."""
-    base = f"/api/v1/datasets/{dataset_id}"
+    encoded_dataset_id = quote(dataset_id, safe="")
+    base = f"/api/v1/datasets/{encoded_dataset_id}"
     return {
         "self": base,
         "schema": f"{base}/schema",
         "tuples": f"{base}/query/tuples",
         "cells": f"{base}/query/cells",
-        "members": f"{base}/query/members",
-        "exports": f"{base}/exports",
+        "picklist": f"{base}/query/picklist",
     }
 
 
@@ -655,7 +672,7 @@ def get_dataset_summary(dataset_id: str) -> dict[str, Any] | None:
     entry = get_dataset_entry(dataset_id)
     if entry is None:
         return None
-    profile = get_dataset_profile(dataset_id)
+    profile = get_dataset_profile(dataset_id, include_distinct_counts=False)
     source = get_dataset_source(dataset_id)
     fields = entry.get("fields", [])
     summary: dict[str, Any] = {
@@ -679,7 +696,7 @@ def get_dataset_details(dataset_id: str) -> dict[str, Any] | None:
     entry = get_dataset_entry(dataset_id)
     if entry is None:
         return None
-    profile = get_dataset_profile(dataset_id)
+    profile = get_dataset_profile(dataset_id, include_distinct_counts=True)
     source = get_dataset_source(dataset_id)
     fields = []
     for field in entry.get("fields", []):
