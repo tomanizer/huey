@@ -10,9 +10,8 @@ from server.request_context import generate_request_id, get_request_id, set_requ
 
 def _query_body(**overrides):
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}]},
+        "fields": [{"field": "symbol"}],
     }
     body.update(overrides)
     return body
@@ -61,7 +60,7 @@ class TestCorrelationIdMiddleware:
 
     def test_post_endpoint_gets_correlation_id(self, client: TestClient) -> None:
         body = _query_body()
-        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+        r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
         assert "X-Request-ID" in r.headers
         assert len(r.headers["X-Request-ID"]) > 0
 
@@ -70,7 +69,7 @@ class TestRequestMetadataHeaders:
     def test_request_id_header_propagates_to_tuples(self, client: TestClient) -> None:
         body = _query_body()
         r = client.post(
-            f"/api/v1/datasets/{body['dataset_id']}/query/tuples",
+            "/api/v1/datasets/trades_v1/query/tuples",
             json=body,
             headers={"X-Request-ID": "frontend-456"},
         )
@@ -78,17 +77,15 @@ class TestRequestMetadataHeaders:
 
     def test_request_id_header_propagates_to_cells(self, client: TestClient) -> None:
         body = {
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
-            "query": {
-                "axes": {
-                    "rows": [{"field": "symbol"}],
-                    "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
-                },
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
             },
         }
         r = client.post(
-            f"/api/v1/datasets/{body['dataset_id']}/query/cells",
+            "/api/v1/datasets/trades_v1/query/cells",
             json=body,
             headers={"X-Request-ID": "cells-trace-789"},
         )
@@ -96,12 +93,11 @@ class TestRequestMetadataHeaders:
 
     def test_request_id_header_propagates_to_picklist(self, client: TestClient) -> None:
         body = {
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
-            "query": {"field": "symbol"},
+            "field": "symbol",
         }
         r = client.post(
-            f"/api/v1/datasets/{body['dataset_id']}/query/picklist",
+            "/api/v1/datasets/trades_v1/query/members",
             json=body,
             headers={"X-Request-ID": "picklist-trace-abc"},
         )
@@ -124,7 +120,7 @@ class TestRequestMetadataHeaders:
         body = _query_body()
         with caplog.at_level(logging.INFO, logger="query_service.access"):
             client.post(
-                f"/api/v1/datasets/{body['dataset_id']}/query/tuples",
+                "/api/v1/datasets/trades_v1/query/tuples",
                 json=body,
                 headers={"X-Client-Version": "huey-web/1.2.3"},
             )
@@ -136,7 +132,7 @@ class TestRequestMetadataHeaders:
     def test_no_request_id_header_generates_one(self, client: TestClient) -> None:
         body = _query_body()
         r = client.post(
-            f"/api/v1/datasets/{body['dataset_id']}/query/tuples",
+            "/api/v1/datasets/trades_v1/query/tuples",
             json=body,
         )
         assert len(r.headers["X-Request-ID"]) > 0

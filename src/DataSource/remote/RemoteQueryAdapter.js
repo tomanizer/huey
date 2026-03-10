@@ -14,11 +14,6 @@ export class RemoteQueryAdapter {
     max: 'MAX'
   };
 
-  /** Default date when query model has no date range; use a date that matches common sample data. */
-  static #createDefaultDateRange() {
-    return { type: 'single', date: '2026-03-01' };
-  }
-
   static getDateRange(queryModel) {
     if (queryModel && typeof queryModel.getDateRange === 'function') {
       const queryModelDateRange = queryModel.getDateRange();
@@ -26,7 +21,7 @@ export class RemoteQueryAdapter {
         return queryModelDateRange;
       }
     }
-    return RemoteQueryAdapter.#createDefaultDateRange();
+    return undefined;
   }
 
   static #getRemoteFieldForAxisItem(axisItem, context) {
@@ -198,8 +193,10 @@ export class RemoteQueryAdapter {
     const filters = RemoteQueryAdapter.toRemoteFilters(queryModel.getFiltersAxis().getItems(), 'cells');
 
     return {
-      rows: { start_index: 0, count: Math.max(1, rowCount || 0) },
-      columns: { start_index: 0, count: Math.max(1, colCount || 0) },
+      window: {
+        rows: { offset: 0, limit: Math.max(1, rowCount || 0) },
+        columns: { offset: 0, limit: Math.max(1, colCount || 0) }
+      },
       axes: {
         rows: rowsAxisItems.map((item) => {
           return { field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells rows') };

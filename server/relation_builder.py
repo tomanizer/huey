@@ -41,7 +41,9 @@ class BaseRelation:
     requires_time_filter: bool = True
 
 
-def _dates_for_range(date_range: DateRange) -> list[str]:
+def _dates_for_range(date_range: DateRange | None) -> list[str]:
+    if date_range is None:
+        return []
     try:
         validate_date_range_span(date_range, get_settings().max_date_range_days)
     except DateRangeSpanLimitError as exc:
@@ -71,7 +73,7 @@ def _ensure_columns(required_columns: Iterable[str]) -> list[str]:
 def _time_filter_sql(
     column: str,
     filter_type: str,
-    date_range: DateRange,
+    date_range: DateRange | None,
     params: list[Any],
 ) -> str:
     quoted_col = quote_identifier(column)
@@ -132,6 +134,8 @@ def _build_parquet_source_relation(
     # When we have a time_filter and a single base path (no glob), expand to date-partition paths
     # so DuckDB gets concrete file patterns (S3 prefix listing may not work like a directory).
     if (
+        date_range is not None
+        and
         source.time_filter is not None
         and len(uris) == 1
         and "*" not in uris[0]
@@ -162,7 +166,7 @@ def _build_parquet_source_relation(
     where_parts: list[str] = []
     handles_date = False
     requires_time_filter = False
-    if source.time_filter is not None:
+    if source.time_filter is not None and date_range is not None:
         handles_date = True
         requires_time_filter = True
         where_parts.append(
@@ -186,7 +190,7 @@ def _build_parquet_source_relation(
 
 def _build_legacy_partition_relation(
     dataset_id: str,
-    date_range: DateRange,
+    date_range: DateRange | None,
     required_columns: Iterable[str],
 ) -> BaseRelation:
     settings = get_settings()
@@ -200,11 +204,17 @@ def _build_legacy_partition_relation(
     patterns: list[str] = []
     if base_path:
         root = Path(base_path)
-        for d in dates:
-            patterns.append(str(root / dataset_id / f"date={d}" / "*.parquet"))
+        if dates:
+            for d in dates:
+                patterns.append(str(root / dataset_id / f"date={d}" / "*.parquet"))
+        else:
+            patterns.append(str(root / dataset_id / "date=*" / "*.parquet"))
     else:
-        for d in dates:
-            patterns.append(build_partition_path(bucket, dataset_id, d) + "*.parquet")
+        if dates:
+            for d in dates:
+                patterns.append(build_partition_path(bucket, dataset_id, d) + "*.parquet")
+        else:
+            patterns.append(f"s3://{bucket}/{dataset_id}/date=*/*.parquet")
 
     missing: list[str] = []
     if base_path:
@@ -252,7 +262,7 @@ def required_relation_columns(dataset_id: str) -> set[str]:
 
 def build_base_relation(
     dataset_id: str,
-    date_range: DateRange,
+    date_range: DateRange | None,
     required_columns: Iterable[str],
 ) -> BaseRelation:
     """

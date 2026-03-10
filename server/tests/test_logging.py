@@ -93,9 +93,8 @@ class TestAccessLogMiddleware:
     def test_logs_post_request(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
         client.post("/api/v1/datasets/trades_v1/query/tuples", json={
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
-            "query": {"fields": [{"field": "symbol"}]},
+            "fields": [{"field": "symbol"}],
         })
 
         output = capfd.readouterr().out
@@ -118,9 +117,8 @@ class TestQueryExecutionLogging:
     def test_tuples_query_logged(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
         client.post("/api/v1/datasets/trades_v1/query/tuples", json={
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
-            "query": {"fields": [{"field": "symbol"}]},
+            "fields": [{"field": "symbol"}],
         })
 
         output = capfd.readouterr().out
@@ -142,9 +140,8 @@ class TestQueryExecutionLogging:
     def test_cells_query_logged(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
         client.post("/api/v1/datasets/trades_v1/query/cells", json={
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
-            "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": []}},
+            "axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": []},
         })
 
         output = capfd.readouterr().out
@@ -155,18 +152,17 @@ class TestQueryExecutionLogging:
         assert len(query_records) >= 1
         assert query_records[0]["endpoint"] == "cells"
 
-    def test_picklist_query_logged(self, client: TestClient, capfd) -> None:
+    def test_members_query_logged(self, client: TestClient, capfd) -> None:
         setup_logging("INFO", "json")
-        client.post("/api/v1/datasets/trades_v1/query/picklist", json={
-            "dataset_id": "trades_v1",
+        client.post("/api/v1/datasets/trades_v1/query/members", json={
             "date_range": {"type": "single", "date": "2026-03-01"},
-            "query": {"field": "symbol"},
+            "field": "symbol",
         })
 
         output = capfd.readouterr().out
         query_records = [
             json.loads(line) for line in output.strip().split("\n")
-            if "endpoint" in line and "picklist" in line
+            if "endpoint" in line and "members" in line
         ]
         assert len(query_records) >= 1
-        assert query_records[0]["endpoint"] == "picklist"
+        assert query_records[0]["endpoint"] == "members"

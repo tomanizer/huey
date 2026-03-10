@@ -17,7 +17,7 @@ class _BenchmarkHandler(BaseHTTPRequestHandler):
         if self.path in {
             "/api/v1/datasets/trades_v1/query/tuples",
             "/api/v1/datasets/trades_v1/query/cells",
-            "/api/v1/datasets/trades_v1/query/picklist",
+            "/api/v1/datasets/trades_v1/query/members",
             "/api/v1/exports",
         }:
             payload = b'{"ok":true}'

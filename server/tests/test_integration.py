@@ -1,7 +1,7 @@
 """
 Backend integration tests: full API flow with real app and config.
 
-Exercises schema -> query (tuples, cells, picklist) -> export in sequence
+Exercises schema -> query (tuples, cells, members) -> export in sequence
 using the default dataset config (no S3 required).
 """
 
@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 
 def test_full_api_flow(client: TestClient) -> None:
-    """Integration: GET schema -> POST tuples, cells, picklist -> POST export -> GET status."""
+    """Integration: GET schema -> POST tuples, cells, members -> POST export -> GET status."""
     dataset_id = "trades_v1"
     date_range = {"type": "single", "date": "2026-03-01"}
 
@@ -20,9 +20,9 @@ def test_full_api_flow(client: TestClient) -> None:
     assert len(schema["fields"]) > 0
 
     r_tuples = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json={
-        "dataset_id": dataset_id,
         "date_range": date_range,
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 0},
     })
     assert r_tuples.status_code == 200
     tuples_data = r_tuples.json()
@@ -30,14 +30,11 @@ def test_full_api_flow(client: TestClient) -> None:
     assert len(tuples_data["items"]) > 0
 
     r_cells = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json={
-        "dataset_id": dataset_id,
         "date_range": date_range,
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
-            },
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
         },
     })
     assert r_cells.status_code == 200
@@ -45,10 +42,10 @@ def test_full_api_flow(client: TestClient) -> None:
     assert len(cells_data["cells"]) > 0
     assert "row_index" in cells_data["cells"][0]
 
-    r_picklist = client.post(f"/api/v1/datasets/{dataset_id}/query/picklist", json={
-        "dataset_id": dataset_id,
+    r_picklist = client.post(f"/api/v1/datasets/{dataset_id}/query/members", json={
         "date_range": date_range,
-        "query": {"field": "symbol", "paging": {"limit": 100, "offset": 0}},
+        "field": "symbol",
+        "paging": {"limit": 100, "offset": 0},
     })
     assert r_picklist.status_code == 200
     picklist_data = r_picklist.json()

@@ -52,9 +52,9 @@ def test_versioned_schema_route(client: TestClient) -> None:
 
 def test_versioned_query_route_alias(client: TestClient) -> None:
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 0},
     }
     r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r.status_code == 200

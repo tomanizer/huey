@@ -8,7 +8,7 @@ so invalid requests fail fast with clear 422 errors.
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from server.config import get_settings
@@ -166,11 +166,25 @@ class PagingSpec(BaseModel):
     offset: int = Field(default=0, ge=0)
 
 
+class WindowPagingSpec(BaseModel):
+    """Offset/limit window used by v1 cells requests."""
+
+    limit: int = Field(default=100, ge=1, le=MAX_PAGE_LIMIT)
+    offset: int = Field(default=0, ge=0)
+
+
 class WindowSpec(BaseModel):
     """Row/column window for virtualized cells requests."""
 
     start_index: int = Field(default=0, ge=0)
     count: int | None = Field(default=None, ge=1)
+
+
+class CellsWindowRequest(BaseModel):
+    """Top-level cells window request for row/column pagination."""
+
+    rows: WindowPagingSpec | None = None
+    columns: WindowPagingSpec | None = None
 
 
 class PagingResponse(BaseModel):
@@ -246,25 +260,53 @@ class ExportQueryBody(BaseModel):
 class QueryTuplesRequest(BaseModel):
     """POST /api/v1/datasets/{dataset_id}/query/tuples body."""
 
-    dataset_id: str
-    date_range: DateRange
-    query: TuplesQueryBody = TuplesQueryBody()
+    model_config = ConfigDict(extra="forbid")
+
+    date_range: DateRange | None = None
+    fields: list[TupleFieldSpec] | None = None
+    filters: list[TupleFilter] | None = None
+    paging: PagingSpec | None = None
+
+    @model_validator(mode="after")
+    def require_fields(self) -> "QueryTuplesRequest":
+        if not self.fields:
+            raise ValueError("fields must include at least one item")
+        return self
 
 
 class QueryCellsRequest(BaseModel):
     """POST /api/v1/datasets/{dataset_id}/query/cells body."""
 
-    dataset_id: str
-    date_range: DateRange
-    query: CellsQueryBody = CellsQueryBody()
+    model_config = ConfigDict(extra="forbid")
+
+    date_range: DateRange | None = None
+    axes: AxesSpec | None = None
+    filters: list[TupleFilter] | None = None
+    window: CellsWindowRequest | None = None
+
+    @model_validator(mode="after")
+    def require_axes(self) -> "QueryCellsRequest":
+        if self.axes is None:
+            raise ValueError("axes is required")
+        return self
 
 
 class QueryPicklistRequest(BaseModel):
-    """POST /api/v1/datasets/{dataset_id}/query/picklist body."""
+    """POST /api/v1/datasets/{dataset_id}/query/members body."""
 
-    dataset_id: str
-    date_range: DateRange
-    query: PicklistQueryBody = PicklistQueryBody()
+    model_config = ConfigDict(extra="forbid")
+
+    date_range: DateRange | None = None
+    field: str | None = None
+    search: str | None = ""
+    filters: list[TupleFilter] | None = None
+    paging: PagingSpec | None = None
+
+    @model_validator(mode="after")
+    def require_field(self) -> "QueryPicklistRequest":
+        if not self.field:
+            raise ValueError("field is required")
+        return self
 
 
 class ExportRequest(BaseModel):

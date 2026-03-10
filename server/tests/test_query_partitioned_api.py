@@ -45,31 +45,28 @@ def partitioned_empty_base_path(monkeypatch, tmp_path: Path) -> None:
 
 def _cells_body() -> dict:
     return {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            }
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
 
 
 def _tuples_body() -> dict:
     return {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 0},
     }
 
 
 def _picklist_body() -> dict:
     return {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "paging": {"limit": 10, "offset": 0}},
+        "field": "symbol",
+        "paging": {"limit": 10, "offset": 0},
     }
 
 
@@ -103,7 +100,7 @@ def test_partition_config_error_cells_no_bucket_or_path(
     """When execution_mode=parquet_partitioned but no bucket/path is set,
     the v1 cells endpoint returns 500 PARTITION_CONFIG_ERROR."""
     body = _cells_body()
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 500
     data = r.json()
     assert data["code"] == "PARTITION_CONFIG_ERROR"
@@ -114,7 +111,7 @@ def test_partition_config_error_tuples_no_bucket_or_path(
 ) -> None:
     """Same PARTITION_CONFIG_ERROR check for the v1 tuples endpoint."""
     body = _tuples_body()
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r.status_code == 500
     data = r.json()
     assert data["code"] == "PARTITION_CONFIG_ERROR"
@@ -125,7 +122,7 @@ def test_partition_config_error_picklist_no_bucket_or_path(
 ) -> None:
     """Same PARTITION_CONFIG_ERROR check for the v1 picklist endpoint."""
     body = _picklist_body()
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r.status_code == 500
     data = r.json()
     assert data["code"] == "PARTITION_CONFIG_ERROR"
@@ -138,7 +135,7 @@ def test_partition_not_found_cells_missing_date(
     requested date partition directory does not exist, the v1 cells endpoint returns
     404 PARTITION_NOT_FOUND."""
     body = _cells_body()
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 404
     data = r.json()
     assert data["code"] == "PARTITION_NOT_FOUND"
@@ -151,7 +148,7 @@ def test_partition_not_found_tuples_missing_date(
 ) -> None:
     """Same PARTITION_NOT_FOUND check for the v1 tuples endpoint."""
     body = _tuples_body()
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r.status_code == 404
     data = r.json()
     assert data["code"] == "PARTITION_NOT_FOUND"
@@ -162,7 +159,7 @@ def test_partition_not_found_picklist_missing_date(
 ) -> None:
     """Same PARTITION_NOT_FOUND check for the v1 picklist endpoint."""
     body = _picklist_body()
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r.status_code == 404
     data = r.json()
     assert data["code"] == "PARTITION_NOT_FOUND"

@@ -26,9 +26,8 @@ def rate_limited_client(monkeypatch) -> TestClient:
 
 def _query_body() -> dict:
     return {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-01-01"},
-        "query": {},
+        "fields": [{"field": "symbol"}],
     }
 
 
@@ -51,24 +50,24 @@ def _export_body() -> dict:
 
 def test_rate_limit_exceeded(rate_limited_client: TestClient) -> None:
     body = _query_body()
-    first = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    first = rate_limited_client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert first.headers["X-API-Version"] == "1"
     assert "X-RateLimit-Limit" in first.headers
     assert "X-RateLimit-Remaining" in first.headers
     assert "X-RateLimit-Reset" in first.headers
-    second = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    second = rate_limited_client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert "X-RateLimit-Limit" in second.headers
 
-    response = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    response = rate_limited_client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert response.status_code == 429
 
 
 def test_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None:
     body = _query_body()
-    rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
-    rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    rate_limited_client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
+    rate_limited_client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
 
-    response = rate_limited_client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    response = rate_limited_client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert response.status_code == 429
     assert response.headers["X-API-Version"] == "1"
     retry_after = response.headers.get("Retry-After")
@@ -110,7 +109,7 @@ def test_rate_limiting_disabled(monkeypatch) -> None:
         # Query: two calls exceed the "1/minute" limit but limiting is off
         for _ in range(2):
             body = _query_body()
-            r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+            r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
             assert r.status_code == 200
         # Export: two calls exceed the "1/minute" limit but limiting is off
         for _ in range(2):
