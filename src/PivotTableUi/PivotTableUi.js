@@ -2547,6 +2547,7 @@ export class PivotTableUi extends EventEmitter {
             queryModelAxes[QueryModel.AXIS_FILTERS] = filterAxisItems = [];
           }
 
+          let cell;
           for (let i = 0; i < numRowHeaders; i++){
             cell = cells.item(i);
             if (i < rowsAxisItems.length){
