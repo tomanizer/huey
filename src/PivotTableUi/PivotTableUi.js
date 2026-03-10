@@ -2474,7 +2474,7 @@ export class PivotTableUi extends EventEmitter {
             tableHeaderRow = tableHeaderRows.item(i);
             cells = tableHeaderRow.childNodes;
             cell = cells.item(columnIndex);
-            if (i < columnsAxisItems.length){
+            if (columnsAxisItems && i < columnsAxisItems.length){
               queryAxisItem = columnsAxisItems[i];
               itemId = QueryAxisItem.getIdForQueryAxisItem(queryAxisItem);
               filterAxisItem = filterAxisItems.find((filterAxisItem) =>{
@@ -2523,7 +2523,7 @@ export class PivotTableUi extends EventEmitter {
 
         row = contextMenuContext.parentNode;
         if (row.parentNode === tableHeaderDom) {
-          if (rowIndex < columnsAxisItems.length){
+          if (columnsAxisItems && rowIndex < columnsAxisItems.length){
             // this is a simple axis query on 1 column axis item.
             delete queryModelAxes[QueryModel.AXIS_ROWS];
             delete queryModelAxes[QueryModel.AXIS_CELLS];
