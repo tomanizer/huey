@@ -81,9 +81,27 @@ export class ContextMenu {
         menuItem.setAttribute('aria-expanded', 'false');
         return;
       }
+      // Set position before showPopover so the element never paints at (0,0).
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      let left = itemBoundingRect.x + itemBoundingRect.width;
+      let top = itemBoundingRect.y;
+      popoverTargetDom.style.left = left + 'px';
+      popoverTargetDom.style.top = top + 'px';
       popoverTargetDom.showPopover();
-      popoverTargetDom.style.left = (itemBoundingRect.x + itemBoundingRect.width) + 'px';
-      popoverTargetDom.style.top = itemBoundingRect.y + 'px';
+      // Correct for viewport overflow now that we know the rendered size.
+      const subWidth = popoverTargetDom.clientWidth;
+      const subHeight = popoverTargetDom.clientHeight;
+      const correctionX = (left + subWidth) - viewportWidth;
+      if (correctionX > 0) {
+        left = Math.max(0, itemBoundingRect.x - subWidth);
+        popoverTargetDom.style.left = left + 'px';
+      }
+      const correctionY = (top + subHeight) - viewportHeight;
+      if (correctionY > 0) {
+        top = Math.max(0, top - correctionY);
+        popoverTargetDom.style.top = top + 'px';
+      }
       menuItem.setAttribute('aria-expanded', 'true');
     });
   }
