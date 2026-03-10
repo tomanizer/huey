@@ -275,7 +275,7 @@ async def post_query_cells(
             logger.warning(
                 "cells query cap exceeded",
                 extra={
-                    "dataset_id": body.dataset_id,
+                    "dataset_id": dataset_id,
                     "endpoint": "cells",
                     "cap": effective_max,
                     "returned_count": len(rows),
