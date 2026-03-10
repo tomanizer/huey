@@ -45,6 +45,10 @@ function buildDatasetPath(datasource, suffix) {
   return `${baseUrl}/api/v1/datasets/${encodeURIComponent(datasetId)}${suffix}`;
 }
 
+function sanitizeHeaderValue(value) {
+  return value.replace(/[\r\n]+/g, '');
+}
+
 function buildHeaders(datasource, includeJson, clientContext) {
   const headers = {};
   if (includeJson) {
@@ -55,10 +59,10 @@ function buildHeaders(datasource, includeJson, clientContext) {
     headers['X-API-Key'] = apiKey;
   }
   if (clientContext && typeof clientContext.request_id === 'string' && clientContext.request_id) {
-    headers['X-Request-ID'] = clientContext.request_id;
+    headers['X-Request-ID'] = sanitizeHeaderValue(clientContext.request_id);
   }
   if (clientContext && typeof clientContext.huey_version === 'string' && clientContext.huey_version) {
-    headers['X-Client-Version'] = clientContext.huey_version;
+    headers['X-Client-Version'] = sanitizeHeaderValue(clientContext.huey_version);
   }
   return headers;
 }

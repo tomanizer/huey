@@ -1,8 +1,9 @@
 """
-Contextvars-based request context for correlation ID propagation.
+Contextvars-based request metadata propagation.
 
-The request ID is set by CorrelationIdMiddleware and flows through
-the entire request lifecycle for logging and tracing.
+Request-scoped metadata such as the correlation ID and client version
+is set by middleware and flows through the request lifecycle for
+logging and tracing.
 """
 
 import contextvars

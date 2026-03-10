@@ -17,10 +17,10 @@ from server.request_context import get_client_version, get_request_id
 
 
 class RequestIdFilter(logging.Filter):
-    """Inject the current correlation ID into every log record."""
+    """Inject request-scoped metadata into every log record."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """Attach request_id (if any) so formatters can include it."""
+        """Attach request_id and client_version so formatters can include them."""
         record.request_id = get_request_id()  # type: ignore[attr-defined]
         record.client_version = get_client_version()  # type: ignore[attr-defined]
         return True

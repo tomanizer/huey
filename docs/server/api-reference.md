@@ -21,7 +21,7 @@ Interactive OpenAPI:
 ### Request metadata headers
 
 - `X-Request-ID` is accepted and echoed in response headers.
-- `X-Client-Version` is accepted on query/export requests and recorded in server logs.
+- `X-Client-Version` is accepted on requests and recorded in server logs.
 - Error envelopes usually include `request_id` when available.
 
 ### Standard response headers
