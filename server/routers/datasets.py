@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -30,7 +31,7 @@ def _decode_cursor(cursor: str | None) -> int:
         padding = "=" * (-len(cursor) % 4)
         decoded = base64.urlsafe_b64decode((cursor + padding).encode("ascii")).decode("utf-8")
         offset = int(decoded)
-    except Exception as exc:  # pragma: no cover - defensive
+    except (binascii.Error, ValueError) as exc:  # pragma: no cover - defensive
         raise ValidationAppError(
             [
                 {

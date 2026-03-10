@@ -564,19 +564,20 @@ def _compute_dataset_profile(dataset_id: str, dataset_entry: dict[str, Any], sou
     if row_count_rows:
         profile["row_count"] = int(row_count_rows[0][0])
 
-    field_names = {
-        field["name"]
+    fields_to_profile = [
+        str(field["name"])
         for field in dataset_entry.get("fields", [])
         if isinstance(field, dict) and field.get("name")
-    }
-    for field in dataset_entry.get("fields", []):
-        if not isinstance(field, dict) or not field.get("name"):
-            continue
-        field_name = str(field["name"])
-        quoted_field = quote_identifier(field_name)
-        rows = db_manager.execute_sql(f"SELECT COUNT(DISTINCT {quoted_field}) FROM {table_name}")
+    ]
+    field_names = set(fields_to_profile)
+    if fields_to_profile:
+        distinct_counts_selects = ", ".join(
+            f"COUNT(DISTINCT {quote_identifier(field_name)})" for field_name in fields_to_profile
+        )
+        rows = db_manager.execute_sql(f"SELECT {distinct_counts_selects} FROM {table_name}")
         if rows:
-            profile["distinct_counts"][field_name] = int(rows[0][0])
+            for index, field_name in enumerate(fields_to_profile):
+                profile["distinct_counts"][field_name] = int(rows[0][index])
 
     time_field = None
     if source and source.time_filter is not None:
