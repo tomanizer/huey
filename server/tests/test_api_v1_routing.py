@@ -8,6 +8,7 @@ from server.routers import health
 def test_api_v1_root(client: TestClient) -> None:
     r = client.get("/api/v1")
     assert r.status_code == 200
+    assert r.headers["X-API-Version"] == "1"
     data = r.json()
     assert data["service"] == "huey-queryservice"
     assert data["api_version"] == "1"
@@ -44,6 +45,7 @@ def test_health_startup_probe(client: TestClient) -> None:
 def test_versioned_schema_route(client: TestClient) -> None:
     r = client.get("/api/v1/datasets/trades_v1/schema")
     assert r.status_code == 200
+    assert r.headers["X-API-Version"] == "1"
     data = r.json()
     assert data["dataset_id"] == "trades_v1"
 

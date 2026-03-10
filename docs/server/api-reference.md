@@ -18,10 +18,17 @@ Interactive OpenAPI:
 - Protected endpoints require `X-API-Key` only when `QUERYSERVICE_AUTH_ENABLED=true`.
 - Health endpoints do not require API key.
 
-### Correlation IDs
+### Request metadata headers
 
 - `X-Request-ID` is accepted and echoed in response headers.
+- `X-Client-Version` is accepted on requests and recorded in server logs.
 - Error envelopes usually include `request_id` when available.
+
+### Standard response headers
+
+- `X-API-Version: 1` is returned on API responses.
+- `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` are returned when rate limiting is enabled for the endpoint.
+- `Retry-After` is returned on `429` responses.
 
 ### Shared request envelope (query/export)
 

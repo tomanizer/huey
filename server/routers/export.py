@@ -20,7 +20,6 @@ from server.export_service import get_export_service
 from server.models import ExportRequest, ExportResponse, ExportStatusResponse
 from server.query_builder import validate_export_query_fields
 from server.rate_limit import limiter
-from server.request_context import set_request_id
 
 logger = logging.getLogger("query_service.export")
 
@@ -37,10 +36,6 @@ async def post_export(
     _api_key: str = Depends(require_api_key),
 ) -> ExportResponse:
     """POST /api/v1/exports."""
-    if body.client_context and body.client_context.request_id:
-        rid = body.client_context.request_id
-        set_request_id(rid)
-        request.state.request_id = rid
     if datasets.get_schema(body.dataset_id) is None:
         raise DatasetNotFoundError(body.dataset_id)
     settings = get_settings()
@@ -55,7 +50,8 @@ async def post_export(
 
 
 @router.get("/{export_id}", response_model=ExportStatusResponse)
-async def get_export_status(export_id: str, _api_key: str = Depends(require_api_key)) -> ExportStatusResponse:
+@limiter.limit(lambda: get_settings().rate_limit_export)
+async def get_export_status(request: Request, export_id: str, _api_key: str = Depends(require_api_key)) -> ExportStatusResponse:
     """GET /api/v1/exports/{export_id}."""
     service = get_export_service()
     job = service.get_status(export_id)
@@ -68,7 +64,8 @@ async def get_export_status(export_id: str, _api_key: str = Depends(require_api_
 
 
 @router.get("/{export_id}/download")
-async def download_export(export_id: str, _api_key: str = Depends(require_api_key)) -> FileResponse:
+@limiter.limit(lambda: get_settings().rate_limit_export)
+async def download_export(request: Request, export_id: str, _api_key: str = Depends(require_api_key)) -> FileResponse:
     """GET /api/v1/exports/{export_id}/download."""
     service = get_export_service()
     file_path = service.get_download_path(export_id)

@@ -39,6 +39,7 @@ class TestCorrelationIdMiddleware:
     def test_response_includes_request_id(self, client: TestClient) -> None:
         r = client.get("/health/liveness")
         assert "X-Request-ID" in r.headers
+        assert r.headers["X-API-Version"] == "1"
         assert len(r.headers["X-Request-ID"]) > 0
 
     def test_custom_request_id_echoed(self, client: TestClient) -> None:
@@ -65,13 +66,17 @@ class TestCorrelationIdMiddleware:
         assert len(r.headers["X-Request-ID"]) > 0
 
 
-class TestClientContextOverride:
-    def test_client_context_request_id_overrides(self, client: TestClient) -> None:
-        body = _query_body(client_context={"request_id": "frontend-456"})
-        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+class TestRequestMetadataHeaders:
+    def test_request_id_header_propagates_to_tuples(self, client: TestClient) -> None:
+        body = _query_body()
+        r = client.post(
+            f"/api/v1/datasets/{body['dataset_id']}/query/tuples",
+            json=body,
+            headers={"X-Request-ID": "frontend-456"},
+        )
         assert r.headers["X-Request-ID"] == "frontend-456"
 
-    def test_client_context_on_cells(self, client: TestClient) -> None:
+    def test_request_id_header_propagates_to_cells(self, client: TestClient) -> None:
         body = {
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
@@ -81,39 +86,60 @@ class TestClientContextOverride:
                     "measures": [{"field": "volume", "aggregation": "SUM", "alias": "vol"}],
                 },
             },
-            "client_context": {"request_id": "cells-trace-789"},
         }
-        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+        r = client.post(
+            f"/api/v1/datasets/{body['dataset_id']}/query/cells",
+            json=body,
+            headers={"X-Request-ID": "cells-trace-789"},
+        )
         assert r.headers["X-Request-ID"] == "cells-trace-789"
 
-    def test_client_context_on_picklist(self, client: TestClient) -> None:
+    def test_request_id_header_propagates_to_picklist(self, client: TestClient) -> None:
         body = {
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"field": "symbol"},
-            "client_context": {"request_id": "picklist-trace-abc"},
         }
-        r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+        r = client.post(
+            f"/api/v1/datasets/{body['dataset_id']}/query/picklist",
+            json=body,
+            headers={"X-Request-ID": "picklist-trace-abc"},
+        )
         assert r.headers["X-Request-ID"] == "picklist-trace-abc"
 
-    def test_client_context_on_export(self, client: TestClient) -> None:
+    def test_request_id_header_propagates_to_export(self, client: TestClient) -> None:
         body = {
             "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"axes": {}, "format": "csv"},
-            "client_context": {"request_id": "export-trace-def"},
         }
-        r = client.post("/api/v1/exports", json=body)
+        r = client.post(
+            "/api/v1/exports",
+            json=body,
+            headers={"X-Request-ID": "export-trace-def"},
+        )
         assert r.headers["X-Request-ID"] == "export-trace-def"
 
-    def test_no_client_context_uses_header(self, client: TestClient) -> None:
+    def test_client_version_header_is_logged(self, client: TestClient, caplog: "pytest.LogCaptureFixture") -> None:
+        body = _query_body()
+        with caplog.at_level(logging.INFO, logger="query_service.access"):
+            client.post(
+                f"/api/v1/datasets/{body['dataset_id']}/query/tuples",
+                json=body,
+                headers={"X-Client-Version": "huey-web/1.2.3"},
+            )
+        assert any(
+            getattr(record, "client_version", "") == "huey-web/1.2.3"
+            for record in caplog.records
+        )
+
+    def test_no_request_id_header_generates_one(self, client: TestClient) -> None:
         body = _query_body()
         r = client.post(
             f"/api/v1/datasets/{body['dataset_id']}/query/tuples",
             json=body,
-            headers={"X-Request-ID": "header-id-999"},
         )
-        assert r.headers["X-Request-ID"] == "header-id-999"
+        assert len(r.headers["X-Request-ID"]) > 0
 
 
 class TestLoggingIncludesRequestId:
@@ -123,7 +149,8 @@ class TestLoggingIncludesRequestId:
         with caplog.at_level(logging.INFO, logger="query_service"):
             client.post(
                 "/api/v1/datasets/trades_v1/query/tuples",
-                json=_query_body(client_context={"request_id": "log-check-42"}),
+                json=_query_body(),
+                headers={"X-Request-ID": "log-check-42"},
             )
         matching = [r for r in caplog.records if hasattr(r, "request_id")]
         assert len(matching) > 0

@@ -130,7 +130,8 @@ app.include_router(v1_router)
 
 
 @app.get("/api/v1", include_in_schema=False)
-async def api_root() -> dict[str, object]:
+@limiter.limit(lambda: get_settings().rate_limit_query)
+async def api_root(request: Request) -> dict[str, object]:
     """Service root for the versioned v1 API."""
     build = os.getenv("QUERYSERVICE_BUILD", "dev")
     return {

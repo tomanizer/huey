@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from server.request_context import generate_request_id, set_request_id
+from server.request_context import generate_request_id, set_client_version, set_request_id
 
 logger = logging.getLogger("query_service.access")
 
@@ -15,21 +15,24 @@ logger = logging.getLogger("query_service.access")
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """Extract or generate a correlation ID and attach it to the response.
 
-    The ID is stored on request.state so route handlers can override it
-    (e.g. from client_context.request_id) and the override propagates
-    back to the response header.
+    The ID and optional client version are stored on request.state and
+    reflected back through response/logging metadata.
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:
         """Assign a correlation ID for the request and propagate it to the response."""
         request_id = request.headers.get("X-Request-ID") or generate_request_id()
+        client_version = request.headers.get("X-Client-Version", "")
         request.state.request_id = request_id
+        request.state.client_version = client_version
         set_request_id(request_id)
+        set_client_version(client_version)
 
         response = await call_next(request)
         response.headers["X-Request-ID"] = getattr(
             request.state, "request_id", request_id
         )
+        response.headers["X-API-Version"] = "1"
         return response
 
 
@@ -54,6 +57,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 "status_code": response.status_code,
                 "duration_ms": round(duration_ms, 2),
                 "client_ip": request.client.host if request.client else None,
+                "client_version": getattr(request.state, "client_version", ""),
             },
         )
         return response

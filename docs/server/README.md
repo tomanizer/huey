@@ -120,6 +120,13 @@ PYTHONPATH=. ./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 80
 - When enabled, clients must send `X-API-Key`
 - Health endpoints remain accessible without API key
 
+### Request and response metadata
+
+- `X-Request-ID` can be supplied by clients and is echoed back in responses.
+- `X-Client-Version` can be supplied by clients and is included in server logs.
+- API responses include `X-API-Version: 1`.
+- When rate limiting is enabled, API responses include `X-RateLimit-*` headers, and `429` responses include `Retry-After`.
+
 ### Request conventions
 
 - Query/export requests use an envelope with `dataset_id`, `date_range`, and `query`
