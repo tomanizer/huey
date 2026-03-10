@@ -47,6 +47,18 @@ def test_benchmark_runner_smoke(tmp_path: Path) -> None:
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
+    thresholds = {
+        "mode": "warn",
+        "endpoints": {
+            "tuples": {"max_p95_ms": 0},
+            "cells": {},
+            "picklist": {},
+            "export": {},
+        },
+    }
+    thresholds_path = tmp_path / "thresholds.json"
+    thresholds_path.write_text(json.dumps(thresholds), encoding="utf-8")
+
     try:
         result = subprocess.run(
             [
@@ -58,6 +70,8 @@ def test_benchmark_runner_smoke(tmp_path: Path) -> None:
                 "1",
                 "--workers",
                 "1",
+                "--thresholds",
+                str(thresholds_path),
                 "--output-dir",
                 str(output_dir),
             ],
@@ -79,7 +93,18 @@ def test_benchmark_runner_smoke(tmp_path: Path) -> None:
     assert summary_md.exists()
 
     report = json.loads(report_json.read_text(encoding="utf-8"))
-    assert set(report["summary"]) == {"tuples", "cells", "picklist", "export"}
+    assert set(report["summary"]) == {
+        "tuples_symbol",
+        "tuples_symbol_filtered",
+        "cells_symbol_sum_volume",
+        "cells_date_symbol_sum_volume",
+        "picklist_symbol",
+        "picklist_symbol_search",
+        "export_csv_symbol_volume",
+    }
+    for metrics in report["summary"].values():
+        assert metrics["requests"] == 1
+    assert any("tuples_symbol" in warning for warning in report["warnings"])
 
 
 def test_benchmark_workflow_upload_path() -> None:
