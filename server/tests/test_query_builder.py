@@ -1,6 +1,7 @@
 """Unit tests for SQL query builder."""
 
 import pytest
+from pydantic import ValidationError
 
 from server.errors import ValidationAppError
 from server.models import (
@@ -70,7 +71,7 @@ class TestBuildTuplesSql:
     def test_like_filter(self) -> None:
         query = TuplesQueryBody(
             fields=[TupleFieldSpec(field="symbol")],
-            filters=[TupleFilter(field="symbol", operator="LIKE", values=["AA%"])],
+            filters=[TupleFilter(field="symbol", operator="like", values=["AA%"])],
         )
         sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert '"symbol" LIKE ?' in sql
@@ -79,7 +80,7 @@ class TestBuildTuplesSql:
     def test_between_filter(self) -> None:
         query = TuplesQueryBody(
             fields=[TupleFieldSpec(field="volume")],
-            filters=[TupleFilter(field="volume", operator="BETWEEN", values=[1000, 2000])],
+            filters=[TupleFilter(field="volume", operator="between", values=[1000, 2000])],
         )
         sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert '"volume" BETWEEN ? AND ?' in sql
@@ -87,12 +88,8 @@ class TestBuildTuplesSql:
         assert 2000 in params
 
     def test_between_filter_needs_two_values(self) -> None:
-        query = TuplesQueryBody(
-            fields=[TupleFieldSpec(field="volume")],
-            filters=[TupleFilter(field="volume", operator="BETWEEN", values=[1000])],
-        )
-        sql, params = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
-        assert "BETWEEN" not in sql
+        with pytest.raises(ValidationError):
+            TupleFilter(field="volume", operator="between", values=[1000])
 
     def test_sort_desc(self) -> None:
         query = TuplesQueryBody(fields=[TupleFieldSpec(field="symbol", sort="DESC")])
@@ -292,12 +289,32 @@ class TestBuildPicklistSql:
     def test_with_filter(self) -> None:
         query = PicklistQueryBody(
             field="symbol",
-            filters=[TupleFilter(field="symbol", operator="EXCLUDE", values=["TSLA"])],
+            filters=[TupleFilter(field="symbol", operator="exclude", values=["TSLA"])],
             paging=PagingSpec(limit=100, offset=0),
         )
         sql, params = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "NOT IN" in sql
         assert "TSLA" in params
+
+    @pytest.mark.parametrize(
+        ("operator", "values", "sql_fragment"),
+        [
+            ("gt", [10], '> ?'),
+            ("gte", [10], '>= ?'),
+            ("lt", [10], '< ?'),
+            ("lte", [10], '<= ?'),
+            ("is_null", [], 'IS NULL'),
+            ("not_null", [], 'IS NOT NULL'),
+        ],
+    )
+    def test_extended_filter_operators(self, operator: str, values: list, sql_fragment: str) -> None:
+        query = PicklistQueryBody(
+            field="symbol",
+            filters=[TupleFilter(field="volume", operator=operator, values=values)],
+            paging=PagingSpec(limit=100, offset=0),
+        )
+        sql, _ = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert sql_fragment in sql
 
 
 class TestBuildPicklistCountSql:

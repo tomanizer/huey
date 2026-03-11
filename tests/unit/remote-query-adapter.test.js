@@ -26,7 +26,7 @@ describe('RemoteQueryAdapter', () => {
     return { columnName, filter };
   }
 
-  test('maps include filter to INCLUDE with enabled values only', () => {
+  test('maps include filter to lowercase include with enabled values only', () => {
     const filters = RemoteQueryAdapter.toRemoteFilters([
       makeFilterAxisItem('symbol', {
         filterType: FilterDialog.filterTypes.INCLUDE,
@@ -40,13 +40,13 @@ describe('RemoteQueryAdapter', () => {
     expect(filters).toEqual([
       {
         field: 'symbol',
-        operator: 'INCLUDE',
+        operator: 'include',
         values: ['AAPL'],
       },
     ]);
   });
 
-  test('maps notin filter to EXCLUDE', () => {
+  test('maps notin filter to lowercase exclude', () => {
     const filters = RemoteQueryAdapter.toRemoteFilters([
       makeFilterAxisItem('symbol', {
         filterType: FilterDialog.filterTypes.EXCLUDE,
@@ -56,7 +56,7 @@ describe('RemoteQueryAdapter', () => {
       }),
     ], 'test');
 
-    expect(filters[0].operator).toBe('EXCLUDE');
+    expect(filters[0].operator).toBe('exclude');
     expect(filters[0].values).toEqual(['TSLA']);
   });
 
@@ -76,7 +76,7 @@ describe('RemoteQueryAdapter', () => {
     expect(filters).toEqual([
       {
         field: 'date',
-        operator: 'BETWEEN',
+        operator: 'between',
         values: ['2026-01-01', '2026-01-31'],
       },
     ]);

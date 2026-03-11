@@ -1,9 +1,9 @@
 export class RemoteQueryAdapter {
   static #FILTER_OPERATOR_BY_TYPE = {
-    in: 'INCLUDE',
-    notin: 'EXCLUDE',
-    like: 'LIKE',
-    between: 'BETWEEN'
+    in: 'include',
+    notin: 'exclude',
+    like: 'like',
+    between: 'between'
   };
 
   static #AGGREGATION_BY_NAME = {
@@ -96,7 +96,7 @@ export class RemoteQueryAdapter {
     }
 
     let values;
-    if (operator === 'BETWEEN') {
+    if (operator === 'between') {
       if (valuesEntries.length !== 1) {
         throw new Error('Remote datasource supports exactly one BETWEEN range per field. Field: "' + field + '".');
       }
@@ -111,7 +111,7 @@ export class RemoteQueryAdapter {
         RemoteQueryAdapter.#extractFilterEntryValue(rangeEnd, rangeStart.key)
       ];
     }
-    else if (operator === 'LIKE') {
+    else if (operator === 'like') {
       if (valuesEntries.length !== 1) {
         throw new Error('Remote datasource supports exactly one LIKE pattern per field. Field: "' + field + '".');
       }

@@ -238,8 +238,14 @@ Request body fields:
   - `include_totals` (optional)
 - `filters` (optional):
   - `field` (string)
-  - `operator` (`INCLUDE`, `EXCLUDE`, `LIKE`, `BETWEEN`)
-  - `values` (array)
+  - `operator` (`include`, `exclude`, `like`, `between`, `gt`, `gte`, `lt`, `lte`, `is_null`, `not_null`; case-insensitive)
+  - `values`:
+    - Required for: `include`, `exclude`, `like`, `between`, `gt`, `gte`, `lt`, `lte`
+    - Must be omitted or an empty array for: `is_null`, `not_null`
+    - Cardinality by operator:
+      - `gt`, `gte`, `lt`, `lte`, `like`: exactly 1 value
+      - `between`: exactly 2 values
+      - `include`, `exclude`: between 1 and 1000 values
 - `paging` (optional):
   - `limit` (`1..10000`, default from config)
   - `offset` (`>=0`)
@@ -297,6 +303,7 @@ Request body fields:
   - `offset` (`>=0`)
   - `limit` (`>=1`)
 - `filters` (optional)
+- `filters[*].operator` supports the same 10 case-insensitive operators as tuples/cells
 
 Request example:
 

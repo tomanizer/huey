@@ -123,20 +123,36 @@ def _build_filter_clauses(
     clauses = []
     for f in filters:
         col = _quote(f.field)
-        if f.operator == "INCLUDE" and f.values:
+        if f.operator == "include" and f.values:
             placeholders = ", ".join("?" for _ in f.values)
             clauses.append(f"{col} IN ({placeholders})")
             params.extend(f.values)
-        elif f.operator == "EXCLUDE" and f.values:
+        elif f.operator == "exclude" and f.values:
             placeholders = ", ".join("?" for _ in f.values)
             clauses.append(f"{col} NOT IN ({placeholders})")
             params.extend(f.values)
-        elif f.operator == "LIKE" and f.values:
+        elif f.operator == "like" and f.values:
             clauses.append(f"{col} LIKE ?")
             params.append(f.values[0])
-        elif f.operator == "BETWEEN" and len(f.values) >= 2:
+        elif f.operator == "between" and len(f.values) >= 2:
             clauses.append(f"{col} BETWEEN ? AND ?")
             params.extend(f.values[:2])
+        elif f.operator == "gt" and f.values:
+            clauses.append(f"{col} > ?")
+            params.append(f.values[0])
+        elif f.operator == "gte" and f.values:
+            clauses.append(f"{col} >= ?")
+            params.append(f.values[0])
+        elif f.operator == "lt" and f.values:
+            clauses.append(f"{col} < ?")
+            params.append(f.values[0])
+        elif f.operator == "lte" and f.values:
+            clauses.append(f"{col} <= ?")
+            params.append(f.values[0])
+        elif f.operator == "is_null":
+            clauses.append(f"{col} IS NULL")
+        elif f.operator == "not_null":
+            clauses.append(f"{col} IS NOT NULL")
     return clauses
 
 

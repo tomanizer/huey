@@ -244,7 +244,7 @@ class TestValidationErrorEnvelope:
         })
         assert r.status_code == 422
         body = r.json()
-        assert body["code"] == "VALIDATION_ERROR"
+        assert body["code"] == "FILTER_INVALID"
 
     def test_export_invalid_format(self, client: TestClient) -> None:
         r = client.post(_export_submit_path(), json={

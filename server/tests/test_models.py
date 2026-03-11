@@ -130,17 +130,40 @@ class TestTupleFieldSpec:
 
 class TestTupleFilter:
     def test_valid_operators(self) -> None:
-        for op in ("INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"):
-            f = TupleFilter(field="symbol", operator=op, values=["x"])
+        for op in ("include", "exclude", "like", "between", "gt", "gte", "lt", "lte", "is_null", "not_null"):
+            if op in ("is_null", "not_null"):
+                f = TupleFilter(field="symbol", operator=op)
+            else:
+                f = TupleFilter(field="symbol", operator=op, values=["x"] if op != "between" else ["a", "b"])
             assert f.operator == op
 
     def test_invalid_operator_rejected(self) -> None:
         with pytest.raises(ValidationError, match="operator"):
             TupleFilter(field="symbol", operator="INVALID", values=["x"])
 
-    def test_lowercase_operator_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="operator"):
-            TupleFilter(field="symbol", operator="include", values=["x"])
+    def test_operator_is_case_insensitive(self) -> None:
+        f = TupleFilter(field="symbol", operator="GTE", values=[100])
+        assert f.operator == "gte"
+
+    def test_null_operators_reject_values(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            TupleFilter(field="symbol", operator="is_null", values=["x"])
+        assert exc_info.value.errors()[0]["type"] == "filter_invalid"
+
+    def test_comparison_operators_require_single_value(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            TupleFilter(field="volume", operator="gt", values=[1, 2])
+        assert exc_info.value.errors()[0]["type"] == "filter_invalid"
+
+    def test_between_requires_two_values(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            TupleFilter(field="volume", operator="between", values=[1])
+        assert exc_info.value.errors()[0]["type"] == "filter_invalid"
+
+    def test_include_rejects_more_than_1000_values(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            TupleFilter(field="symbol", operator="include", values=list(range(1001)))
+        assert exc_info.value.errors()[0]["type"] == "filter_invalid"
 
 
 class TestPagingSpec:
