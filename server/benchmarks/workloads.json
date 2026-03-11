@@ -17,7 +17,7 @@
       "warmup_requests": 2,
       "body": {
         "fields": [{"field": "symbol"}],
-        "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
+        "filters": [{"field": "symbol", "operator": "exclude", "values": ["AAPL"]}],
         "paging": {"limit": 50, "offset": 0}
       }
     },
@@ -30,7 +30,7 @@
         "axes": {
           "rows": [{"field": "symbol"}],
           "columns": [],
-          "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
+          "measures": [{"field": "volume", "aggregation": "sum", "alias": "sum_volume"}]
         }
       }
     },
@@ -43,7 +43,7 @@
         "axes": {
           "rows": [{"field": "date"}],
           "columns": [{"field": "symbol"}],
-          "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
+          "measures": [{"field": "volume", "aggregation": "sum", "alias": "sum_volume"}]
         }
       }
     },
@@ -80,7 +80,7 @@
           "export_type": "pivot_results",
           "axes": {
             "rows": [{"field": "symbol"}],
-            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}]
+            "measures": [{"field": "volume", "aggregation": "sum", "alias": "total_volume"}]
           },
           "filters": [],
           "max_rows": 1000,

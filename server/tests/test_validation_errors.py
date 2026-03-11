@@ -189,6 +189,34 @@ class TestCellsValidation:
         r = client.post(_post_path("cells"), json=body)
         assert r.status_code == 422
 
+    def test_first_without_sort_by_returns_sort_by_required(self, client: TestClient) -> None:
+        body = _valid_body_for("cells")
+        body["axes"]["measures"] = [{"field": "volume", "aggregation": "first", "alias": "first_volume"}]
+        r = client.post(_post_path("cells"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "SORT_BY_REQUIRED"
+
+    def test_histogram_returns_aggregation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("cells")
+        body["axes"]["measures"] = [{"field": "volume", "aggregation": "histogram", "alias": "volume_hist"}]
+        r = client.post(_post_path("cells"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "AGGREGATION_NOT_SUPPORTED"
+
+    def test_incompatible_aggregation_returns_aggregation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("cells")
+        body["axes"]["measures"] = [{"field": "symbol", "aggregation": "sum", "alias": "sum_symbol"}]
+        r = client.post(_post_path("cells"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "AGGREGATION_NOT_SUPPORTED"
+
+    def test_first_sort_by_field_must_exist(self, client: TestClient) -> None:
+        body = _valid_body_for("cells")
+        body["axes"]["measures"] = [{"field": "volume", "aggregation": "first", "alias": "first_volume", "sort_by": "missing"}]
+        r = client.post(_post_path("cells"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "VALIDATION_ERROR"
+
 
 class TestMembersValidation:
     def test_unknown_members_field_rejected(self, client: TestClient) -> None:
@@ -225,3 +253,45 @@ class TestExportValidation:
             },
         )
         assert r.status_code == 422
+
+    def test_export_first_without_sort_by_returns_sort_by_required(self, client: TestClient) -> None:
+        r = client.post(
+            EXPORTS_ROOT,
+            json={
+                "date_range": {"type": "single", "date": "2026-03-01"},
+                "query": {
+                    "axes": {"measures": [{"field": "volume", "aggregation": "first", "alias": "first_volume"}]},
+                    "format": "csv",
+                },
+            },
+        )
+        assert r.status_code == 422
+        assert r.json()["code"] == "SORT_BY_REQUIRED"
+
+    def test_export_histogram_returns_aggregation_not_supported(self, client: TestClient) -> None:
+        r = client.post(
+            EXPORTS_ROOT,
+            json={
+                "date_range": {"type": "single", "date": "2026-03-01"},
+                "query": {
+                    "axes": {"measures": [{"field": "volume", "aggregation": "histogram", "alias": "volume_hist"}]},
+                    "format": "csv",
+                },
+            },
+        )
+        assert r.status_code == 422
+        assert r.json()["code"] == "AGGREGATION_NOT_SUPPORTED"
+
+    def test_export_incompatible_aggregation_returns_aggregation_not_supported(self, client: TestClient) -> None:
+        r = client.post(
+            EXPORTS_ROOT,
+            json={
+                "date_range": {"type": "single", "date": "2026-03-01"},
+                "query": {
+                    "axes": {"measures": [{"field": "symbol", "aggregation": "sum", "alias": "sum_symbol"}]},
+                    "format": "csv",
+                },
+            },
+        )
+        assert r.status_code == 422
+        assert r.json()["code"] == "AGGREGATION_NOT_SUPPORTED"

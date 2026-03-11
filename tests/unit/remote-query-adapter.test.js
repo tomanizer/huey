@@ -95,7 +95,7 @@ describe('RemoteQueryAdapter', () => {
     }).toThrow('does not support filter type');
   });
 
-  test('builds cells query with uppercase aggregation names', () => {
+  test('builds cells query with normalized lowercase aggregation ids', () => {
     const queryModel = {
       getRowsAxis: () => ({ getItems: () => [{ columnName: 'symbol' }] }),
       getColumnsAxis: () => ({ getItems: () => [{ columnName: 'exchange' }] }),
@@ -107,12 +107,34 @@ describe('RemoteQueryAdapter', () => {
       { columnName: 'volume', aggregator: 'avg' },
     ]);
 
-    expect(query.axes.measures[0].aggregation).toBe('SUM');
-    expect(query.axes.measures[1].aggregation).toBe('AVG');
+    expect(query.axes.measures[0].aggregation).toBe('sum');
+    expect(query.axes.measures[1].aggregation).toBe('avg');
     expect(query.axes.measures[0].alias).not.toBe(query.axes.measures[1].alias);
   });
 
-  test('throws for unsupported cell aggregator', () => {
+  test('maps extended aggregator names to API ids', () => {
+    const queryModel = {
+      getRowsAxis: () => ({ getItems: () => [] }),
+      getColumnsAxis: () => ({ getItems: () => [] }),
+      getFiltersAxis: () => ({ getItems: () => [] }),
+    };
+
+    const query = RemoteQueryAdapter.createRemoteCellsQuery(queryModel, 1, 1, [
+      { columnName: 'volume', aggregator: 'distinct count' },
+      { columnName: 'flag', aggregator: 'count if true' },
+      { columnName: 'symbol', aggregator: 'unique values' },
+      { columnName: 'volume', aggregator: 'histogram' },
+    ]);
+
+    expect(query.axes.measures.map((measure) => measure.aggregation)).toEqual([
+      'distinct_count',
+      'count_if_true',
+      'unique_list',
+      'histogram'
+    ]);
+  });
+
+  test('throws on unknown aggregator name', () => {
     const queryModel = {
       getRowsAxis: () => ({ getItems: () => [] }),
       getColumnsAxis: () => ({ getItems: () => [] }),
@@ -121,7 +143,7 @@ describe('RemoteQueryAdapter', () => {
 
     expect(() => {
       RemoteQueryAdapter.createRemoteCellsQuery(queryModel, 1, 1, [
-        { columnName: 'volume', aggregator: 'distinct count' },
+        { columnName: 'volume', aggregator: 'some unknown aggregator' },
       ]);
     }).toThrow('does not support aggregator');
   });

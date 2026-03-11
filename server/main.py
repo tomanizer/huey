@@ -169,6 +169,8 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     """Normalize FastAPI validation errors into the ErrorResponse envelope."""
     clean_errors = []
     has_filter_error = False
+    has_sort_by_error = False
+    has_aggregation_error = False
     for err in exc.errors():
         entry = {
             "loc": list(err.get("loc", [])),
@@ -177,12 +179,27 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
         }
         if entry["type"] == "filter_invalid" or "filters" in entry["loc"]:
             has_filter_error = True
+        if entry["type"] == "sort_by_required":
+            has_sort_by_error = True
+        if entry["type"] == "aggregation_not_supported":
+            has_aggregation_error = True
         if "ctx" in err:
             entry["ctx"] = jsonable_encoder(err["ctx"])
         clean_errors.append(entry)
+    code = "VALIDATION_ERROR"
+    message = "Request validation failed"
+    if has_filter_error:
+        code = "FILTER_INVALID"
+        message = "Filter validation failed"
+    elif has_sort_by_error:
+        code = "SORT_BY_REQUIRED"
+        message = "sort_by is required for this aggregation"
+    elif has_aggregation_error:
+        code = "AGGREGATION_NOT_SUPPORTED"
+        message = "Aggregation is not supported for this request"
     body = ErrorResponse(
-        code="FILTER_INVALID" if has_filter_error else "VALIDATION_ERROR",
-        message="Filter validation failed" if has_filter_error else "Request validation failed",
+        code=code,
+        message=message,
         request_id=get_request_id() or None,
         details={"errors": clean_errors},
     )
