@@ -468,9 +468,7 @@ export class TupleSet extends DataSetComponent {
   #remoteResponseToResultSet(apiResponse, axisItems, includeCountAll){
     const items = apiResponse.items || [];
     const totalCount = apiResponse.total_count !== null ? apiResponse.total_count : items.length;
-    const hasGroupingId = items.some((item) => {
-      return item && Object.prototype.hasOwnProperty.call(item, 'grouping_id') && item.grouping_id !== null;
-    });
+    const hasGroupingId = items.some((item) => item && item.grouping_id != null);
     const fields = [];
     if (hasGroupingId) fields.push({ name: TupleSet.groupingIdAlias });
     axisItems.forEach((item) => {

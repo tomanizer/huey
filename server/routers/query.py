@@ -71,6 +71,15 @@ def _time_filter_metadata(dataset_id: str) -> tuple[bool, str | None]:
     return True, source.time_filter.column
 
 
+def _create_meta_response(result: dict[str, object], cache_status: str) -> MetaResponse:
+    """Build per-response query metadata outside cached payloads."""
+    return MetaResponse(
+        execution_ms=round(float(result.get("duration_ms", 0.0)), 2),
+        cache_status=cache_status,
+        request_id=get_request_id() or None,
+    )
+
+
 def _ensure_date_range_supported(dataset_id: str, date_range) -> None:
     if (
         date_range is not None
@@ -303,11 +312,7 @@ async def post_query_tuples(
         total_count=resp_body["total_count"],
         items=[TupleItem(**item) for item in resp_body["items"]],
         paging=PagingResponse(**resp_body["paging"]),
-        meta=MetaResponse(
-            execution_ms=round(result.get("duration_ms", 0.0), 2),
-            cache_status=cache_status,
-            request_id=get_request_id() or None,
-        ),
+        meta=_create_meta_response(result, cache_status),
     )
 
 
@@ -553,11 +558,7 @@ async def post_query_cells(
     )
 
     response_payload = dict(result["response"])
-    response_payload["meta"] = MetaResponse(
-        execution_ms=round(result.get("duration_ms", 0.0), 2),
-        cache_status=cache_status,
-        request_id=get_request_id() or None,
-    )
+    response_payload["meta"] = _create_meta_response(result, cache_status)
     return CellsResponse(**response_payload)
 
 
@@ -686,9 +687,5 @@ async def post_query_members(
         total_count=resp_body["total_count"],
         items=resp_body["items"],
         paging=PagingResponse(**resp_body["paging"]),
-        meta=MetaResponse(
-            execution_ms=round(result.get("duration_ms", 0.0), 2),
-            cache_status=cache_status,
-            request_id=get_request_id() or None,
-        ),
+        meta=_create_meta_response(result, cache_status),
     )
