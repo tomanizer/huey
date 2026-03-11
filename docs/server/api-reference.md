@@ -30,13 +30,12 @@ Interactive OpenAPI:
 - `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` are returned when rate limiting is enabled for the endpoint.
 - `Retry-After` is returned on `429` responses.
 
-### Shared request envelope (query/export)
+### Shared request shapes
 
 ```json
 {
-  "dataset_id": "trades_v1",
   "date_range": {"type": "single", "date": "2026-03-01"},
-  "query": {}
+  "... endpoint-specific fields ..."
 }
 ```
 
@@ -128,7 +127,7 @@ Success `200` example:
         "schema": "/api/v1/datasets/trades_v1/schema",
         "tuples": "/api/v1/datasets/trades_v1/query/tuples",
         "cells": "/api/v1/datasets/trades_v1/query/cells",
-        "picklist": "/api/v1/datasets/trades_v1/query/picklist"
+        "members": "/api/v1/datasets/trades_v1/query/members"
       }
     }
   ],
@@ -178,7 +177,7 @@ Success `200` example:
     "schema": "/api/v1/datasets/trades_v1/schema",
     "tuples": "/api/v1/datasets/trades_v1/query/tuples",
     "cells": "/api/v1/datasets/trades_v1/query/cells",
-    "picklist": "/api/v1/datasets/trades_v1/query/picklist"
+    "members": "/api/v1/datasets/trades_v1/query/members"
   }
 }
 ```
@@ -231,18 +230,17 @@ Authentication: conditional API key.
 
 Request body fields:
 
-- `dataset_id` (string, required)
-- `date_range` (required)
-- `query.fields` (array of objects):
+- `date_range` (optional)
+- `fields` (array of objects):
   - `field` (string, required)
   - `sort` (`ASC` or `DESC`, optional)
   - `derivation` (optional)
   - `include_totals` (optional)
-- `query.filters` (optional):
+- `filters` (optional):
   - `field` (string)
   - `operator` (`INCLUDE`, `EXCLUDE`, `LIKE`, `BETWEEN`)
   - `values` (array)
-- `query.paging` (optional):
+- `paging` (optional):
   - `limit` (`1..10000`, default from config)
   - `offset` (`>=0`)
 
@@ -250,13 +248,10 @@ Request example:
 
 ```json
 {
-  "dataset_id": "trades_v1",
   "date_range": {"type": "single", "date": "2026-03-01"},
-  "query": {
-    "fields": [{"field": "symbol", "sort": "ASC"}],
-    "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL", "GOOG"]}],
-    "paging": {"limit": 10, "offset": 0}
-  }
+  "fields": [{"field": "symbol", "sort": "ASC"}],
+  "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL", "GOOG"]}],
+  "paging": {"limit": 10, "offset": 0}
 }
 ```
 
@@ -286,32 +281,30 @@ Authentication: conditional API key.
 
 Request body fields:
 
-- `dataset_id` (string, required)
-- `date_range` (required)
-- `query.axes.rows` (array of `{ "field": string }`)
-- `query.axes.columns` (array of `{ "field": string }`)
-- `query.axes.measures` (array):
+- `date_range` (optional)
+- `axes.rows` (array of `{ "field": string }`)
+- `axes.columns` (array of `{ "field": string }`)
+- `axes.measures` (array):
   - `field` (string)
   - `aggregation` (`SUM`, `COUNT`, `AVG`, `MIN`, `MAX`)
   - `alias` (string, optional)
-- `query.rows` and `query.columns` windows (optional):
-  - `start_index` (`>=0`)
-  - `count` (`>=1`)
-- `query.filters` (optional)
+- `window.rows` and `window.columns` (optional):
+  - `offset` (`>=0`)
+  - `limit` (`>=1`)
+- `filters` (optional)
 
 Request example:
 
 ```json
 {
-  "dataset_id": "trades_v1",
   "date_range": {"type": "single", "date": "2026-03-01"},
-  "query": {
-    "rows": {"start_index": 0, "count": 10},
-    "axes": {
-      "rows": [{"field": "symbol"}],
-      "columns": [],
-      "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
-    }
+  "window": {
+    "rows": {"offset": 0, "limit": 10}
+  },
+  "axes": {
+    "rows": [{"field": "symbol"}],
+    "columns": [],
+    "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
   }
 }
 ```
@@ -336,7 +329,7 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /api/v1/datasets/{dataset_id}/query/picklist`
+## `POST /api/v1/datasets/{dataset_id}/query/members`
 
 Returns distinct values for one field, typically used for filter UIs.
 
@@ -344,24 +337,20 @@ Authentication: conditional API key.
 
 Request body fields:
 
-- `dataset_id` (string, required)
-- `date_range` (required)
-- `query.field` (string)
-- `query.search` (string, optional; `*` is translated to SQL `%` wildcard)
-- `query.filters` (optional)
-- `query.paging` (optional)
+- `date_range` (optional)
+- `field` (string)
+- `search` (string, optional; `*` is translated to SQL `%` wildcard)
+- `filters` (optional)
+- `paging` (optional)
 
 Request example:
 
 ```json
 {
-  "dataset_id": "trades_v1",
   "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
-  "query": {
-    "field": "symbol",
-    "search": "A*",
-    "paging": {"limit": 10, "offset": 0}
-  }
+  "field": "symbol",
+  "search": "A*",
+  "paging": {"limit": 10, "offset": 0}
 }
 ```
 

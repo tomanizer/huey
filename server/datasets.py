@@ -550,6 +550,15 @@ def _infer_time_dimension(
             time_dimension["max"] = profile["time_max"]
     return time_dimension
 
+
+def get_time_dimension(dataset_id: str) -> dict[str, Any] | None:
+    """Return the configured or inferred time dimension metadata for a dataset."""
+    entry = get_dataset_entry(dataset_id)
+    if entry is None:
+        return None
+    source = get_dataset_source(dataset_id)
+    return _infer_time_dimension(entry, source, None)
+
 def _compute_dataset_profile(
     dataset_id: str,
     dataset_entry: dict[str, Any],
@@ -663,7 +672,7 @@ def build_dataset_links(dataset_id: str) -> dict[str, str]:
         "schema": f"{base}/schema",
         "tuples": f"{base}/query/tuples",
         "cells": f"{base}/query/cells",
-        "picklist": f"{base}/query/picklist",
+        "members": f"{base}/query/members",
     }
 
 

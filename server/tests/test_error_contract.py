@@ -34,11 +34,25 @@ def _clear_export_jobs():
         store._conn.commit()
 
 
-def _query_body(dataset_id: str = "trades_v1") -> dict:
+def _query_body(endpoint: str = "tuples") -> dict:
+    base = {"date_range": {"type": "single", "date": "2024-01-15"}}
+    if endpoint == "tuples":
+        return {
+            **base,
+            "fields": [{"field": "symbol"}],
+        }
+    if endpoint == "cells":
+        return {
+            **base,
+            "axes": {
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
+            },
+        }
     return {
-        "dataset_id": dataset_id,
-        "date_range": {"type": "single", "date": "2024-01-15"},
-        "query": {},
+        **base,
+        "field": "symbol",
     }
 
 
@@ -50,7 +64,7 @@ def _export_body(dataset_id: str = "trades_v1") -> dict:
     }
 
 
-QUERY_ENDPOINTS = ("tuples", "cells", "picklist")
+QUERY_ENDPOINTS = ("tuples", "cells", "members")
 EXPORTS_ROOT = "/api/v1/exports"
 
 
@@ -71,7 +85,7 @@ class TestErrorResponseSchema:
 
     @pytest.mark.parametrize("endpoint", QUERY_ENDPOINTS)
     def test_query_404_envelope(self, client: TestClient, endpoint: str) -> None:
-        r = client.post(_query_path(endpoint, "no_such"), json=_query_body(dataset_id="no_such"))
+        r = client.post(_query_path(endpoint, "no_such"), json=_query_body(endpoint))
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "DATASET_NOT_FOUND"
@@ -165,21 +179,12 @@ class TestErrorResponseSchema:
 
         monkeypatch.setattr(query_router.db_manager, "execute_sql_async", execute_raise_unavailable)
 
-        body = _query_body(dataset_id="not_materialized_ds")
+        body = _query_body(endpoint)
         if endpoint == "tuples":
-            body["query"] = {"fields": [{"field": "symbol"}]}
-        elif endpoint == "picklist":
-            body["query"] = {"field": "symbol"}
-        else:
-            body["query"] = {
-                "axes": {
-                    "rows": [{"field": "symbol"}],
-                    "columns": [],
-                    "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_vol"}],
-                },
-            }
-
-        r = client.post(_query_path(endpoint, body["dataset_id"]), json=body)
+            body["fields"] = [{"field": "symbol"}]
+        elif endpoint == "members":
+            body["field"] = "symbol"
+        r = client.post(_query_path(endpoint, "not_materialized_ds"), json=body)
         assert r.status_code == 409
         payload = r.json()
         assert payload["code"] == "DATASET_UNAVAILABLE"
@@ -210,7 +215,7 @@ class TestValidationErrorEnvelope:
     """422 validation errors wrap Pydantic details in standard envelope."""
 
     def test_missing_required_field(self, client: TestClient) -> None:
-        r = client.post(_query_path("tuples"), json={"query": {}})
+        r = client.post(_query_path("tuples"), json={})
         assert r.status_code == 422
         body = r.json()
         assert body["code"] == "VALIDATION_ERROR"
@@ -221,8 +226,8 @@ class TestValidationErrorEnvelope:
 
     def test_invalid_date_format(self, client: TestClient) -> None:
         r = client.post(_query_path("tuples"), json={
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "not-a-date"},
+            "fields": [{"field": "symbol"}],
         })
         assert r.status_code == 422
         body = r.json()
@@ -230,9 +235,9 @@ class TestValidationErrorEnvelope:
 
     def test_invalid_filter_operator(self, client: TestClient) -> None:
         r = client.post(_query_path("tuples"), json={
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2024-01-15"},
-            "query": {"filters": [{"field": "symbol", "operator": "NOPE", "values": ["X"]}]},
+            "fields": [{"field": "symbol"}],
+            "filters": [{"field": "symbol", "operator": "NOPE", "values": ["X"]}],
         })
         assert r.status_code == 422
         body = r.json()
@@ -255,7 +260,7 @@ class TestRequestIdInErrors:
     def test_request_id_from_header(self, client: TestClient) -> None:
         r = client.post(
             _query_path("tuples", "no_such"),
-            json=_query_body(dataset_id="no_such"),
+            json=_query_body("tuples"),
             headers={"X-Request-ID": "trace-abc"},
         )
         assert r.status_code == 404
@@ -263,7 +268,7 @@ class TestRequestIdInErrors:
         assert body.get("request_id") == "trace-abc"
 
     def test_request_id_auto_generated(self, client: TestClient) -> None:
-        r = client.post(_query_path("tuples", "no_such"), json=_query_body(dataset_id="no_such"))
+        r = client.post(_query_path("tuples", "no_such"), json=_query_body("tuples"))
         assert r.status_code == 404
         body = r.json()
         assert "request_id" in body
@@ -330,9 +335,8 @@ class TestInternalErrorEnvelope:
         # raise_server_exceptions=False so we get the HTTP response instead of the re-raised exception
         no_raise_client = TestClient(app, raise_server_exceptions=False)
         r = no_raise_client.post(_query_path("cells"), json={
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
-            "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "v"}]}},
+            "axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "v"}]},
         })
         assert r.status_code == 500
         body = r.json()
@@ -360,16 +364,16 @@ class TestHappyPathUnchanged:
         assert "fields" in r.json()
 
     def test_query_tuples_success(self, client: TestClient) -> None:
-        r = client.post(_query_path("tuples"), json=_query_body())
+        r = client.post(_query_path("tuples"), json=_query_body("tuples"))
         assert r.status_code == 200
         assert "items" in r.json()
 
     def test_query_cells_success(self, client: TestClient) -> None:
-        r = client.post(_query_path("cells"), json=_query_body())
+        r = client.post(_query_path("cells"), json=_query_body("cells"))
         assert r.status_code == 200
         assert "cells" in r.json()
 
-    def test_query_picklist_success(self, client: TestClient) -> None:
-        r = client.post(_query_path("picklist"), json=_query_body())
+    def test_query_members_success(self, client: TestClient) -> None:
+        r = client.post(_query_path("members"), json=_query_body("members"))
         assert r.status_code == 200
         assert "values" in r.json()

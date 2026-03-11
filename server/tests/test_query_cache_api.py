@@ -44,6 +44,33 @@ def _enable_cache(monkeypatch, *, max_item_bytes: int | None = None) -> None:
     asyncio.run(reset_query_cache())
 
 
+def _tuples_body() -> dict:
+    return {
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 0},
+    }
+
+
+def _members_body() -> dict:
+    return {
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "field": "symbol",
+        "paging": {"limit": 5, "offset": 0},
+    }
+
+
+def _cells_body() -> dict:
+    return {
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
+        },
+    }
+
+
 def test_tuples_cache_hit(monkeypatch, client: TestClient) -> None:
     _enable_cache(monkeypatch)
     call_count = {"n": 0}
@@ -55,13 +82,9 @@ def test_tuples_cache_hit(monkeypatch, client: TestClient) -> None:
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
-    }
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    body = _tuples_body()
+    r1 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json() == r2.json()
@@ -79,13 +102,9 @@ def test_picklist_cache_hit(monkeypatch, client: TestClient) -> None:
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "paging": {"limit": 5, "offset": 0}},
-    }
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    body = _members_body()
+    r1 = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json() == r2.json()
@@ -103,19 +122,9 @@ def test_cells_cache_hit(monkeypatch, client: TestClient) -> None:
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            }
-        },
-    }
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    body = _cells_body()
+    r1 = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json()["cells"]
@@ -134,19 +143,9 @@ def test_cells_not_cached_when_too_large(monkeypatch, client: TestClient) -> Non
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            }
-        },
-    }
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    body = _cells_body()
+    r1 = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json()["cells"]
@@ -169,13 +168,9 @@ def test_picklist_dim_version_token_cache_hit(monkeypatch, client: TestClient) -
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "paging": {"limit": 5, "offset": 0}},
-    }
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    body = _members_body()
+    r1 = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
     # Second request must be a cache hit – DB should only be called once.
@@ -193,22 +188,18 @@ def test_cache_miss_when_data_version_token_changes(monkeypatch, client: TestCli
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
-    }
+    body = _tuples_body()
     datasets.set_partition_metadata(
         "trades_v1",
         {"partitions": [{"date": "2026-03-01", "files": [{"path": "p1.parquet", "size": 100, "etag": "e1"}]}]},
     )
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r1 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
 
     datasets.set_partition_metadata(
         "trades_v1",
         {"partitions": [{"date": "2026-03-01", "files": [{"path": "p1.parquet", "size": 101, "etag": "e1"}]}]},
     )
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
 
     assert r1.status_code == 200
     assert r2.status_code == 200
@@ -228,23 +219,19 @@ def test_picklist_dim_version_token_cache_miss_on_token_change(monkeypatch, clie
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"field": "symbol", "paging": {"limit": 5, "offset": 0}},
-    }
+    body = _members_body()
 
     # First request with token v1.
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "token-v1")
     get_settings.cache_clear()
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    r1 = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r1.status_code == 200
     assert call_count["n"] == 1
 
     # Change the token – the cache key changes, so this is a miss.
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "token-v2")
     get_settings.cache_clear()
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/picklist", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r2.status_code == 200
     assert call_count["n"] == 2  # DB called again due to key change
 
@@ -262,21 +249,17 @@ def test_dim_version_token_change_does_not_invalidate_fact_cache(monkeypatch, cl
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
 
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
-    }
+    body = _tuples_body()
 
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "dim-v1")
     get_settings.cache_clear()
-    r1 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r1 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r1.status_code == 200
     assert r1.json().get("items")
     assert call_count["n"] == 1
 
     monkeypatch.setenv("QUERYSERVICE_DIM_VERSION_TOKEN", "dim-v2")
     get_settings.cache_clear()
-    r2 = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r2.status_code == 200
     assert call_count["n"] == 1

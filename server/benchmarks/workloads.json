@@ -6,10 +6,8 @@
       "path": "/api/v1/datasets/trades_v1/query/tuples",
       "warmup_requests": 2,
       "body": {
-        "query": {
-          "fields": [{"field": "symbol"}],
-          "paging": {"limit": 50, "offset": 0}
-        }
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 50, "offset": 0}
       }
     },
     {
@@ -18,11 +16,9 @@
       "path": "/api/v1/datasets/trades_v1/query/tuples",
       "warmup_requests": 2,
       "body": {
-        "query": {
-          "fields": [{"field": "symbol"}],
-          "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
-          "paging": {"limit": 50, "offset": 0}
-        }
+        "fields": [{"field": "symbol"}],
+        "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
+        "paging": {"limit": 50, "offset": 0}
       }
     },
     {
@@ -31,12 +27,10 @@
       "path": "/api/v1/datasets/trades_v1/query/cells",
       "warmup_requests": 2,
       "body": {
-        "query": {
-          "axes": {
-            "rows": [{"field": "symbol"}],
-            "columns": [],
-            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
-          }
+        "axes": {
+          "rows": [{"field": "symbol"}],
+          "columns": [],
+          "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
         }
       }
     },
@@ -46,41 +40,35 @@
       "path": "/api/v1/datasets/trades_v1/query/cells",
       "warmup_requests": 2,
       "body": {
-        "query": {
-          "axes": {
-            "rows": [{"field": "date"}],
-            "columns": [{"field": "symbol"}],
-            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
-          }
+        "axes": {
+          "rows": [{"field": "date"}],
+          "columns": [{"field": "symbol"}],
+          "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
         }
       }
     },
     {
       "name": "picklist_symbol",
       "method": "POST",
-      "path": "/api/v1/datasets/trades_v1/query/picklist",
+      "path": "/api/v1/datasets/trades_v1/query/members",
       "warmup_requests": 2,
       "body": {
-        "query": {
-          "field": "symbol",
-          "search": "",
-          "filters": [],
-          "paging": {"limit": 100, "offset": 0}
-        }
+        "field": "symbol",
+        "search": "",
+        "filters": [],
+        "paging": {"limit": 100, "offset": 0}
       }
     },
     {
       "name": "picklist_symbol_search",
       "method": "POST",
-      "path": "/api/v1/datasets/trades_v1/query/picklist",
+      "path": "/api/v1/datasets/trades_v1/query/members",
       "warmup_requests": 2,
       "body": {
-        "query": {
-          "field": "symbol",
-          "search": "A*",
-          "filters": [],
-          "paging": {"limit": 100, "offset": 0}
-        }
+        "field": "symbol",
+        "search": "A*",
+        "filters": [],
+        "paging": {"limit": 100, "offset": 0}
       }
     },
     {

@@ -12,7 +12,7 @@ def test_list_datasets_returns_links_and_cursor(client: TestClient) -> None:
     item = next(item for item in body["items"] if item["id"] == "trades_v1")
     assert item["links"]["self"] == "/api/v1/datasets/trades_v1"
     assert item["links"]["schema"] == "/api/v1/datasets/trades_v1/schema"
-    assert item["links"]["picklist"] == "/api/v1/datasets/trades_v1/query/picklist"
+    assert item["links"]["members"] == "/api/v1/datasets/trades_v1/query/members"
 
 
 def test_list_datasets_cursor_paginates(client: TestClient) -> None:

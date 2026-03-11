@@ -31,12 +31,14 @@ function normalizeDateRange(dateRange) {
   return { type: 'single', date };
 }
 
-function buildEnvelope(datasetId, dateRange, query) {
-  return {
-    dataset_id: datasetId,
-    date_range: normalizeDateRange(dateRange),
-    query: query || {}
+function buildRequestBody(dateRange, query) {
+  const body = {
+    ...(query || {})
   };
+  if (dateRange) {
+    body.date_range = normalizeDateRange(dateRange);
+  }
+  return body;
 }
 
 function buildDatasetPath(datasource, suffix) {
@@ -108,13 +110,12 @@ class RemoteConnection {
   }
 
   fetchTuples(dateRange, query, clientContext) {
-    const datasetId = this.#datasource.getDatasetId();
-    const envelope = buildEnvelope(datasetId, dateRange, query);
+    const requestBody = buildRequestBody(dateRange, query);
     this.#abortController = new AbortController();
     return fetch(buildDatasetPath(this.#datasource, '/query/tuples'), {
       method: 'POST',
       headers: buildHeaders(this.#datasource, true, clientContext),
-      body: JSON.stringify(envelope),
+      body: JSON.stringify(requestBody),
       signal: this.#abortController.signal
     }).then((res) => {
       if (!res.ok) {
@@ -134,13 +135,12 @@ class RemoteConnection {
   }
 
   fetchCells(dateRange, query, clientContext) {
-    const datasetId = this.#datasource.getDatasetId();
-    const envelope = buildEnvelope(datasetId, dateRange, query);
+    const requestBody = buildRequestBody(dateRange, query);
     this.#abortController = new AbortController();
     return fetch(buildDatasetPath(this.#datasource, '/query/cells'), {
       method: 'POST',
       headers: buildHeaders(this.#datasource, true, clientContext),
-      body: JSON.stringify(envelope),
+      body: JSON.stringify(requestBody),
       signal: this.#abortController.signal
     }).then((res) => {
       if (!res.ok) {
@@ -160,13 +160,12 @@ class RemoteConnection {
   }
 
   fetchPicklist(dateRange, query, clientContext) {
-    const datasetId = this.#datasource.getDatasetId();
-    const envelope = buildEnvelope(datasetId, dateRange, query);
+    const requestBody = buildRequestBody(dateRange, query);
     this.#abortController = new AbortController();
-    return fetch(buildDatasetPath(this.#datasource, '/query/picklist'), {
+    return fetch(buildDatasetPath(this.#datasource, '/query/members'), {
       method: 'POST',
       headers: buildHeaders(this.#datasource, true, clientContext),
-      body: JSON.stringify(envelope),
+      body: JSON.stringify(requestBody),
       signal: this.#abortController.signal
     }).then((res) => {
       if (!res.ok) {

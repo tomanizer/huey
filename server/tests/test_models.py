@@ -8,6 +8,7 @@ from server.models import (
     AxesSpec,
     AxisField,
     CellsQueryBody,
+    CellsWindowRequest,
     DateRangeRange,
     DateRangeSingle,
     ExportQueryBody,
@@ -15,13 +16,11 @@ from server.models import (
     MeasureSpec,
     PagingResponse,
     PagingSpec,
-    PicklistQueryBody,
     QueryCellsRequest,
     QueryPicklistRequest,
     QueryTuplesRequest,
     TupleFieldSpec,
     TupleFilter,
-    TuplesQueryBody,
 )
 
 
@@ -203,66 +202,70 @@ class TestExportQueryBody:
 class TestQueryTuplesRequest:
     def test_valid_full(self) -> None:
         req = QueryTuplesRequest(
-            dataset_id="trades_v1",
             date_range={"type": "single", "date": "2026-03-01"},
-            query={"axis": "rows", "fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+            fields=[{"field": "symbol"}],
+            paging={"limit": 10, "offset": 0},
         )
-        assert req.dataset_id == "trades_v1"
         assert isinstance(req.date_range, DateRangeSingle)
-        assert isinstance(req.query, TuplesQueryBody)
-        assert req.query.axis == "rows"
-        assert req.query.paging.limit == 10
+        assert req.fields[0].field == "symbol"
+        assert req.paging.limit == 10
 
     def test_empty_query(self) -> None:
-        req = QueryTuplesRequest(
-            dataset_id="trades_v1",
-            date_range={"type": "single", "date": "2026-03-01"},
-            query={},
-        )
-        assert req.query.axis is None
-        assert req.query.paging is None
+        with pytest.raises(ValidationError):
+            QueryTuplesRequest(
+                date_range={"type": "single", "date": "2026-03-01"},
+            )
 
     def test_default_query(self) -> None:
-        req = QueryTuplesRequest(
-            dataset_id="trades_v1",
-            date_range={"type": "single", "date": "2026-03-01"},
-        )
-        assert req.query.axis is None
-
-    def test_missing_date_range(self) -> None:
         with pytest.raises(ValidationError):
-            QueryTuplesRequest(dataset_id="trades_v1", query={})
+            QueryTuplesRequest(date_range={"type": "single", "date": "2026-03-01"})
+
+    def test_missing_date_range_allowed(self) -> None:
+        req = QueryTuplesRequest(fields=[{"field": "symbol"}])
+        assert req.date_range is None
+
+    def test_dataset_id_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            QueryTuplesRequest(dataset_id="trades_v1", fields=[{"field": "symbol"}])
 
 
 class TestQueryCellsRequest:
     def test_valid_full(self) -> None:
         req = QueryCellsRequest(
-            dataset_id="trades_v1",
             date_range={"type": "range", "start": "2026-01-01", "end": "2026-03-01"},
-            query={
-                "rows": {"start_index": 0, "count": 10},
-                "columns": {"start_index": 0, "count": 5},
-                "axes": {"rows": [], "columns": [], "measures": []},
-                "filters": [],
+            window={
+                "rows": {"offset": 0, "limit": 10},
+                "columns": {"offset": 0, "limit": 5},
             },
+            axes={"rows": [], "columns": [], "measures": []},
+            filters=[],
         )
-        assert isinstance(req.query, CellsQueryBody)
-        assert req.query.rows is not None
-        assert req.query.rows.start_index == 0
-        assert req.query.rows.count == 10
+        assert isinstance(req.window, CellsWindowRequest)
+        assert req.window.rows is not None
+        assert req.window.rows.offset == 0
+        assert req.window.rows.limit == 10
+
+    def test_missing_date_range_allowed(self) -> None:
+        req = QueryCellsRequest(axes={"rows": [], "columns": [], "measures": []})
+        assert req.date_range is None
 
 
 class TestQueryPicklistRequest:
     def test_valid_full(self) -> None:
         req = QueryPicklistRequest(
-            dataset_id="trades_v1",
             date_range={"type": "single", "date": "2026-03-01"},
-            query={"field": "symbol", "search": "AA*", "filters": [], "paging": {"limit": 50, "offset": 0}},
+            field="symbol",
+            search="AA*",
+            filters=[],
+            paging={"limit": 50, "offset": 0},
         )
-        assert isinstance(req.query, PicklistQueryBody)
-        assert req.query.field == "symbol"
-        assert req.query.search == "AA*"
-        assert req.query.paging.limit == 50
+        assert req.field == "symbol"
+        assert req.search == "AA*"
+        assert req.paging.limit == 50
+
+    def test_missing_date_range_allowed(self) -> None:
+        req = QueryPicklistRequest(field="symbol")
+        assert req.date_range is None
 
 
 class TestExportRequest:

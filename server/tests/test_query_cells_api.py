@@ -8,18 +8,16 @@ from server.engine import db_manager
 
 
 def test_query_cells_returns_aggregated_data(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json=body)
     assert r.status_code == 200
     data = r.json()
     assert len(data["cells"]) > 0
@@ -30,24 +28,22 @@ def test_query_cells_returns_aggregated_data(client: TestClient) -> None:
 
 
 def test_query_cells_multiple_aggregations(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [
-                    {"field": "volume", "aggregation": "SUM", "alias": "sum_vol"},
-                    {"field": "volume", "aggregation": "AVG", "alias": "avg_vol"},
-                    {"field": "volume", "aggregation": "MIN", "alias": "min_vol"},
-                    {"field": "volume", "aggregation": "MAX", "alias": "max_vol"},
-                    {"field": "volume", "aggregation": "COUNT", "alias": "cnt_vol"},
-                ],
-            },
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [
+                {"field": "volume", "aggregation": "SUM", "alias": "sum_vol"},
+                {"field": "volume", "aggregation": "AVG", "alias": "avg_vol"},
+                {"field": "volume", "aggregation": "MIN", "alias": "min_vol"},
+                {"field": "volume", "aggregation": "MAX", "alias": "max_vol"},
+                {"field": "volume", "aggregation": "COUNT", "alias": "cnt_vol"},
+            ],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json=body)
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) > 0
@@ -56,19 +52,17 @@ def test_query_cells_multiple_aggregations(client: TestClient) -> None:
 
 
 def test_query_cells_with_filter(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
-            "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL"]}],
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
+        "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL"]}],
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json=body)
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) == 1
@@ -76,36 +70,30 @@ def test_query_cells_with_filter(client: TestClient) -> None:
 
 
 def test_query_cells_empty_axes_returns_empty(client: TestClient) -> None:
-    body = {
-        "dataset_id": "trades_v1",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"axes": {"rows": [], "columns": [], "measures": []}},
-    }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    body = {"date_range": {"type": "single", "date": "2026-03-01"}, "axes": {"rows": [], "columns": [], "measures": []}}
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 200
     assert r.json()["cells"] == []
 
 
 def test_query_cells_dataset_not_found(client: TestClient) -> None:
-    body = {"dataset_id": "nonexistent", "date_range": {"type": "single", "date": "2026-03-01"}, "query": {}}
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    body = {"date_range": {"type": "single", "date": "2026-03-01"}, "axes": {"rows": [], "columns": [], "measures": []}}
+    r = client.post("/api/v1/datasets/nonexistent/query/cells", json=body)
     assert r.status_code == 404
 
 
 def test_query_cells_row_window_limits_results(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "rows": {"start_index": 0, "count": 1},
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "window": {"rows": {"offset": 0, "limit": 1}},
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json=body)
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) == 1
@@ -117,19 +105,18 @@ def test_query_cells_window_too_large_returns_error(client: TestClient, monkeypa
     settings = get_settings()
     monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "rows": {"start_index": 0, "count": 2},
-            "columns": {"start_index": 0, "count": 2},
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [{"field": "date"}],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "window": {
+            "rows": {"offset": 0, "limit": 2},
+            "columns": {"offset": 0, "limit": 2},
+        },
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [{"field": "date"}],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 400
     data = r.json()
     assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
@@ -140,17 +127,14 @@ def test_query_cells_no_windows_cap_enforced(client: TestClient, monkeypatch: py
     settings = get_settings()
     monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 400
     data = r.json()
     assert data["code"] == "CELLS_WINDOW_TOO_LARGE"
@@ -168,18 +152,15 @@ def test_query_cells_row_window_only_cap_enforced(client: TestClient, monkeypatc
     settings = get_settings()
     monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
-        "query": {
-            "rows": {"start_index": 0, "count": 1},
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [{"field": "date"}],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "window": {"rows": {"offset": 0, "limit": 1}},
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [{"field": "date"}],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 400
     assert r.json()["code"] == "CELLS_WINDOW_TOO_LARGE"
 
@@ -194,18 +175,15 @@ def test_query_cells_col_window_only_cap_enforced(client: TestClient, monkeypatc
     settings = get_settings()
     monkeypatch.setattr(settings, "max_cells_per_response", 1, raising=False)
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "columns": {"start_index": 0, "count": 1},
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [{"field": "date"}],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "window": {"columns": {"offset": 0, "limit": 1}},
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [{"field": "date"}],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 400
     assert r.json()["code"] == "CELLS_WINDOW_TOO_LARGE"
 
@@ -215,17 +193,14 @@ def test_query_cells_within_cap_succeeds(client: TestClient, monkeypatch: pytest
     settings = get_settings()
     monkeypatch.setattr(settings, "max_cells_per_response", 10000, raising=False)
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 200
     assert len(r.json()["cells"]) > 0
 
@@ -241,17 +216,14 @@ def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> Non
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "axes": {
-                "rows": [{"field": "symbol"}],
-                "columns": [],
-                "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
-            },
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}],
         },
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/cells", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 200
     assert call_count["n"] == 1, (
         "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/cells, "

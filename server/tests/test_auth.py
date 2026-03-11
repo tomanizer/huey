@@ -10,17 +10,14 @@ INVALID_KEY = "wrong-key"
 _PROTECTED_ENDPOINTS = [
     ("GET", "/api/v1/datasets/trades_v1/schema", None, {}),
     ("POST", "/api/v1/datasets/trades_v1/query/tuples", {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": []}},
+        "fields": [{"field": "symbol"}],
     }, {}),
     ("POST", "/api/v1/datasets/trades_v1/query/cells", {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "v"}]}},
+        "axes": {"rows": [{"field": "symbol"}], "columns": [], "measures": [{"field": "volume", "aggregation": "SUM", "alias": "v"}]},
     }, {}),
-    ("POST", "/api/v1/datasets/trades_v1/query/picklist", {
-        "dataset_id": "trades_v1",
+    ("POST", "/api/v1/datasets/trades_v1/query/members", {
         "date_range": {"type": "single", "date": "2026-03-01"},
         "field": "symbol",
     }, {}),

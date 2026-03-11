@@ -73,6 +73,18 @@ class DatasetUnavailableError(AppError):
         )
 
 
+class DateRangeNotSupportedError(AppError):
+    """Raised when a client supplies date_range for a dataset without a time dimension."""
+
+    def __init__(self, dataset_id: str) -> None:
+        super().__init__(
+            code="DATE_RANGE_NOT_SUPPORTED",
+            message=f"Dataset does not support date_range filtering: {dataset_id}",
+            status_code=422,
+            details={"dataset_id": dataset_id},
+        )
+
+
 class DatasetConfigError(AppError):
     """Raised when a dataset entry is invalid or missing required source settings."""
 

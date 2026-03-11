@@ -192,8 +192,8 @@ describe('DataSet cache limits', () => {
     const connection = {
       fetchCells(dateRange, query) {
         fetchCellsCallCount += 1;
-        const rowCount = query.rows.count || 1;
-        const colCount = query.columns.count || 1;
+        const rowCount = query.window?.rows?.limit || 1;
+        const colCount = query.window?.columns?.limit || 1;
         const cells = [];
         for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
           for (let columnIndex = 0; columnIndex < colCount; columnIndex++) {
@@ -287,8 +287,8 @@ describe('DataSet cache limits', () => {
     const connection = {
       fetchCells(dateRange, query) {
         fetchCellsCallCount += 1;
-        const rowCount = query.rows.count || 1;
-        const colCount = query.columns.count || 1;
+        const rowCount = query.window?.rows?.limit || 1;
+        const colCount = query.window?.columns?.limit || 1;
         const cells = [];
         for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
           for (let columnIndex = 0; columnIndex < colCount; columnIndex++) {
@@ -392,8 +392,8 @@ describe('DataSet cache limits', () => {
     const connection = {
       fetchCells(dateRange, query) {
         fetchCellsCallCount += 1;
-        const rowCount = query.rows.count || 1;
-        const colCount = query.columns.count || 1;
+        const rowCount = query.window?.rows?.limit || 1;
+        const colCount = query.window?.columns?.limit || 1;
         const cells = [];
         for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
           for (let columnIndex = 0; columnIndex < colCount; columnIndex++) {

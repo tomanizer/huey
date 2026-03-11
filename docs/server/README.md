@@ -40,7 +40,7 @@ Typical workflows:
 
 1. Discover datasets with `GET /api/v1/datasets` and inspect metadata with `GET /api/v1/datasets/{dataset_id}`.
 2. Fetch the lightweight field list with `GET /api/v1/datasets/{dataset_id}/schema`.
-3. Build interactive queries with `POST /api/v1/datasets/{dataset_id}/query/tuples`, `POST /api/v1/datasets/{dataset_id}/query/cells`, `POST /api/v1/datasets/{dataset_id}/query/picklist`.
+3. Build interactive queries with `POST /api/v1/datasets/{dataset_id}/query/tuples`, `POST /api/v1/datasets/{dataset_id}/query/cells`, `POST /api/v1/datasets/{dataset_id}/query/members`.
 4. Trigger async export with `POST /api/v1/exports`, poll with `GET /api/v1/exports/{export_id}`, then download.
 
 ## 3. Installation and Setup
@@ -200,9 +200,9 @@ Run tuples query:
 curl -X POST 'http://localhost:8000/api/v1/datasets/trades_v1/query/tuples' \
   -H 'Content-Type: application/json' \
   -d '{
-    "dataset_id": "trades_v1",
     "date_range": {"type": "single", "date": "2026-03-01"},
-    "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 10, "offset": 0}}
+    "fields": [{"field": "symbol", "sort": "ASC"}],
+    "paging": {"limit": 10, "offset": 0}
   }'
 ```
 

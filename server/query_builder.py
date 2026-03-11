@@ -41,10 +41,10 @@ def validate_tuples_query_fields(query: TuplesQueryBody, schema_fields: set[str]
     errors: list[dict[str, Any]] = []
     for idx, f in enumerate(query.fields or []):
         if f.field not in schema_fields:
-            errors.append(_unknown_field_error(["body", "query", "fields", idx, "field"], f.field))
+            errors.append(_unknown_field_error(["body", "fields", idx, "field"], f.field))
     for idx, f in enumerate(query.filters or []):
         if f.field not in schema_fields:
-            errors.append(_unknown_field_error(["body", "query", "filters", idx, "field"], f.field))
+            errors.append(_unknown_field_error(["body", "filters", idx, "field"], f.field))
     _raise_if_unknown(errors)
 
 
@@ -60,7 +60,7 @@ def _validate_axes_fields(
             if item.field not in schema_fields:
                 errors.append(
                     _unknown_field_error(
-                        ["body", "query", "axes", axis_name, idx, "field"],
+                        ["body", "axes", axis_name, idx, "field"],
                         item.field,
                     )
                 )
@@ -73,7 +73,7 @@ def _validate_filter_fields(
 ) -> None:
     for idx, f in enumerate(filters or []):
         if f.field not in schema_fields:
-            errors.append(_unknown_field_error(["body", "query", "filters", idx, "field"], f.field))
+            errors.append(_unknown_field_error(["body", "filters", idx, "field"], f.field))
 
 
 def validate_cells_query_fields(query: CellsQueryBody, schema_fields: set[str]) -> None:
@@ -86,7 +86,7 @@ def validate_cells_query_fields(query: CellsQueryBody, schema_fields: set[str]) 
 def validate_picklist_query_fields(query: PicklistQueryBody, schema_fields: set[str]) -> None:
     errors: list[dict[str, Any]] = []
     if query.field and query.field not in schema_fields:
-        errors.append(_unknown_field_error(["body", "query", "field"], query.field))
+        errors.append(_unknown_field_error(["body", "field"], query.field))
     _validate_filter_fields(query.filters, errors, schema_fields)
     _raise_if_unknown(errors)
 
@@ -98,8 +98,10 @@ def validate_export_query_fields(query: ExportQueryBody, schema_fields: set[str]
     _raise_if_unknown(errors)
 
 
-def _build_date_clause(date_range: DateRange, params: list[Any]) -> str:
+def _build_date_clause(date_range: DateRange | None, params: list[Any]) -> str:
     """Build a WHERE clause fragment for the date range."""
+    if date_range is None:
+        return ""
     if isinstance(date_range, DateRangeSingle):
         params.append(date_range.date)
         return '"date" = ?'
@@ -141,7 +143,7 @@ def _build_filter_clauses(
 def build_tuples_sql(
     dataset_id: str,
     query: TuplesQueryBody,
-    date_range: DateRange,
+    date_range: DateRange | None,
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """
@@ -206,7 +208,7 @@ def build_tuples_sql(
 def build_tuples_count_sql(
     dataset_id: str,
     query: TuplesQueryBody,
-    date_range: DateRange,
+    date_range: DateRange | None,
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """Generate a COUNT query for total_count in tuples response."""
@@ -243,7 +245,7 @@ def build_tuples_count_sql(
 def build_cells_sql(
     dataset_id: str,
     query: CellsQueryBody,
-    date_range: DateRange,
+    date_range: DateRange | None,
     schema_fields: set[str],
     max_cells: int | None = None,
 ) -> tuple[str, list[Any]]:
@@ -368,7 +370,7 @@ def build_cells_sql(
 def build_picklist_sql(
     dataset_id: str,
     query: PicklistQueryBody,
-    date_range: DateRange,
+    date_range: DateRange | None,
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """
@@ -421,7 +423,7 @@ def build_picklist_sql(
 def build_picklist_count_sql(
     dataset_id: str,
     query: PicklistQueryBody,
-    date_range: DateRange,
+    date_range: DateRange | None,
     schema_fields: set[str],
 ) -> tuple[str, list[Any]]:
     """Generate a COUNT query for total_count in picklist response."""

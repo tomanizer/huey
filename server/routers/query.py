@@ -12,17 +12,25 @@ from server.auth import require_api_key
 from server.cache import build_cache_key, get_query_cache
 from server.config import get_settings
 from server.engine import QueryCancelHandle, db_manager
-from server.errors import CellsWindowTooLargeError, DatasetNotFoundError, ValidationAppError
+from server.errors import (
+    CellsWindowTooLargeError,
+    DatasetNotFoundError,
+    DateRangeNotSupportedError,
+)
 from server.models import (
+    CellsQueryBody,
     CellsResponse,
     PagingResponse,
     PagingSpec,
+    PicklistQueryBody,
     PicklistResponse,
     QueryCellsRequest,
     QueryPicklistRequest,
     QueryTuplesRequest,
     TupleItem,
+    TuplesQueryBody,
     TuplesResponse,
+    WindowSpec,
 )
 from server.query_budget import get_query_budget
 from server.query_builder import (
@@ -46,26 +54,6 @@ def _path_dataset_id(request: Request) -> str:
     raise RuntimeError("v1 query routes require a dataset_id path parameter")
 
 
-def _canonical_dataset_id(request: Request, body_dataset_id: str) -> str:
-    """Require the request body dataset id to match the v1 path dataset id."""
-    path_dataset_id = _path_dataset_id(request)
-    if body_dataset_id != path_dataset_id:
-        raise ValidationAppError(
-            [
-                {
-                    "loc": ["body", "dataset_id"],
-                    "msg": "dataset_id must match the dataset_id path parameter",
-                    "type": "value_error.dataset_id_mismatch",
-                    "ctx": {
-                        "path_dataset_id": path_dataset_id,
-                        "body_dataset_id": body_dataset_id,
-                    },
-                }
-            ]
-        )
-    return path_dataset_id
-
-
 def _time_filter_metadata(dataset_id: str) -> tuple[bool, str | None]:
     """Describe whether date_range is actively applied for dataset execution."""
     settings = get_settings()
@@ -77,6 +65,15 @@ def _time_filter_metadata(dataset_id: str) -> tuple[bool, str | None]:
     if source.time_filter is None:
         return False, None
     return True, source.time_filter.column
+
+
+def _ensure_date_range_supported(dataset_id: str, date_range) -> None:
+    if (
+        date_range is not None
+        and datasets.get_time_dimension(dataset_id) is None
+        and "date" not in datasets.get_schema_field_names(dataset_id)
+    ):
+        raise DateRangeNotSupportedError(dataset_id)
 
 
 async def _execute_with_budget(request: Request, coro_factory, cancel_fn=None):
@@ -96,14 +93,20 @@ async def post_query_tuples(
     _api_key: str = Depends(require_api_key),
 ) -> TuplesResponse:
     """POST /api/v1/datasets/{dataset_id}/query/tuples."""
-    dataset_id = _canonical_dataset_id(request, body.dataset_id)
-    body.dataset_id = dataset_id
+    dataset_id = _path_dataset_id(request)
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
         raise DatasetNotFoundError(dataset_id)
+    _ensure_date_range_supported(dataset_id, body.date_range)
+
+    query = TuplesQueryBody(
+        fields=body.fields,
+        filters=body.filters,
+        paging=body.paging,
+    )
 
     schema_fields = datasets.get_schema_field_names(dataset_id)
-    paging = body.query.paging or PagingSpec(limit=settings.tuples_default_limit, offset=0)
+    paging = query.paging or PagingSpec(limit=settings.tuples_default_limit, offset=0)
 
     cache_status = "disabled"
     cache_source = "compute"
@@ -112,7 +115,7 @@ async def post_query_tuples(
 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
-        sql, params = build_tuples_sql(dataset_id, body.query, body.date_range, schema_fields)
+        sql, params = build_tuples_sql(dataset_id, query, body.date_range, schema_fields)
 
         async def _run_query():
             return await db_manager.execute_sql_async(
@@ -131,7 +134,7 @@ async def post_query_tuples(
             items = []
 
         if total_count == 0 and paging.offset > 0:
-            count_sql, count_params = build_tuples_count_sql(dataset_id, body.query, body.date_range, schema_fields)
+            count_sql, count_params = build_tuples_count_sql(dataset_id, query, body.date_range, schema_fields)
             count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
                 count_sql,
@@ -161,8 +164,8 @@ async def post_query_tuples(
         cache_key = build_cache_key(
             "tuples",
             dataset_id,
-            body.date_range.model_dump(),
-            body.query.model_dump(),
+            body.date_range.model_dump() if body.date_range is not None else None,
+            query.model_dump(),
             fact_version_token=data_version_token,
         )
         result, meta = await cache.get_or_set(
@@ -212,15 +215,22 @@ async def post_query_cells(
     _api_key: str = Depends(require_api_key),
 ) -> CellsResponse:
     """POST /api/v1/datasets/{dataset_id}/query/cells."""
-    dataset_id = _canonical_dataset_id(request, body.dataset_id)
-    body.dataset_id = dataset_id
+    dataset_id = _path_dataset_id(request)
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
         raise DatasetNotFoundError(dataset_id)
+    _ensure_date_range_supported(dataset_id, body.date_range)
+
+    query = CellsQueryBody(
+        rows=WindowSpec(start_index=body.window.rows.offset, count=body.window.rows.limit) if body.window and body.window.rows else None,
+        columns=WindowSpec(start_index=body.window.columns.offset, count=body.window.columns.limit) if body.window and body.window.columns else None,
+        axes=body.axes,
+        filters=body.filters,
+    )
 
     schema_fields = datasets.get_schema_field_names(dataset_id)
-    row_window = body.query.rows
-    col_window = body.query.columns
+    row_window = query.rows
+    col_window = query.columns
 
     row_count = row_window.count if row_window else None
     col_count = col_window.count if col_window else None
@@ -264,7 +274,7 @@ async def post_query_cells(
         start = time.perf_counter()
         effective_max = settings.max_cells_per_response
         sql, params = build_cells_sql(
-            dataset_id, body.query, body.date_range, schema_fields, max_cells=effective_max + 1
+            dataset_id, query, body.date_range, schema_fields, max_cells=effective_max + 1
         )
 
         async def _run_query():
@@ -281,7 +291,7 @@ async def post_query_cells(
             logger.warning(
                 "cells query cap exceeded",
                 extra={
-                    "dataset_id": body.dataset_id,
+                    "dataset_id": dataset_id,
                     "endpoint": "cells",
                     "cap": effective_max,
                     "returned_count": len(rows),
@@ -311,8 +321,8 @@ async def post_query_cells(
         cache_key = build_cache_key(
             "cells",
             dataset_id,
-            body.date_range.model_dump(),
-            body.query.model_dump(),
+            body.date_range.model_dump() if body.date_range is not None else None,
+            query.model_dump(),
             fact_version_token=data_version_token,
         )
         ttl = max(1.0, settings.cache_ttl_seconds / 2) if settings.cache_ttl_seconds else settings.cache_ttl_seconds
@@ -349,23 +359,30 @@ async def post_query_cells(
     return CellsResponse(cells=result["response"]["cells"])
 
 
-@router.post("/picklist", response_model=PicklistResponse)
+@router.post("/members", response_model=PicklistResponse)
 @limiter.limit(lambda: get_settings().rate_limit_query)
-async def post_query_picklist(
+async def post_query_members(
     request: Request,
     body: QueryPicklistRequest,
     response: Response,
     _api_key: str = Depends(require_api_key),
 ) -> PicklistResponse:
-    """POST /api/v1/datasets/{dataset_id}/query/picklist."""
-    dataset_id = _canonical_dataset_id(request, body.dataset_id)
-    body.dataset_id = dataset_id
+    """POST /api/v1/datasets/{dataset_id}/query/members."""
+    dataset_id = _path_dataset_id(request)
     settings = get_settings()
     if datasets.get_schema(dataset_id) is None:
         raise DatasetNotFoundError(dataset_id)
+    _ensure_date_range_supported(dataset_id, body.date_range)
+
+    query = PicklistQueryBody(
+        field=body.field,
+        search=body.search,
+        filters=body.filters,
+        paging=body.paging,
+    )
 
     schema_fields = datasets.get_schema_field_names(dataset_id)
-    paging = body.query.paging or PagingSpec(limit=settings.picklist_default_limit, offset=0)
+    paging = query.paging or PagingSpec(limit=settings.picklist_default_limit, offset=0)
 
     cache_status = "disabled"
     cache_source = "compute"
@@ -375,7 +392,7 @@ async def post_query_picklist(
 
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
-        sql, params = build_picklist_sql(dataset_id, body.query, body.date_range, schema_fields)
+        sql, params = build_picklist_sql(dataset_id, query, body.date_range, schema_fields)
 
         async def _run_query():
             return await db_manager.execute_sql_async(
@@ -394,7 +411,7 @@ async def post_query_picklist(
             values = []
 
         if total_count == 0 and paging.offset > 0:
-            count_sql, count_params = build_picklist_count_sql(dataset_id, body.query, body.date_range, schema_fields)
+            count_sql, count_params = build_picklist_count_sql(dataset_id, query, body.date_range, schema_fields)
             count_cancel_handle = QueryCancelHandle()
             count_rows = await db_manager.execute_sql_async(
                 count_sql,
@@ -422,10 +439,10 @@ async def post_query_picklist(
         cache = await get_query_cache()
         dim_version_token = datasets.get_dim_version_token(dataset_id)
         cache_key = build_cache_key(
-            "picklist",
+            "members",
             dataset_id,
-            body.date_range.model_dump(),
-            body.query.model_dump(),
+            body.date_range.model_dump() if body.date_range is not None else None,
+            query.model_dump(),
             dim_version_token=dim_version_token,
         )
         result, meta = await cache.get_or_set(
@@ -444,10 +461,10 @@ async def post_query_picklist(
     resp_body = result["response"]
     time_filter_applied, time_filter_column = _time_filter_metadata(dataset_id)
     logger.info(
-        "picklist query executed",
+        "members query executed",
         extra={
             "dataset_id": dataset_id,
-            "endpoint": "picklist",
+            "endpoint": "members",
             "duration_ms": round(result.get("duration_ms", 0.0), 2),
             "row_count": result.get("row_count", 0),
             "total_count": resp_body["total_count"],

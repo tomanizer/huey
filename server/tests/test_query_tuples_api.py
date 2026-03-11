@@ -6,12 +6,13 @@ from server.engine import db_manager
 
 
 def test_query_tuples_returns_results(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] > 0
@@ -22,16 +23,14 @@ def test_query_tuples_returns_results(client: TestClient) -> None:
 
 
 def test_query_tuples_with_include_filter(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "fields": [{"field": "symbol"}],
-            "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL", "GOOG"]}],
-            "paging": {"limit": 10, "offset": 0},
-        },
+        "fields": [{"field": "symbol"}],
+        "filters": [{"field": "symbol", "operator": "INCLUDE", "values": ["AAPL", "GOOG"]}],
+        "paging": {"limit": 10, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] == 2
@@ -40,16 +39,14 @@ def test_query_tuples_with_include_filter(client: TestClient) -> None:
 
 
 def test_query_tuples_with_exclude_filter(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {
-            "fields": [{"field": "symbol"}],
-            "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
-            "paging": {"limit": 10, "offset": 0},
-        },
+        "fields": [{"field": "symbol"}],
+        "filters": [{"field": "symbol", "operator": "EXCLUDE", "values": ["AAPL"]}],
+        "paging": {"limit": 10, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     symbols = {item["values"][0] for item in data["items"]}
@@ -58,24 +55,26 @@ def test_query_tuples_with_exclude_filter(client: TestClient) -> None:
 
 
 def test_query_tuples_date_range(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] == 5
 
 
 def test_query_tuples_paging(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 2, "offset": 0}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 2, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["paging"]["returned"] == 2
@@ -83,12 +82,13 @@ def test_query_tuples_paging(client: TestClient) -> None:
 
 
 def test_query_tuples_paging_limit_one(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 1, "offset": 0}},
+        "fields": [{"field": "symbol", "sort": "ASC"}],
+        "paging": {"limit": 1, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["paging"]["limit"] == 1
@@ -97,14 +97,15 @@ def test_query_tuples_paging_limit_one(client: TestClient) -> None:
 
 
 def test_query_tuples_paging_offset(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body_page1 = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol", "sort": "ASC"}], "paging": {"limit": 2, "offset": 0}},
+        "fields": [{"field": "symbol", "sort": "ASC"}],
+        "paging": {"limit": 2, "offset": 0},
     }
-    body_page2 = {**body_page1, "query": {**body_page1["query"], "paging": {"limit": 2, "offset": 2}}}
-    r1 = client.post(f"/api/v1/datasets/{body_page1['dataset_id']}/query/tuples", json=body_page1)
-    r2 = client.post(f"/api/v1/datasets/{body_page2['dataset_id']}/query/tuples", json=body_page2)
+    body_page2 = {**body_page1, "paging": {"limit": 2, "offset": 2}}
+    r1 = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body_page1)
+    r2 = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body_page2)
     page1_symbols = {item["values"][0] for item in r1.json()["items"]}
     page2_symbols = {item["values"][0] for item in r2.json()["items"]}
     assert page1_symbols.isdisjoint(page2_symbols)
@@ -112,14 +113,13 @@ def test_query_tuples_paging_offset(client: TestClient) -> None:
 
 def test_query_tuples_paging_offset_limit_one(client: TestClient) -> None:
     base_query = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol", "sort": "ASC"}]},
+        "fields": [{"field": "symbol", "sort": "ASC"}],
     }
-    body_page1 = {**base_query, "query": {**base_query["query"], "paging": {"limit": 1, "offset": 0}}}
-    body_page2 = {**base_query, "query": {**base_query["query"], "paging": {"limit": 1, "offset": 1}}}
-    r1 = client.post(f"/api/v1/datasets/{body_page1['dataset_id']}/query/tuples", json=body_page1)
-    r2 = client.post(f"/api/v1/datasets/{body_page2['dataset_id']}/query/tuples", json=body_page2)
+    body_page1 = {**base_query, "paging": {"limit": 1, "offset": 0}}
+    body_page2 = {**base_query, "paging": {"limit": 1, "offset": 1}}
+    r1 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body_page1)
+    r2 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body_page2)
     assert r1.status_code == 200
     assert r2.status_code == 200
     data1 = r1.json()
@@ -131,12 +131,13 @@ def test_query_tuples_paging_offset_limit_one(client: TestClient) -> None:
 
 
 def test_query_tuples_empty_page_reports_total(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 10}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 10},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
     assert data["items"] == []
@@ -145,24 +146,21 @@ def test_query_tuples_empty_page_reports_total(client: TestClient) -> None:
 
 
 def test_query_tuples_sort_desc(client: TestClient) -> None:
+    dataset_id = "trades_v1"
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol", "sort": "DESC"}], "paging": {"limit": 10, "offset": 0}},
+        "fields": [{"field": "symbol", "sort": "DESC"}],
+        "paging": {"limit": 10, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     symbols = [item["values"][0] for item in r.json()["items"]]
     assert symbols == sorted(symbols, reverse=True)
 
 
 def test_query_tuples_dataset_not_found(client: TestClient) -> None:
-    body = {
-        "dataset_id": "nonexistent",
-        "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {},
-    }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    body = {"date_range": {"type": "single", "date": "2026-03-01"}, "fields": [{"field": "symbol"}]}
+    r = client.post("/api/v1/datasets/nonexistent/query/tuples", json=body)
     assert r.status_code == 404
 
 
@@ -178,11 +176,11 @@ def test_tuples_executes_sql_exactly_once(monkeypatch, client: TestClient) -> No
 
     monkeypatch.setattr(db_manager, "execute_sql_async", counted)
     body = {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
-        "query": {"fields": [{"field": "symbol"}], "paging": {"limit": 10, "offset": 0}},
+        "fields": [{"field": "symbol"}],
+        "paging": {"limit": 10, "offset": 0},
     }
-    r = client.post(f"/api/v1/datasets/{body['dataset_id']}/query/tuples", json=body)
+    r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r.status_code == 200
     assert call_count["n"] == 1, (
         "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/tuples, "
