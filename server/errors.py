@@ -49,6 +49,18 @@ class ValidationAppError(AppError):
         )
 
 
+class AggregationNotSupportedError(AppError):
+    """Raised when a requested aggregation is incompatible with the field/type."""
+
+    def __init__(self, errors: list[dict[str, Any]]) -> None:
+        super().__init__(
+            code="AGGREGATION_NOT_SUPPORTED",
+            message="Aggregation is not supported for this request",
+            status_code=422,
+            details={"errors": errors},
+        )
+
+
 class DatasetNotFoundError(AppError):
     """Raised when a requested dataset_id is not registered in the service."""
 

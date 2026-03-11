@@ -297,8 +297,11 @@ Request body fields:
 - `axes.columns` (array of `{ "field": string }`)
 - `axes.measures` (array):
   - `field` (string)
-  - `aggregation` (`SUM`, `COUNT`, `AVG`, `MIN`, `MAX`)
+  - `aggregation`
+    - Supported: `sum`, `avg`, `min`, `max`, `count`, `distinct_count`, `median`, `mode`, `stdev`, `variance`, `geomean`, `entropy`, `kurtosis`, `skewness`, `mad`, `and`, `or`, `count_if_true`, `count_if_false`, `list`, `unique_list`, `first`, `last`
+    - Explicitly rejected: `histogram` (`AGGREGATION_NOT_SUPPORTED`)
   - `alias` (string, optional)
+  - `sort_by` (string, required only for `first` and `last`)
 - `window.rows` and `window.columns` (optional):
   - `offset` (`>=0`)
   - `limit` (`>=1`)
@@ -316,7 +319,7 @@ Request example:
   "axes": {
     "rows": [{"field": "symbol"}],
     "columns": [],
-    "measures": [{"field": "volume", "aggregation": "SUM", "alias": "sum_volume"}]
+    "measures": [{"field": "volume", "aggregation": "sum", "alias": "sum_volume"}]
   }
 }
 ```
@@ -354,6 +357,8 @@ Error statuses:
 - `404` `DATASET_NOT_FOUND`
 - `409` `DATASET_UNAVAILABLE`
 - `422` `VALIDATION_ERROR`
+- `422` `SORT_BY_REQUIRED`
+- `422` `AGGREGATION_NOT_SUPPORTED`
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
@@ -432,7 +437,7 @@ Request example:
   "query": {
     "axes": {
       "rows": [{"field": "symbol"}],
-      "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}]
+      "measures": [{"field": "volume", "aggregation": "sum", "alias": "total_volume"}]
     },
     "max_rows": 1000,
     "format": "parquet"

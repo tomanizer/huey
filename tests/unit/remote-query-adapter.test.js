@@ -107,23 +107,31 @@ describe('RemoteQueryAdapter', () => {
       { columnName: 'volume', aggregator: 'avg' },
     ]);
 
-    expect(query.axes.measures[0].aggregation).toBe('SUM');
-    expect(query.axes.measures[1].aggregation).toBe('AVG');
+    expect(query.axes.measures[0].aggregation).toBe('sum');
+    expect(query.axes.measures[1].aggregation).toBe('avg');
     expect(query.axes.measures[0].alias).not.toBe(query.axes.measures[1].alias);
   });
 
-  test('throws for unsupported cell aggregator', () => {
+  test('maps extended aggregator names to API ids', () => {
     const queryModel = {
       getRowsAxis: () => ({ getItems: () => [] }),
       getColumnsAxis: () => ({ getItems: () => [] }),
       getFiltersAxis: () => ({ getItems: () => [] }),
     };
 
-    expect(() => {
-      RemoteQueryAdapter.createRemoteCellsQuery(queryModel, 1, 1, [
-        { columnName: 'volume', aggregator: 'distinct count' },
-      ]);
-    }).toThrow('does not support aggregator');
+    const query = RemoteQueryAdapter.createRemoteCellsQuery(queryModel, 1, 1, [
+      { columnName: 'volume', aggregator: 'distinct count' },
+      { columnName: 'flag', aggregator: 'count if true' },
+      { columnName: 'symbol', aggregator: 'unique values' },
+      { columnName: 'volume', aggregator: 'histogram' },
+    ]);
+
+    expect(query.axes.measures.map((measure) => measure.aggregation)).toEqual([
+      'distinct_count',
+      'count_if_true',
+      'unique_list',
+      'histogram'
+    ]);
   });
 
   test('returns undefined when query model has no date range', () => {

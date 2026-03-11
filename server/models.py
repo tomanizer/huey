@@ -28,7 +28,32 @@ FilterOperator = Literal[
 ]
 SortDirection = Literal["ASC", "DESC"]
 ExportFormat = Literal["parquet", "csv", "sqlite", "duckdb", "csv_with_bom", "ndjson"]
-AggregationFunction = Literal["SUM", "COUNT", "AVG", "MIN", "MAX"]
+AggregationFunction = Literal[
+    "sum",
+    "avg",
+    "min",
+    "max",
+    "count",
+    "distinct_count",
+    "median",
+    "mode",
+    "stdev",
+    "variance",
+    "geomean",
+    "entropy",
+    "kurtosis",
+    "skewness",
+    "mad",
+    "and",
+    "or",
+    "count_if_true",
+    "count_if_false",
+    "list",
+    "unique_list",
+    "first",
+    "last",
+    "histogram",
+]
 
 MAX_PAGE_LIMIT = 10000
 MAX_EXPORT_ROWS = 100000
@@ -275,8 +300,39 @@ class MeasureSpec(BaseModel):
     """An aggregated measure with a required aggregation function and optional alias."""
 
     field: str
-    aggregation: AggregationFunction = "SUM"
+    aggregation: AggregationFunction = "sum"
     alias: str | None = None
+    sort_by: str | None = None
+
+    @field_validator("aggregation", mode="before")
+    @classmethod
+    def normalize_aggregation(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.lower()
+        return value
+
+    @model_validator(mode="after")
+    def validate_sort_by(self) -> "MeasureSpec":
+        if self.aggregation == "histogram":
+            raise PydanticCustomError(
+                "aggregation_not_supported",
+                "Aggregation histogram is not supported by the API response format",
+                {"aggregation": "histogram"},
+            )
+        if self.aggregation in ("first", "last"):
+            if not self.sort_by:
+                raise PydanticCustomError(
+                    "sort_by_required",
+                    "Aggregation {aggregation} requires sort_by",
+                    {"aggregation": self.aggregation},
+                )
+        elif self.sort_by is not None:
+            raise PydanticCustomError(
+                "sort_by_not_supported",
+                "Aggregation {aggregation} does not support sort_by",
+                {"aggregation": self.aggregation},
+            )
+        return self
 
 
 class AxesSpec(BaseModel):

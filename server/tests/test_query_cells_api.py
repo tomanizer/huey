@@ -55,6 +55,33 @@ def test_query_cells_multiple_aggregations(client: TestClient) -> None:
     assert len(cells[0].keys()) == 7
 
 
+def test_query_cells_extended_aggregations(client: TestClient) -> None:
+    body = {
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        "axes": {
+            "rows": [{"field": "symbol"}],
+            "columns": [],
+            "measures": [
+                {"field": "symbol", "aggregation": "distinct_count", "alias": "distinct_symbols"},
+                {"field": "volume", "aggregation": "median", "alias": "median_volume"},
+                {"field": "symbol", "aggregation": "list", "alias": "symbols_list"},
+                {"field": "symbol", "aggregation": "unique_list", "alias": "symbols_unique"},
+                {"field": "symbol", "aggregation": "first", "alias": "first_symbol", "sort_by": "date"},
+                {"field": "symbol", "aggregation": "last", "alias": "last_symbol", "sort_by": "date"},
+            ],
+        },
+    }
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
+    assert r.status_code == 200
+    cell = r.json()["cells"][0]
+    assert "distinct_symbols" in cell
+    assert "median_volume" in cell
+    assert "symbols_list" in cell
+    assert "symbols_unique" in cell
+    assert "first_symbol" in cell
+    assert "last_symbol" in cell
+
+
 def test_query_cells_with_filter(client: TestClient) -> None:
     dataset_id = "trades_v1"
     body = {

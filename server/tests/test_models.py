@@ -338,12 +338,19 @@ class TestAxesModels:
 
     def test_measure_spec_defaults(self) -> None:
         m = MeasureSpec(field="volume")
-        assert m.aggregation == "SUM"
+        assert m.aggregation == "sum"
         assert m.alias is None
 
     def test_measure_spec_all_aggregations(self) -> None:
-        for agg in ("SUM", "COUNT", "AVG", "MIN", "MAX"):
-            m = MeasureSpec(field="volume", aggregation=agg)
+        for agg in (
+            "sum", "avg", "min", "max", "count", "distinct_count", "median", "mode",
+            "stdev", "variance", "geomean", "entropy", "kurtosis", "skewness", "mad",
+            "and", "or", "count_if_true", "count_if_false", "list", "unique_list", "first", "last",
+        ):
+            kwargs = {"field": "volume", "aggregation": agg}
+            if agg in ("first", "last"):
+                kwargs["sort_by"] = "date"
+            m = MeasureSpec(**kwargs)
             assert m.aggregation == agg
 
     def test_measure_spec_invalid_aggregation_raises(self) -> None:
@@ -351,8 +358,32 @@ class TestAxesModels:
             MeasureSpec(field="volume", aggregation="INVALID")
 
     def test_measure_spec_with_alias(self) -> None:
-        m = MeasureSpec(field="volume", aggregation="SUM", alias="vol")
+        m = MeasureSpec(field="volume", aggregation="sum", alias="vol")
         assert m.alias == "vol"
+
+    def test_measure_spec_is_case_insensitive(self) -> None:
+        m = MeasureSpec(field="volume", aggregation="AVG")
+        assert m.aggregation == "avg"
+
+    def test_first_requires_sort_by(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MeasureSpec(field="volume", aggregation="first")
+        assert exc_info.value.errors()[0]["type"] == "sort_by_required"
+
+    def test_last_requires_sort_by(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MeasureSpec(field="volume", aggregation="last")
+        assert exc_info.value.errors()[0]["type"] == "sort_by_required"
+
+    def test_sort_by_not_supported_for_other_aggregations(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MeasureSpec(field="volume", aggregation="sum", sort_by="date")
+        assert exc_info.value.errors()[0]["type"] == "sort_by_not_supported"
+
+    def test_histogram_is_explicitly_rejected(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MeasureSpec(field="volume", aggregation="histogram")
+        assert exc_info.value.errors()[0]["type"] == "aggregation_not_supported"
 
     def test_axes_spec_defaults(self) -> None:
         axes = AxesSpec()
@@ -376,12 +407,12 @@ class TestAxesModels:
         body = CellsQueryBody(axes={"rows": [{"field": "symbol"}], "measures": [{"field": "volume"}]})
         assert isinstance(body.axes, AxesSpec)
         assert body.axes.rows[0].field == "symbol"
-        assert body.axes.measures[0].aggregation == "SUM"
+        assert body.axes.measures[0].aggregation == "sum"
 
     def test_export_query_body_axes_coerced(self) -> None:
         body = ExportQueryBody(axes={"rows": [{"field": "date"}], "measures": [{"field": "volume", "aggregation": "COUNT"}]})
         assert isinstance(body.axes, AxesSpec)
-        assert body.axes.measures[0].aggregation == "COUNT"
+        assert body.axes.measures[0].aggregation == "count"
 
 
 class TestPagingModels:

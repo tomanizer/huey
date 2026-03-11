@@ -8,7 +8,8 @@ placeholders.
 
 from typing import Any
 
-from server.errors import ValidationAppError
+from server import datasets
+from server.errors import AggregationNotSupportedError, ValidationAppError
 from server.models import (
     AxesSpec,
     CellsQueryBody,
@@ -22,6 +23,186 @@ from server.models import (
 )
 from server.relation_builder import build_base_relation, required_relation_columns
 from server.utils import quote_identifier as _quote
+
+_NUMERIC_TYPES = {
+    "TINYINT",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "HUGEINT",
+    "UTINYINT",
+    "USMALLINT",
+    "UINTEGER",
+    "UBIGINT",
+    "UHUGEINT",
+    "REAL",
+    "DOUBLE",
+    "FLOAT",
+    "INT64",
+    "INT32",
+    "INT16",
+    "INT8",
+    "UINT64",
+    "UINT32",
+    "UINT16",
+    "UINT8",
+    "FLOAT32",
+    "FLOAT64",
+}
+
+_BOOLEAN_TYPES = {"BOOLEAN", "BOOL"}
+_NUMERIC_ONLY_AGGREGATIONS = {
+    "sum",
+    "avg",
+    "stdev",
+    "variance",
+    "geomean",
+    "kurtosis",
+    "skewness",
+    "mad",
+}
+_BOOLEAN_ONLY_AGGREGATIONS = {"and", "or", "count_if_true", "count_if_false"}
+
+
+def _get_schema_field_types(dataset_id: str) -> dict[str, str]:
+    schema = datasets.get_schema(dataset_id) or {}
+    fields = schema.get("fields", []) if isinstance(schema, dict) else []
+    field_types: dict[str, str] = {}
+    for field in fields:
+        if isinstance(field, dict) and field.get("name") and field.get("type"):
+            field_types[str(field["name"])] = str(field["type"])
+    return field_types
+
+
+def _normalize_type_name(type_name: str | None) -> str:
+    if not type_name:
+        return ""
+    return str(type_name).upper().strip()
+
+
+def _is_numeric_type(type_name: str | None) -> bool:
+    normalized = _normalize_type_name(type_name)
+    if normalized in _NUMERIC_TYPES:
+        return True
+    if normalized.startswith(("DECIMAL", "NUMERIC", "FLOAT")):
+        return True
+    return False
+
+
+def _is_boolean_type(type_name: str | None) -> bool:
+    return _normalize_type_name(type_name) in _BOOLEAN_TYPES
+
+
+def _validate_measure_specs(
+    dataset_id: str,
+    measures: list[Any],
+    schema_fields: set[str],
+    loc_prefix: list[Any],
+) -> None:
+    schema_field_types = _get_schema_field_types(dataset_id)
+    errors: list[dict[str, Any]] = []
+    aggregation_errors: list[dict[str, Any]] = []
+
+    for index, measure in enumerate(measures):
+        field_type = schema_field_types.get(measure.field)
+        aggregation = measure.aggregation
+
+        if aggregation in _NUMERIC_ONLY_AGGREGATIONS and not _is_numeric_type(field_type):
+            aggregation_errors.append(
+                {
+                    "loc": [*loc_prefix, index, "aggregation"],
+                    "msg": f"Aggregation {aggregation} is not supported for field type {field_type or 'unknown'}",
+                    "type": "aggregation_not_supported",
+                    "ctx": {"aggregation": aggregation, "field": measure.field, "field_type": field_type},
+                }
+            )
+        elif aggregation in _BOOLEAN_ONLY_AGGREGATIONS and not _is_boolean_type(field_type):
+            aggregation_errors.append(
+                {
+                    "loc": [*loc_prefix, index, "aggregation"],
+                    "msg": f"Aggregation {aggregation} is only supported for boolean fields",
+                    "type": "aggregation_not_supported",
+                    "ctx": {"aggregation": aggregation, "field": measure.field, "field_type": field_type},
+                }
+            )
+
+        if aggregation in ("first", "last") and measure.sort_by not in schema_fields:
+            errors.append(
+                {
+                    "loc": [*loc_prefix, index, "sort_by"],
+                    "msg": f"Unknown field: {measure.sort_by}",
+                    "type": "value_error.unknown_field",
+                }
+            )
+
+    if aggregation_errors:
+        raise AggregationNotSupportedError(aggregation_errors)
+    _raise_if_unknown(errors)
+
+
+def _build_aggregation_expression(measure: Any) -> str:
+    field = measure.field
+    aggregation = measure.aggregation
+    alias = measure.alias or f"{aggregation}_{field}"
+    quoted_field = _quote(field)
+    quoted_alias = _quote(alias)
+
+    if aggregation == "sum":
+        return f"SUM({quoted_field}) AS {quoted_alias}"
+    if aggregation == "avg":
+        return f"AVG({quoted_field}) AS {quoted_alias}"
+    if aggregation == "min":
+        return f"MIN({quoted_field}) AS {quoted_alias}"
+    if aggregation == "max":
+        return f"MAX({quoted_field}) AS {quoted_alias}"
+    if aggregation == "count":
+        return f"COUNT({quoted_field}) AS {quoted_alias}"
+    if aggregation == "distinct_count":
+        return f"COUNT(DISTINCT {quoted_field}) AS {quoted_alias}"
+    if aggregation == "median":
+        return f"MEDIAN({quoted_field}) AS {quoted_alias}"
+    if aggregation == "mode":
+        return f"MODE({quoted_field}) AS {quoted_alias}"
+    if aggregation == "stdev":
+        return f"STDDEV_SAMP({quoted_field}) AS {quoted_alias}"
+    if aggregation == "variance":
+        return f"VAR_SAMP({quoted_field}) AS {quoted_alias}"
+    if aggregation == "geomean":
+        return f"GEOMEAN({quoted_field}) AS {quoted_alias}"
+    if aggregation == "entropy":
+        return f"ENTROPY({quoted_field}) AS {quoted_alias}"
+    if aggregation == "kurtosis":
+        return f"KURTOSIS({quoted_field}) AS {quoted_alias}"
+    if aggregation == "skewness":
+        return f"SKEWNESS({quoted_field}) AS {quoted_alias}"
+    if aggregation == "mad":
+        return f"MAD({quoted_field}) AS {quoted_alias}"
+    if aggregation == "and":
+        return f"BOOL_AND({quoted_field}) AS {quoted_alias}"
+    if aggregation == "or":
+        return f"BOOL_OR({quoted_field}) AS {quoted_alias}"
+    if aggregation == "count_if_true":
+        return f"COUNT({quoted_field}) FILTER (WHERE {quoted_field}) AS {quoted_alias}"
+    if aggregation == "count_if_false":
+        return f"COUNT({quoted_field}) FILTER (WHERE NOT {quoted_field}) AS {quoted_alias}"
+    if aggregation == "list":
+        return f"LIST({quoted_field}) AS {quoted_alias}"
+    if aggregation == "unique_list":
+        return f"LIST(DISTINCT {quoted_field} ORDER BY {quoted_field}) AS {quoted_alias}"
+    if aggregation == "first":
+        return f"FIRST({quoted_field} ORDER BY {_quote(measure.sort_by)}) AS {quoted_alias}"
+    if aggregation == "last":
+        return f"LAST({quoted_field} ORDER BY {_quote(measure.sort_by)}) AS {quoted_alias}"
+    raise ValidationAppError(
+        [
+            {
+                "loc": ["body", "axes", "measures", "aggregation"],
+                "msg": f"Unsupported aggregation: {aggregation}",
+                "type": "aggregation_not_supported",
+                "ctx": {"aggregation": aggregation, "field": field},
+            }
+        ]
+    )
 
 
 def _unknown_field_error(loc: list[Any], field: str) -> dict[str, Any]:
@@ -91,11 +272,21 @@ def validate_picklist_query_fields(query: PicklistQueryBody, schema_fields: set[
     _raise_if_unknown(errors)
 
 
-def validate_export_query_fields(query: ExportQueryBody, schema_fields: set[str]) -> None:
+def validate_export_query_fields(
+    dataset_id: str,
+    query: ExportQueryBody,
+    schema_fields: set[str],
+) -> None:
     errors: list[dict[str, Any]] = []
     _validate_axes_fields(query.axes, errors, schema_fields)
     _validate_filter_fields(query.filters, errors, schema_fields)
     _raise_if_unknown(errors)
+    _validate_measure_specs(
+        dataset_id,
+        list(query.axes.measures if query.axes else []),
+        schema_fields,
+        ["body", "query", "axes", "measures"],
+    )
 
 
 def _build_date_clause(date_range: DateRange | None, params: list[Any]) -> str:
@@ -276,20 +467,19 @@ def build_cells_sql(
     row_fields = [f.field for f in (axes.rows if axes else [])]
     col_fields = [f.field for f in (axes.columns if axes else [])]
     measures = axes.measures if axes else []
+    _validate_measure_specs(dataset_id, list(measures), schema_fields, ["body", "axes", "measures"])
 
     dim_cols = [_quote(f) for f in row_fields + col_fields]
     agg_exprs = []
     for m in measures:
-        field = m.field
-        agg = m.aggregation.upper()
-        alias = m.alias or f"{agg.lower()}_{field}"
-        agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
+        agg_exprs.append(_build_aggregation_expression(m))
 
     if not dim_cols and not agg_exprs:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
     required_columns = set(row_fields + col_fields)
     required_columns.update(m.field for m in measures)
+    required_columns.update(m.sort_by for m in measures if getattr(m, "sort_by", None))
     if query.filters:
         required_columns.update(f.field for f in query.filters)
     required_columns.update(required_relation_columns(dataset_id))
@@ -492,27 +682,27 @@ def build_export_sql(
     Returns (sql, params, headers) where headers is the list of column names
     for the CSV header row.
     """
-    validate_export_query_fields(query, schema_fields)
+    validate_export_query_fields(dataset_id, query, schema_fields)
     axes = query.axes
     max_rows = query.max_rows
 
     row_fields = [f.field for f in (axes.rows if axes else [])]
     col_fields = [f.field for f in (axes.columns if axes else [])]
     measures = axes.measures if axes else []
+    _validate_measure_specs(dataset_id, list(measures), schema_fields, ["body", "query", "axes", "measures"])
 
     dim_cols = [_quote(f) for f in row_fields + col_fields]
     dim_headers = row_fields + col_fields
     agg_exprs = []
     agg_headers: list[str] = []
     for m in measures:
-        field = m.field
-        agg = m.aggregation.upper()
-        alias = m.alias or f"{agg.lower()}_{field}"
-        agg_exprs.append(f"{agg}({_quote(field)}) AS {_quote(alias)}")
+        alias = m.alias or f"{m.aggregation}_{m.field}"
+        agg_exprs.append(_build_aggregation_expression(m))
         agg_headers.append(alias)
 
     required_columns = set(row_fields + col_fields)
     required_columns.update(m.field for m in measures)
+    required_columns.update(m.sort_by for m in measures if getattr(m, "sort_by", None))
     if query.filters:
         required_columns.update(f.field for f in query.filters)
     required_columns.update(required_relation_columns(dataset_id))

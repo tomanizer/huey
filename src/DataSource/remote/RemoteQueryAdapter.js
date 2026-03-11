@@ -7,11 +7,30 @@ export class RemoteQueryAdapter {
   };
 
   static #AGGREGATION_BY_NAME = {
-    sum: 'SUM',
-    count: 'COUNT',
-    avg: 'AVG',
-    min: 'MIN',
-    max: 'MAX'
+    sum: 'sum',
+    count: 'count',
+    avg: 'avg',
+    min: 'min',
+    max: 'max',
+    'distinct count': 'distinct_count',
+    median: 'median',
+    mode: 'mode',
+    stdev: 'stdev',
+    variance: 'variance',
+    geomean: 'geomean',
+    entropy: 'entropy',
+    kurtosis: 'kurtosis',
+    skewness: 'skewness',
+    mad: 'mad',
+    and: 'and',
+    or: 'or',
+    'count if true': 'count_if_true',
+    'count if false': 'count_if_false',
+    list: 'list',
+    'unique values': 'unique_list',
+    first: 'first',
+    last: 'last',
+    histogram: 'histogram'
   };
 
   static getDateRange(queryModel) {

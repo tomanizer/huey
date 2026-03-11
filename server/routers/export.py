@@ -119,7 +119,7 @@ async def post_export(
     settings = get_settings()
     if settings.execution_mode == "sample_table" and not db_manager.table_exists(dataset_id):
         raise DatasetUnavailableError(dataset_id)
-    validate_export_query_fields(body.query, datasets.get_schema_field_names(dataset_id))
+    validate_export_query_fields(dataset_id, body.query, datasets.get_schema_field_names(dataset_id))
 
     export_request = ExportRequest(dataset_id=dataset_id, date_range=body.date_range, query=body.query)
     service = get_export_service()

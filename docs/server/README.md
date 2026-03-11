@@ -216,7 +216,7 @@ curl -X POST 'http://localhost:8000/api/v1/datasets/trades_v1/exports' \
     "query": {
       "axes": {
         "rows": [{"field": "symbol"}],
-        "measures": [{"field": "volume", "aggregation": "SUM", "alias": "total_volume"}]
+        "measures": [{"field": "volume", "aggregation": "sum", "alias": "total_volume"}]
       },
       "max_rows": 1000
     }

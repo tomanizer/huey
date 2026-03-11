@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from server.errors import ValidationAppError
+from server.errors import AggregationNotSupportedError, ValidationAppError
 from server.models import (
     CellsQueryBody,
     DateRangeRange,
@@ -25,9 +25,27 @@ from server.query_builder import (
 )
 from server.relation_builder import BaseRelation
 
-SCHEMA_FIELDS = {"date", "symbol", "volume"}
+SCHEMA_TYPES = {
+    "date": "date",
+    "symbol": "string",
+    "volume": "int64",
+    "price": "float64",
+    "is_active": "boolean",
+}
+SCHEMA_FIELDS = set(SCHEMA_TYPES)
 DR_SINGLE = DateRangeSingle(type="single", date="2026-03-01")
 DR_RANGE = DateRangeRange(type="range", start="2026-03-01", end="2026-03-31")
+
+
+@pytest.fixture(autouse=True)
+def _mock_dataset_schema(monkeypatch: pytest.MonkeyPatch) -> None:
+    schema = {
+        "fields": [
+            {"name": name, "type": type_name}
+            for name, type_name in SCHEMA_TYPES.items()
+        ]
+    }
+    monkeypatch.setattr("server.query_builder.datasets.get_schema", lambda _dataset_id: schema)
 
 
 class TestBuildTuplesSql:
@@ -224,6 +242,89 @@ class TestBuildCellsSql:
         assert 'MIN("volume")' in sql
         assert 'MAX("volume")' in sql
 
+    @pytest.mark.parametrize(
+        ("aggregation", "field", "sql_fragment"),
+        [
+            ("sum", "volume", 'SUM("volume")'),
+            ("avg", "volume", 'AVG("volume")'),
+            ("min", "symbol", 'MIN("symbol")'),
+            ("max", "symbol", 'MAX("symbol")'),
+            ("count", "symbol", 'COUNT("symbol")'),
+            ("distinct_count", "symbol", 'COUNT(DISTINCT "symbol")'),
+            ("median", "volume", 'MEDIAN("volume")'),
+            ("mode", "symbol", 'MODE("symbol")'),
+            ("stdev", "volume", 'STDDEV_SAMP("volume")'),
+            ("variance", "volume", 'VAR_SAMP("volume")'),
+            ("geomean", "volume", 'GEOMEAN("volume")'),
+            ("entropy", "symbol", 'ENTROPY("symbol")'),
+            ("kurtosis", "volume", 'KURTOSIS("volume")'),
+            ("skewness", "volume", 'SKEWNESS("volume")'),
+            ("mad", "volume", 'MAD("volume")'),
+            ("and", "is_active", 'BOOL_AND("is_active")'),
+            ("or", "is_active", 'BOOL_OR("is_active")'),
+            ("count_if_true", "is_active", 'COUNT("is_active") FILTER (WHERE "is_active")'),
+            ("count_if_false", "is_active", 'COUNT("is_active") FILTER (WHERE NOT "is_active")'),
+            ("list", "symbol", 'LIST("symbol")'),
+            ("unique_list", "symbol", 'LIST(DISTINCT "symbol" ORDER BY "symbol")'),
+            ("first", "symbol", 'FIRST("symbol" ORDER BY "date")'),
+            ("last", "symbol", 'LAST("symbol" ORDER BY "date")'),
+        ],
+    )
+    def test_all_supported_aggregations_generate_sql(
+        self, aggregation: str, field: str, sql_fragment: str
+    ) -> None:
+        measure = {"field": field, "aggregation": aggregation, "alias": f"{aggregation}_{field}"}
+        if aggregation in ("first", "last"):
+            measure["sort_by"] = "date"
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [measure],
+            },
+        )
+        sql, _ = build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert sql_fragment in sql
+
+    @pytest.mark.parametrize(
+        ("aggregation", "field"),
+        [
+            ("sum", "symbol"),
+            ("avg", "symbol"),
+            ("stdev", "symbol"),
+            ("variance", "symbol"),
+            ("geomean", "symbol"),
+            ("kurtosis", "symbol"),
+            ("skewness", "symbol"),
+            ("mad", "symbol"),
+            ("and", "volume"),
+            ("or", "volume"),
+            ("count_if_true", "volume"),
+            ("count_if_false", "volume"),
+        ],
+    )
+    def test_incompatible_aggregations_raise(self, aggregation: str, field: str) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": field, "aggregation": aggregation, "alias": "bad"}],
+            },
+        )
+        with pytest.raises(AggregationNotSupportedError):
+            build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+
+    def test_first_last_unknown_sort_by_rejected(self) -> None:
+        query = CellsQueryBody(
+            axes={
+                "rows": [{"field": "symbol"}],
+                "columns": [],
+                "measures": [{"field": "symbol", "aggregation": "first", "alias": "first_symbol", "sort_by": "missing"}],
+            },
+        )
+        with pytest.raises(ValidationAppError):
+            build_cells_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+
     def test_column_fields(self) -> None:
         query = CellsQueryBody(
             axes={
@@ -388,7 +489,7 @@ class TestBuildExportSql:
         sql, params, headers = build_export_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "GROUP BY" not in sql
         assert "LIMIT 100" in sql
-        assert set(headers) == {"date", "symbol", "volume"}
+        assert set(headers) == SCHEMA_FIELDS
 
     def test_dimensions_only_no_group_by(self) -> None:
         query = ExportQueryBody(
