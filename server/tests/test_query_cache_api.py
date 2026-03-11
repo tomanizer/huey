@@ -127,8 +127,16 @@ def test_cells_cache_hit(monkeypatch, client: TestClient) -> None:
     r2 = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
-    assert r1.json()["cells"]
-    assert r1.json() == r2.json()
+    data1 = r1.json()
+    data2 = r2.json()
+    assert data1["cells"]
+    assert data1["rows"] == data2["rows"]
+    assert data1["columns"] == data2["columns"]
+    assert data1["cells"] == data2["cells"]
+    assert data1["window"] == data2["window"]
+    assert data1["meta"]["cache_status"] == "miss"
+    assert data2["meta"]["cache_status"] == "hit"
+    assert data1["meta"]["request_id"] != data2["meta"]["request_id"]
     assert call_count["n"] == 2
 
 

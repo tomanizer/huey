@@ -552,7 +552,7 @@ export class CellSet extends DataSetComponent {
     return -12;
   }
 
-  #remoteCellsResponseToResultSet(apiResponse, query, cellsAxisItemsToFetch, columnCount, measureAliases){
+  #remoteCellsResponseToResultSet(apiResponse, _query, cellsAxisItemsToFetch, columnCount, measureAliases){
     const cells = apiResponse.cells || [];
     const columns = apiResponse.columns || [{}];
     const colCount = columnCount || columns.length || 1;

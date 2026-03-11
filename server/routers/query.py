@@ -16,6 +16,7 @@ from server.errors import (
     CellsWindowTooLargeError,
     DatasetNotFoundError,
     DateRangeNotSupportedError,
+    ValidationAppError,
 )
 from server.models import (
     CellsQueryBody,
@@ -89,7 +90,36 @@ async def _execute_with_budget(request: Request, coro_factory, cancel_fn=None):
 def _default_measure_alias(field: str, aggregation: str, alias: str | None) -> str:
     if alias:
         return alias
-    return f"{field}__{aggregation.lower()}"
+    return f"{aggregation.lower()}_{field}"
+
+
+def _validate_cells_measure_aliases(measures) -> None:
+    aliases = [_default_measure_alias(measure.field, measure.aggregation, measure.alias) for measure in measures]
+    reserved = {"row", "col"}
+    duplicates = {alias for alias in aliases if aliases.count(alias) > 1}
+    reserved_hits = reserved.intersection(aliases)
+    if not duplicates and not reserved_hits:
+        return
+
+    errors = []
+    for index, alias in enumerate(aliases):
+        if alias in duplicates:
+            errors.append(
+                {
+                    "loc": ["body", "axes", "measures", index, "alias"],
+                    "msg": f"Duplicate measure alias: {alias}",
+                    "type": "value_error.duplicate_alias",
+                }
+            )
+        if alias in reserved_hits:
+            errors.append(
+                {
+                    "loc": ["body", "axes", "measures", index, "alias"],
+                    "msg": f"Reserved measure alias: {alias}",
+                    "type": "value_error.reserved_alias",
+                }
+            )
+    raise ValidationAppError(errors)
 
 
 async def _fetch_axis_window(
@@ -297,6 +327,8 @@ async def post_query_cells(
     validate_cells_query_fields(query, schema_fields)
     row_window = query.rows
     col_window = query.columns
+    measures = list((query.axes.measures if query.axes else []) or [])
+    _validate_cells_measure_aliases(measures)
 
     row_count = row_window.count if row_window else None
     col_count = col_window.count if col_window else None
@@ -343,9 +375,9 @@ async def post_query_cells(
         row_fields = [item.field for item in (axes.rows if axes else [])]
         col_fields = [item.field for item in (axes.columns if axes else [])]
         measures = list(axes.measures if axes else [])
-        row_window_limit = body.window.rows.limit if body.window and body.window.rows else None
+        row_window_limit = body.window.rows.limit if body.window and body.window.rows else effective_max
         row_window_offset = body.window.rows.offset if body.window and body.window.rows else 0
-        col_window_limit = body.window.columns.limit if body.window and body.window.columns else None
+        col_window_limit = body.window.columns.limit if body.window and body.window.columns else effective_max
         col_window_offset = body.window.columns.offset if body.window and body.window.columns else 0
 
         rows_payload, row_total = await _fetch_axis_window(
@@ -462,11 +494,6 @@ async def post_query_cells(
                         "total": col_total,
                     },
                 },
-                "meta": {
-                    "execution_ms": round(duration_ms, 2),
-                    "cache_status": cache_status,
-                    "request_id": get_request_id() or None,
-                },
             },
             "duration_ms": duration_ms,
             "row_count": len(rows),
@@ -515,7 +542,13 @@ async def post_query_cells(
         },
     )
 
-    return CellsResponse(**result["response"])
+    response_payload = dict(result["response"])
+    response_payload["meta"] = {
+        "execution_ms": round(result.get("duration_ms", 0.0), 2),
+        "cache_status": cache_status,
+        "request_id": get_request_id() or None,
+    }
+    return CellsResponse(**response_payload)
 
 
 @router.post("/members", response_model=PicklistResponse)
