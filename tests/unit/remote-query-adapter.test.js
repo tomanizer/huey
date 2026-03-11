@@ -126,10 +126,8 @@ describe('RemoteQueryAdapter', () => {
     }).toThrow('does not support aggregator');
   });
 
-  test('falls back to single-date range when query model has no date range', () => {
+  test('returns undefined when query model has no date range', () => {
     const dateRange = RemoteQueryAdapter.getDateRange({});
-    expect(dateRange.type).toBe('single');
-    expect(typeof dateRange.date).toBe('string');
-    expect(dateRange.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(dateRange).toBeUndefined();
   });
 });

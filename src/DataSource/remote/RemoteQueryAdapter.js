@@ -180,7 +180,6 @@ export class RemoteQueryAdapter {
     const filters = RemoteQueryAdapter.toRemoteFilters(queryModel.getFiltersAxis().getItems(), 'tuples');
 
     return {
-      axis: axisId,
       fields: fields,
       filters: filters,
       paging: { limit: limit, offset: offset }

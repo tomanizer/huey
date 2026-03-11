@@ -120,7 +120,7 @@ def test_partition_config_error_tuples_no_bucket_or_path(
 def test_partition_config_error_picklist_no_bucket_or_path(
     partitioned_no_storage, client: TestClient
 ) -> None:
-    """Same PARTITION_CONFIG_ERROR check for the v1 picklist endpoint."""
+    """Same PARTITION_CONFIG_ERROR check for the v1 members endpoint."""
     body = _picklist_body()
     r = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r.status_code == 500
@@ -157,7 +157,7 @@ def test_partition_not_found_tuples_missing_date(
 def test_partition_not_found_picklist_missing_date(
     partitioned_empty_base_path, client: TestClient
 ) -> None:
-    """Same PARTITION_NOT_FOUND check for the v1 picklist endpoint."""
+    """Same PARTITION_NOT_FOUND check for the v1 members endpoint."""
     body = _picklist_body()
     r = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r.status_code == 404

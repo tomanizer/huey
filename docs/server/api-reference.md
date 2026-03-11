@@ -127,7 +127,7 @@ Success `200` example:
         "schema": "/api/v1/datasets/trades_v1/schema",
         "tuples": "/api/v1/datasets/trades_v1/query/tuples",
         "cells": "/api/v1/datasets/trades_v1/query/cells",
-        "picklist": "/api/v1/datasets/trades_v1/query/members"
+        "members": "/api/v1/datasets/trades_v1/query/members"
       }
     }
   ],
@@ -177,7 +177,7 @@ Success `200` example:
     "schema": "/api/v1/datasets/trades_v1/schema",
     "tuples": "/api/v1/datasets/trades_v1/query/tuples",
     "cells": "/api/v1/datasets/trades_v1/query/cells",
-    "picklist": "/api/v1/datasets/trades_v1/query/members"
+    "members": "/api/v1/datasets/trades_v1/query/members"
   }
 }
 ```

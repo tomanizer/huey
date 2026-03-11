@@ -55,7 +55,7 @@ def canonical_json(obj: Any) -> str:
 def build_cache_key(
     endpoint: str,
     dataset_id: str,
-    date_range: dict[str, Any],
+    date_range: dict[str, Any] | None,
     query_payload: dict[str, Any],
     fact_version_token: Any | None = None,
     dim_version_token: Any | None = None,
