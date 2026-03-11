@@ -1,7 +1,7 @@
-"""Dimension cache prewarming for hot picklist fields.
+"""Dimension cache prewarming for hot members fields.
 
 Reads ``QUERYSERVICE_DIM_PREWARM_FIELDS`` (a CSV of ``dataset_id:field`` pairs)
-and executes a picklist query for each field at startup, storing the results in
+and executes a members query for each field at startup, storing the results in
 the dimension cache so the first real request is served from cache.
 """
 
@@ -12,7 +12,7 @@ logger = logging.getLogger("query_service.prewarm")
 
 
 async def prewarm_dim_fields() -> None:
-    """Execute picklist queries for configured hot fields and warm the cache.
+    """Execute members queries for configured hot fields and warm the cache.
 
     Called as a background task during application startup.  Failures are
     logged but never propagated so they cannot break the startup sequence.
@@ -69,25 +69,25 @@ async def prewarm_dim_fields() -> None:
 
             if rows:
                 total_count = int(rows[0][-1])
-                values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
+                items = [{"value": row[0], "count": int(row[1])} for row in rows]
             else:
                 total_count = 0
-                values = []
+                items = []
 
             paging = {
                 "limit": settings.picklist_default_limit,
                 "offset": 0,
-                "returned": len(values),
+                "returned": len(items),
             }
             result = {
-                "response": {"total_count": total_count, "values": values, "paging": paging},
+                "response": {"field": query.field, "total_count": total_count, "items": items, "paging": paging},
                 "duration_ms": 0.0,
                 "row_count": len(rows) if rows else 0,
             }
 
             dim_token = get_dim_version_token(dataset_id)
             cache_key = build_cache_key(
-                "picklist",
+                "members",
                 dataset_id,
                 date_range.model_dump(),
                 query.model_dump(),
