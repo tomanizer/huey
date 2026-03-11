@@ -122,6 +122,35 @@ class TestTuplesValidation:
         r = client.post(_post_path("tuples"), json=body)
         assert r.status_code == 422
 
+    @pytest.mark.parametrize(
+        ("operator", "values"),
+        [
+            ("gt", []),
+            ("gt", [1, 2]),
+            ("gte", []),
+            ("lt", [1, 2]),
+            ("lte", []),
+            ("between", [1]),
+            ("include", []),
+            ("exclude", list(range(1001))),
+            ("is_null", ["x"]),
+            ("not_null", ["x"]),
+        ],
+    )
+    def test_invalid_filter_shapes_return_filter_invalid(self, client: TestClient, operator: str, values: list) -> None:
+        body = _valid_body_for("tuples")
+        body["filters"] = [{"field": "volume", "operator": operator, "values": values}]
+        r = client.post(_post_path("tuples"), json=body)
+        assert r.status_code == 422
+        payload = r.json()
+        assert payload["code"] == "FILTER_INVALID"
+
+    def test_filter_operators_are_case_insensitive(self, client: TestClient) -> None:
+        body = _valid_body_for("tuples")
+        body["filters"] = [{"field": "volume", "operator": "GT", "values": [1500]}]
+        r = client.post(_post_path("tuples"), json=body)
+        assert r.status_code == 200
+
 
 class TestCellsValidation:
     def test_missing_axes_rejected(self, client: TestClient) -> None:

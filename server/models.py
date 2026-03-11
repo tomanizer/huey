@@ -14,7 +14,18 @@ from pydantic_core import PydanticCustomError
 from server.config import get_settings
 from server.errors import ValidationAppError
 
-FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
+FilterOperator = Literal[
+    "include",
+    "exclude",
+    "like",
+    "between",
+    "gt",
+    "gte",
+    "lt",
+    "lte",
+    "is_null",
+    "not_null",
+]
 SortDirection = Literal["ASC", "DESC"]
 ExportFormat = Literal["parquet", "csv", "sqlite", "duckdb", "csv_with_bom", "ndjson"]
 AggregationFunction = Literal["SUM", "COUNT", "AVG", "MIN", "MAX"]
@@ -156,7 +167,57 @@ class TupleFilter(BaseModel):
 
     field: str
     operator: FilterOperator
-    values: list[Any]
+    values: list[Any] = Field(default_factory=list)
+
+    @field_validator("operator", mode="before")
+    @classmethod
+    def normalize_operator(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.lower()
+        return value
+
+    @model_validator(mode="after")
+    def validate_operator_values(self) -> "TupleFilter":
+        operator = self.operator
+        value_count = len(self.values)
+
+        if operator in ("is_null", "not_null"):
+            if value_count != 0:
+                raise PydanticCustomError(
+                    "filter_invalid",
+                    "Operator {operator} does not accept values",
+                    {"operator": operator},
+                )
+            return self
+
+        if operator in ("gt", "gte", "lt", "lte", "like"):
+            if value_count != 1:
+                raise PydanticCustomError(
+                    "filter_invalid",
+                    "Operator {operator} requires exactly 1 value",
+                    {"operator": operator, "expected_values": 1, "actual_values": value_count},
+                )
+            return self
+
+        if operator == "between":
+            if value_count != 2:
+                raise PydanticCustomError(
+                    "filter_invalid",
+                    "Operator between requires exactly 2 values",
+                    {"operator": operator, "expected_values": 2, "actual_values": value_count},
+                )
+            return self
+
+        if operator in ("include", "exclude"):
+            if value_count < 1 or value_count > 1000:
+                raise PydanticCustomError(
+                    "filter_invalid",
+                    "Operator {operator} requires between 1 and 1000 values",
+                    {"operator": operator, "min_values": 1, "max_values": 1000, "actual_values": value_count},
+                )
+            return self
+
+        return self
 
 
 class PagingSpec(BaseModel):

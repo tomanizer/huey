@@ -1,5 +1,6 @@
 """Tests for POST /api/v1/datasets/{dataset_id}/query/tuples."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from server.engine import db_manager
@@ -53,6 +54,37 @@ def test_query_tuples_with_exclude_filter(client: TestClient) -> None:
     symbols = {item["symbol"] for item in data["items"]}
     assert "AAPL" not in symbols
     assert data["total_count"] == 4
+
+
+@pytest.mark.parametrize(
+    ("operator", "values", "expected_symbols"),
+    [
+        ("gt", [2000], {"GOOG", "AMZN"}),
+        ("gte", [1800], {"GOOG", "MSFT", "AMZN"}),
+        ("lt", [1800], {"AAPL", "TSLA"}),
+        ("lte", [1500], {"AAPL", "TSLA"}),
+        ("is_null", [], set()),
+        ("not_null", [], {"AAPL", "GOOG", "MSFT", "AMZN", "TSLA"}),
+    ],
+)
+def test_query_tuples_extended_filter_operators(
+    client: TestClient,
+    operator: str,
+    values: list[object],
+    expected_symbols: set[str],
+) -> None:
+    body = {
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "fields": [{"field": "symbol"}],
+        "filters": [{"field": "symbol" if "null" in operator else "volume", "operator": operator, "values": values}],
+        "paging": {"limit": 10, "offset": 0},
+    }
+    if operator in ("is_null", "not_null"):
+        body["filters"][0]["field"] = "symbol"
+    r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
+    assert r.status_code == 200
+    symbols = {item["symbol"] for item in r.json()["items"]}
+    assert symbols == expected_symbols
 
 
 def test_query_tuples_date_range(client: TestClient) -> None:

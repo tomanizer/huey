@@ -168,18 +168,21 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Normalize FastAPI validation errors into the ErrorResponse envelope."""
     clean_errors = []
+    has_filter_error = False
     for err in exc.errors():
         entry = {
             "loc": list(err.get("loc", [])),
             "msg": err.get("msg", ""),
             "type": err.get("type", ""),
         }
+        if entry["type"] == "filter_invalid":
+            has_filter_error = True
         if "ctx" in err:
             entry["ctx"] = jsonable_encoder(err["ctx"])
         clean_errors.append(entry)
     body = ErrorResponse(
-        code="VALIDATION_ERROR",
-        message="Request validation failed",
+        code="FILTER_INVALID" if has_filter_error else "VALIDATION_ERROR",
+        message="Filter validation failed" if has_filter_error else "Request validation failed",
         request_id=get_request_id() or None,
         details={"errors": clean_errors},
     )
