@@ -52,12 +52,11 @@ def test_full_api_flow(client: TestClient) -> None:
     assert picklist_data["total_count"] > 0
     assert len(picklist_data["values"]) > 0
 
-    r_export = client.post("/api/v1/exports", json={
-        "dataset_id": dataset_id,
+    r_export = client.post(f"/api/v1/datasets/{dataset_id}/exports", json={
         "date_range": date_range,
         "query": {"export_type": "pivot_results", "axes": {}, "filters": [], "max_rows": 1000, "format": "csv"},
     })
-    assert r_export.status_code == 200
+    assert r_export.status_code == 202
     export_data = r_export.json()
     assert export_data["status"] == "pending"
 

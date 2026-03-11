@@ -105,12 +105,11 @@ class TestRequestMetadataHeaders:
 
     def test_request_id_header_propagates_to_export(self, client: TestClient) -> None:
         body = {
-            "dataset_id": "trades_v1",
             "date_range": {"type": "single", "date": "2026-03-01"},
             "query": {"axes": {}, "format": "csv"},
         }
         r = client.post(
-            "/api/v1/exports",
+            "/api/v1/datasets/trades_v1/exports",
             json=body,
             headers={"X-Request-ID": "export-trace-def"},
         )

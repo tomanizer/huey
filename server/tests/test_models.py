@@ -13,6 +13,7 @@ from server.models import (
     DateRangeSingle,
     ExportQueryBody,
     ExportRequest,
+    ExportSubmitRequest,
     MeasureSpec,
     PagingResponse,
     PagingSpec,
@@ -286,6 +287,15 @@ class TestExportRequest:
         )
         assert req.query.max_rows == 10000
         assert req.query.format == "parquet"
+
+
+class TestExportSubmitRequest:
+    def test_valid_without_dataset_id(self) -> None:
+        req = ExportSubmitRequest(
+            date_range={"type": "single", "date": "2026-03-01"},
+            query={"format": "csv_with_bom"},
+        )
+        assert req.query.format == "csv_with_bom"
 
 
 class TestAxesModels:

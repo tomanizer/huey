@@ -8,6 +8,9 @@ export job store. All export operations go through this service.
 import logging
 import sqlite3
 import uuid
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+import csv
+import json
 from pathlib import Path
 
 from server import datasets
@@ -100,6 +103,7 @@ class ExportService:
         job = self._store.create_if_capacity(
             job_id,
             body.dataset_id,
+            fmt=body.query.format,
             max_concurrent=settings.export_max_concurrent,
         )
         if job is None:
@@ -123,7 +127,7 @@ class ExportService:
             output_dir = Path(settings.export_output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
             fmt = body.query.format.lower()
-            file_ext = fmt
+            file_ext = "csv" if fmt == "csv_with_bom" else fmt
             file_path = output_dir / f"{job_id}.{file_ext}"
 
             schema_fields = datasets.get_schema_field_names(body.dataset_id)
@@ -150,6 +154,36 @@ class ExportService:
                             cur.execute(copy_sql, query_params)
                         else:
                             cur.execute(copy_sql)
+                elif fmt == "csv_with_bom":
+                    with db_manager.cursor() as cur:
+                        if query_params:
+                            cur.execute(sql, query_params)
+                        else:
+                            cur.execute(sql)
+                        rows = cur.fetchall()
+                        headers = [column[0] for column in (cur.description or [])]
+                    with file_path.open("w", encoding="utf-8-sig", newline="") as csv_file:
+                        writer = csv.writer(csv_file)
+                        writer.writerow(headers)
+                        writer.writerows(rows)
+                    row_count = len(rows)
+                elif fmt == "ndjson":
+                    with db_manager.cursor() as cur:
+                        if query_params:
+                            cur.execute(sql, query_params)
+                        else:
+                            cur.execute(sql)
+                        rows = cur.fetchall()
+                        headers = [column[0] for column in (cur.description or [])]
+                    with file_path.open("w", encoding="utf-8") as ndjson_file:
+                        for row in rows:
+                            record = {
+                                header: value
+                                for header, value in zip(headers, row, strict=False)
+                            }
+                            ndjson_file.write(json.dumps(record, default=str, ensure_ascii=False))
+                            ndjson_file.write("\n")
+                    row_count = len(rows)
                 elif fmt == "duckdb":
                     quoted_db_alias = _quote_identifier("export_db")
                     with db_manager.cursor() as cur:
@@ -172,27 +206,37 @@ class ExportService:
                     raise DatasetUnavailableError(body.dataset_id) from exc
                 raise
 
+            current_job = self._store.get(job_id)
+            if current_job is None or current_job.status == "cancelled":
+                file_path.unlink(missing_ok=True)
+                logger.info("Cancelled export discarded", extra={"export_id": job_id})
+                return
+
+            size_bytes = file_path.stat().st_size if file_path.exists() else None
             self._store.update_status(
                 job_id, "complete",
                 file_path=str(file_path),
-                download_url=f"/api/v1/exports/{job_id}/download",
+                download_url=f"/api/v1/exports/{job_id}/file",
                 row_count=row_count,
+                size_bytes=size_bytes,
             )
             logger.info(
                 "Export complete",
-                extra={"export_id": job_id, "row_count": row_count},
+                extra={"export_id": job_id, "row_count": row_count, "size_bytes": size_bytes},
             )
         except DatasetUnavailableError as exc:
-            self._store.update_status(
-                job_id,
-                "failed",
-                error_message=f"{exc.code}: {exc.message} ({body.dataset_id})",
-            )
+            current_job = self._store.get(job_id)
+            if current_job is None or current_job.status == "cancelled":
+                return
+            self._store.update_status(job_id, "failed", error_message=f"{exc.code}: {exc.message} ({body.dataset_id})")
             logger.warning(
                 "Export failed due to unavailable dataset",
                 extra={"export_id": job_id, "dataset_id": body.dataset_id, "error_code": exc.code},
             )
         except Exception:
+            current_job = self._store.get(job_id)
+            if current_job is None or current_job.status == "cancelled":
+                return
             self._store.update_status(job_id, "failed", error_message="Export processing failed")
             logger.exception("Export failed", extra={"export_id": job_id})
 
@@ -224,6 +268,49 @@ class ExportService:
             logger.info("Expired export cleaned up", extra={"export_id": job.id})
             count += 1
         return count
+
+    def list_exports(
+        self,
+        *,
+        limit: int = 20,
+        cursor: str | None = None,
+        status: str | None = None,
+    ) -> tuple[list[ExportJob], str | None]:
+        """Return newest-first export jobs with cursor pagination."""
+        before_created_at = None
+        before_id = None
+        if cursor:
+            payload = json.loads(urlsafe_b64decode(cursor.encode("ascii")).decode("utf-8"))
+            before_created_at = float(payload["created_at"])
+            before_id = str(payload["id"])
+
+        jobs = self._store.list(
+            limit=limit + 1,
+            status=status,
+            before_created_at=before_created_at,
+            before_id=before_id,
+        )
+        next_cursor = None
+        if len(jobs) > limit:
+            last = jobs[limit - 1]
+            next_cursor = urlsafe_b64encode(
+                json.dumps({"created_at": last.created_at, "id": last.id}).encode("utf-8")
+            ).decode("ascii")
+            jobs = jobs[:limit]
+        return jobs, next_cursor
+
+    def delete_export(self, job_id: str) -> None:
+        """Cancel or delete an export job depending on its current state."""
+        job = self.get_status(job_id)
+        if job.status in {"pending", "processing"}:
+            self._store.update_status(job_id, "cancelled")
+            if job.file_path:
+                Path(job.file_path).unlink(missing_ok=True)
+            return
+
+        if job.file_path:
+            Path(job.file_path).unlink(missing_ok=True)
+        self._store.delete(job_id)
 
     def recover_stale_jobs(self) -> int:
         """Mark any active jobs as failed on startup (stale from crash/restart)."""

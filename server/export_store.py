@@ -17,23 +17,27 @@ class ExportJob:
     """Represents a single export job record."""
 
     id: str
-    status: str  # pending | processing | complete | failed | expired
+    status: str  # pending | processing | complete | failed | expired | cancelled
     dataset_id: str
+    format: str
     created_at: float
     updated_at: float
     file_path: str | None = None
     download_url: str | None = None
     row_count: int | None = None
+    size_bytes: int | None = None
+    completed_at: float | None = None
     error_message: str | None = None
 
 
-VALID_STATUSES = frozenset({"pending", "processing", "complete", "failed", "expired"})
+VALID_STATUSES = frozenset({"pending", "processing", "complete", "failed", "expired", "cancelled"})
 
 _VALID_TRANSITIONS = {
-    "pending": {"processing", "failed", "expired"},
-    "processing": {"complete", "failed", "expired"},
+    "pending": {"processing", "failed", "expired", "cancelled"},
+    "processing": {"complete", "failed", "expired", "cancelled"},
     "complete": {"expired"},
     "failed": {"expired"},
+    "cancelled": set(),
     "expired": set(),
 }
 
@@ -42,11 +46,14 @@ CREATE TABLE IF NOT EXISTS export_jobs (
     id            TEXT PRIMARY KEY,
     status        TEXT NOT NULL DEFAULT 'pending',
     dataset_id    TEXT NOT NULL,
+    format        TEXT NOT NULL DEFAULT 'parquet',
     created_at    REAL NOT NULL,
     updated_at    REAL NOT NULL,
     file_path     TEXT,
     download_url  TEXT,
     row_count     INTEGER,
+    size_bytes    INTEGER,
+    completed_at  REAL,
     error_message TEXT
 )
 """
@@ -74,6 +81,26 @@ class ExportJobStore:
         self._conn.row_factory = sqlite3.Row
         if self._db_path != ":memory:":
             self._conn.execute("PRAGMA journal_mode=WAL")
+        existing_columns = {
+            row["name"]
+            for row in self._conn.execute("PRAGMA table_info(export_jobs)").fetchall()
+        }
+        required_columns = {
+            "id",
+            "status",
+            "dataset_id",
+            "format",
+            "created_at",
+            "updated_at",
+            "file_path",
+            "download_url",
+            "row_count",
+            "size_bytes",
+            "completed_at",
+            "error_message",
+        }
+        if existing_columns and existing_columns != required_columns:
+            self._conn.execute("DROP TABLE export_jobs")
         self._conn.execute(_CREATE_TABLE_SQL)
         self._conn.commit()
 
@@ -87,18 +114,18 @@ class ExportJobStore:
         """Convert a sqlite3.Row into an ExportJob dataclass."""
         return ExportJob(**dict(row))
 
-    def create(self, job_id: str, dataset_id: str) -> ExportJob:
+    def create(self, job_id: str, dataset_id: str, fmt: str = "parquet") -> ExportJob:
         """Insert a new pending export job."""
         now = time.time()
         with self._lock:
             self._conn.execute(
-                "INSERT INTO export_jobs (id, status, dataset_id, created_at, updated_at) "
-                "VALUES (?, 'pending', ?, ?, ?)",
-                (job_id, dataset_id, now, now),
+                "INSERT INTO export_jobs (id, status, dataset_id, format, created_at, updated_at) "
+                "VALUES (?, 'pending', ?, ?, ?, ?)",
+                (job_id, dataset_id, fmt, now, now),
             )
             self._conn.commit()
         return ExportJob(
-            id=job_id, status="pending", dataset_id=dataset_id,
+            id=job_id, status="pending", dataset_id=dataset_id, format=fmt,
             created_at=now, updated_at=now,
         )
 
@@ -107,6 +134,7 @@ class ExportJobStore:
         job_id: str,
         dataset_id: str,
         *,
+        fmt: str = "parquet",
         max_concurrent: int,
     ) -> ExportJob | None:
         """Atomically create a pending job when active jobs are below capacity.
@@ -126,9 +154,9 @@ class ExportJobStore:
                     return None
 
                 self._conn.execute(
-                    "INSERT INTO export_jobs (id, status, dataset_id, created_at, updated_at) "
-                    "VALUES (?, 'pending', ?, ?, ?)",
-                    (job_id, dataset_id, now, now),
+                    "INSERT INTO export_jobs (id, status, dataset_id, format, created_at, updated_at) "
+                    "VALUES (?, 'pending', ?, ?, ?, ?)",
+                    (job_id, dataset_id, fmt, now, now),
                 )
                 self._conn.commit()
             except Exception:
@@ -139,6 +167,7 @@ class ExportJobStore:
             id=job_id,
             status="pending",
             dataset_id=dataset_id,
+            format=fmt,
             created_at=now,
             updated_at=now,
         )
@@ -173,6 +202,8 @@ class ExportJobStore:
         file_path: str | None = None,
         download_url: str | None = None,
         row_count: int | None = None,
+        size_bytes: int | None = None,
+        completed_at: float | None = None,
         error_message: str | None = None,
     ) -> ExportJob | None:
         """Transition a job to a new status with optional metadata updates.
@@ -209,6 +240,14 @@ class ExportJobStore:
             if row_count is not None:
                 sets.append("row_count = ?")
                 params.append(row_count)
+            if size_bytes is not None:
+                sets.append("size_bytes = ?")
+                params.append(size_bytes)
+            if completed_at is None and status == "complete":
+                completed_at = now
+            if completed_at is not None:
+                sets.append("completed_at = ?")
+                params.append(completed_at)
             if error_message is not None:
                 sets.append("error_message = ?")
                 params.append(error_message)
@@ -257,3 +296,35 @@ class ExportJobStore:
             )
             self._conn.commit()
             return cur.rowcount > 0
+
+    def list(
+        self,
+        *,
+        limit: int,
+        status: str | None = None,
+        before_created_at: float | None = None,
+        before_id: str | None = None,
+    ) -> list[ExportJob]:
+        """Return jobs ordered newest-first with optional cursor and status filter."""
+        clauses: list[str] = []
+        params: list[object] = []
+
+        if status is not None:
+            clauses.append("status = ?")
+            params.append(status)
+        if before_created_at is not None and before_id is not None:
+            clauses.append("(created_at < ? OR (created_at = ? AND id < ?))")
+            params.extend([before_created_at, before_created_at, before_id])
+
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        query = (
+            "SELECT * FROM export_jobs "
+            f"{where_sql} "
+            "ORDER BY created_at DESC, id DESC "
+            "LIMIT ?"
+        )
+        params.append(limit)
+
+        with self._lock:
+            cur = self._conn.execute(query, params)
+            return [self._row_to_job(row) for row in cur.fetchall()]

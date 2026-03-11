@@ -58,7 +58,6 @@ def _query_body(endpoint: str = "tuples") -> dict:
 
 def _export_body(dataset_id: str = "trades_v1") -> dict:
     return {
-        "dataset_id": dataset_id,
         "date_range": {"type": "single", "date": "2024-01-15"},
         "query": {"max_rows": 10},
     }
@@ -77,7 +76,11 @@ def _export_status_path(export_id: str) -> str:
 
 
 def _export_download_path(export_id: str) -> str:
-    return f"{EXPORTS_ROOT}/{export_id}/download"
+    return f"{EXPORTS_ROOT}/{export_id}/file"
+
+
+def _export_submit_path(dataset_id: str = "trades_v1") -> str:
+    return f"/api/v1/datasets/{dataset_id}/exports"
 
 
 class TestErrorResponseSchema:
@@ -101,7 +104,7 @@ class TestErrorResponseSchema:
         assert body["details"]["dataset_id"] == "no_such"
 
     def test_export_post_404_envelope(self, client: TestClient) -> None:
-        r = client.post(EXPORTS_ROOT, json=_export_body(dataset_id="no_such"))
+        r = client.post(_export_submit_path("no_such"), json=_export_body(dataset_id="no_such"))
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "DATASET_NOT_FOUND"
@@ -148,7 +151,7 @@ class TestErrorResponseSchema:
         for i in range(5):
             store.create(f"exp-active-{i}", "trades_v1")
             store.update_status(f"exp-active-{i}", "processing")
-        r = client.post(EXPORTS_ROOT, json=_export_body())
+        r = client.post(_export_submit_path(), json=_export_body())
         assert r.status_code == 429
         body = r.json()
         assert body["code"] == "TOO_MANY_EXPORTS"
@@ -203,7 +206,7 @@ class TestErrorResponseSchema:
             lambda dataset_id: {"dataset_id": dataset_id, "fields": [{"name": "symbol"}]},
         )
         monkeypatch.setattr(export_router.db_manager, "table_exists", lambda _dataset_id: False)
-        r = client.post(EXPORTS_ROOT, json=_export_body(dataset_id="not_materialized_ds"))
+        r = client.post(_export_submit_path("not_materialized_ds"), json=_export_body(dataset_id="not_materialized_ds"))
         get_settings.cache_clear()
         assert r.status_code == 409
         payload = r.json()
@@ -244,8 +247,7 @@ class TestValidationErrorEnvelope:
         assert body["code"] == "VALIDATION_ERROR"
 
     def test_export_invalid_format(self, client: TestClient) -> None:
-        r = client.post(EXPORTS_ROOT, json={
-            "dataset_id": "trades_v1",
+        r = client.post(_export_submit_path(), json={
             "date_range": {"type": "single", "date": "2024-01-15"},
             "query": {"format": "xlsx"},
         })

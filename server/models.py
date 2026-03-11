@@ -16,7 +16,7 @@ from server.errors import ValidationAppError
 
 FilterOperator = Literal["INCLUDE", "EXCLUDE", "LIKE", "BETWEEN"]
 SortDirection = Literal["ASC", "DESC"]
-ExportFormat = Literal["parquet", "csv", "sqlite", "duckdb"]
+ExportFormat = Literal["parquet", "csv", "sqlite", "duckdb", "csv_with_bom", "ndjson"]
 AggregationFunction = Literal["SUM", "COUNT", "AVG", "MIN", "MAX"]
 
 MAX_PAGE_LIMIT = 10000
@@ -247,7 +247,7 @@ class PicklistQueryBody(BaseModel):
 
 
 class ExportQueryBody(BaseModel):
-    """Body for POST /api/v1/exports."""
+    """Body for export submission requests."""
 
     export_type: str | None = None
     axes: AxesSpec | None = None
@@ -310,9 +310,18 @@ class QueryPicklistRequest(BaseModel):
 
 
 class ExportRequest(BaseModel):
-    """Request body for POST /api/v1/exports."""
+    """Internal export request model including the dataset identifier."""
 
     dataset_id: str
+    date_range: DateRange
+    query: ExportQueryBody = ExportQueryBody()
+
+
+class ExportSubmitRequest(BaseModel):
+    """Request body for POST /api/v1/datasets/{dataset_id}/exports."""
+
+    model_config = ConfigDict(extra="forbid")
+
     date_range: DateRange
     query: ExportQueryBody = ExportQueryBody()
 
@@ -347,17 +356,55 @@ class PicklistResponse(BaseModel):
     paging: PagingResponse
 
 
+class ExportLinks(BaseModel):
+    """HATEOAS links for export resources."""
+
+    self: str
+    file: str
+
+
 class ExportResponse(BaseModel):
     """Response returned immediately after submitting an export job."""
 
     export_id: str
+    dataset_id: str
     status: str
+    links: ExportLinks
+
+
+class ExportListItem(BaseModel):
+    """Single export item returned by GET /api/v1/exports."""
+
+    export_id: str
+    dataset_id: str
+    status: str
+    format: ExportFormat
+    row_count: int | None = None
+    size_bytes: int | None = None
+    created_at: str
+    expires_at: str
+    links: ExportLinks
+
+
+class ExportListResponse(BaseModel):
+    """Cursor-paginated export listing."""
+
+    items: list[ExportListItem]
+    cursor: str | None = None
 
 
 class ExportStatusResponse(BaseModel):
     """Status response for polling export progress and download URL."""
 
     export_id: str
+    dataset_id: str
     status: str
+    format: ExportFormat
+    created_at: str
+    expires_at: str
     download_url: str | None = None
     row_count: int | None = None
+    size_bytes: int | None = None
+    completed_at: str | None = None
+    progress_pct: int | None = None
+    links: ExportLinks

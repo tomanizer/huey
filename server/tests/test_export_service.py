@@ -45,6 +45,8 @@ class TestSubmit:
         job = service.submit(_export_request())
         assert job.status == "pending"
         assert job.id.startswith("exp-")
+        assert job.dataset_id == "trades_v1"
+        assert job.format == "parquet"
 
     def test_enforces_concurrency_limit(self, service: ExportService, store: ExportJobStore) -> None:
         with patch("server.export_service.get_settings") as mock_settings:
@@ -103,7 +105,7 @@ class TestGetDownloadPath:
         store.update_status(
             job.id, "complete",
             file_path=str(csv_file),
-            download_url=f"/api/v1/exports/{job.id}/download",
+            download_url=f"/api/v1/exports/{job.id}/file",
         )
         assert service.get_download_path(job.id) == str(csv_file)
 
@@ -118,7 +120,7 @@ class TestGetDownloadPath:
         store.update_status(
             job.id, "complete",
             file_path="/tmp/nonexistent.csv",
-            download_url=f"/api/v1/exports/{job.id}/download",
+            download_url=f"/api/v1/exports/{job.id}/file",
         )
         with pytest.raises(ExportFileNotFoundError):
             service.get_download_path(job.id)
@@ -170,3 +172,40 @@ class TestRecoverStaleJobs:
         store.update_status(job.id, "failed", error_message="boom")
         recovered = service.recover_stale_jobs()
         assert recovered == 1
+
+
+class TestListExports:
+    def test_returns_newest_first_with_cursor(self, service: ExportService, store: ExportJobStore) -> None:
+        for export_id in ("exp-a", "exp-b", "exp-c"):
+            store.create(export_id, "trades_v1")
+            time.sleep(0.01)
+
+        first_page, cursor = service.list_exports(limit=2)
+        assert [job.id for job in first_page] == ["exp-c", "exp-b"]
+        assert cursor is not None
+
+        second_page, next_cursor = service.list_exports(limit=2, cursor=cursor)
+        assert [job.id for job in second_page] == ["exp-a"]
+        assert next_cursor is None
+
+
+class TestDeleteExport:
+    def test_cancels_active_job(self, service: ExportService, store: ExportJobStore) -> None:
+        job = service.submit(_export_request())
+        store.update_status(job.id, "processing")
+
+        service.delete_export(job.id)
+
+        assert store.get(job.id).status == "cancelled"
+
+    def test_deletes_terminal_job_and_file(self, service: ExportService, store: ExportJobStore, tmp_path) -> None:
+        job = service.submit(_export_request())
+        store.update_status(job.id, "processing")
+        csv_file = tmp_path / f"{job.id}.csv"
+        csv_file.write_text("a,b\n1,2\n")
+        store.update_status(job.id, "complete", file_path=str(csv_file))
+
+        service.delete_export(job.id)
+
+        assert store.get(job.id) is None
+        assert not csv_file.exists()
