@@ -39,8 +39,10 @@ from server.query_builder import (
     build_picklist_sql,
     build_tuples_count_sql,
     build_tuples_sql,
+    validate_cells_query_fields,
 )
 from server.rate_limit import limiter
+from server.request_context import get_request_id
 
 logger = logging.getLogger("query_service.query")
 router = APIRouter(prefix="/query", tags=["query"])
@@ -82,6 +84,69 @@ async def _execute_with_budget(request: Request, coro_factory, cancel_fn=None):
     async with budget.acquire() as queue_wait_ms:
         result, execution_ms = await budget.run_with_budget(request, coro_factory, cancel_fn=cancel_fn)
     return result, queue_wait_ms, execution_ms
+
+
+def _default_measure_alias(field: str, aggregation: str, alias: str | None) -> str:
+    if alias:
+        return alias
+    return f"{field}__{aggregation.lower()}"
+
+
+async def _fetch_axis_window(
+    request: Request,
+    dataset_id: str,
+    field_names: list[str],
+    filters,
+    date_range,
+    schema_fields: set[str],
+    limit: int | None,
+    offset: int | None,
+    cancel_handle: QueryCancelHandle | None = None,
+) -> tuple[list[dict[str, object]], int]:
+    if not field_names:
+        total = 1
+        if offset and offset > 0:
+            return [], total
+        if limit == 0:
+            return [], total
+        return [{}], total
+
+    query = TuplesQueryBody(
+        fields=[{"field": field_name, "sort": "ASC"} for field_name in field_names],
+        filters=filters,
+        paging=PagingSpec(limit=limit or get_settings().tuples_default_limit, offset=offset or 0),
+    )
+    sql, params = build_tuples_sql(dataset_id, query, date_range, schema_fields)
+    rows, _, _ = await _execute_with_budget(
+        request,
+        lambda: db_manager.execute_sql_async(
+            sql,
+            tuple(params) if params else None,
+            dataset_id=dataset_id,
+            cancel_handle=cancel_handle,
+        ),
+        cancel_fn=cancel_handle.cancel if cancel_handle is not None else None,
+    )
+
+    if rows:
+        total = int(rows[0][-1])
+    else:
+        total = 0
+        if offset:
+            count_sql, count_params = build_tuples_count_sql(dataset_id, query, date_range, schema_fields)
+            count_rows = await db_manager.execute_sql_async(
+                count_sql,
+                tuple(count_params) if count_params else None,
+                dataset_id=dataset_id,
+            )
+            if count_rows:
+                total = int(count_rows[0][0])
+
+    members = [
+        {field_name: row[index] for index, field_name in enumerate(field_names)}
+        for row in rows
+    ]
+    return members, total
 
 
 @router.post("/tuples", response_model=TuplesResponse)
@@ -229,6 +294,7 @@ async def post_query_cells(
     )
 
     schema_fields = datasets.get_schema_field_names(dataset_id)
+    validate_cells_query_fields(query, schema_fields)
     row_window = query.rows
     col_window = query.columns
 
@@ -273,6 +339,37 @@ async def post_query_cells(
     async def _execute() -> dict[str, object]:
         start = time.perf_counter()
         effective_max = settings.max_cells_per_response
+        axes = query.axes or CellsQueryBody().axes
+        row_fields = [item.field for item in (axes.rows if axes else [])]
+        col_fields = [item.field for item in (axes.columns if axes else [])]
+        measures = list(axes.measures if axes else [])
+        row_window_limit = body.window.rows.limit if body.window and body.window.rows else None
+        row_window_offset = body.window.rows.offset if body.window and body.window.rows else 0
+        col_window_limit = body.window.columns.limit if body.window and body.window.columns else None
+        col_window_offset = body.window.columns.offset if body.window and body.window.columns else 0
+
+        rows_payload, row_total = await _fetch_axis_window(
+            request,
+            dataset_id,
+            row_fields,
+            body.filters,
+            body.date_range,
+            schema_fields,
+            row_window_limit,
+            row_window_offset,
+            cancel_handle,
+        )
+        columns_payload, col_total = await _fetch_axis_window(
+            request,
+            dataset_id,
+            col_fields,
+            body.filters,
+            body.date_range,
+            schema_fields,
+            col_window_limit,
+            col_window_offset,
+            cancel_handle,
+        )
         sql, params = build_cells_sql(
             dataset_id, query, body.date_range, schema_fields, max_cells=effective_max + 1
         )
@@ -306,9 +403,71 @@ async def post_query_cells(
                     "min_result_count": effective_max + 1,
                 },
             )
-        cells = [{"row_index": i, "values": {str(k): v for k, v in enumerate(row)}} for i, row in enumerate(rows)]
+        measure_aliases = [
+            _default_measure_alias(measure.field, measure.aggregation, measure.alias)
+            for measure in measures
+        ]
+        row_lookup = {
+            tuple(row_payload.get(field_name) for field_name in row_fields): index
+            for index, row_payload in enumerate(rows_payload)
+        }
+        col_lookup = {
+            tuple(col_payload.get(field_name) for field_name in col_fields): index
+            for index, col_payload in enumerate(columns_payload)
+        }
+        cells = []
+        for row in rows:
+            row_key = tuple(row[index] for index in range(min(len(row_fields), len(row))))
+            if len(row_key) != len(row_fields):
+                row_key = tuple(rows_payload[0].get(field_name) for field_name in row_fields) if rows_payload else tuple()
+
+            col_start = len(row_fields)
+            col_key = tuple(
+                row[col_start + index]
+                for index in range(len(col_fields))
+                if (col_start + index) < len(row)
+            )
+            if len(col_key) != len(col_fields):
+                col_key = tuple(columns_payload[0].get(field_name) for field_name in col_fields) if columns_payload else tuple()
+            row_index = row_lookup.get(row_key, 0)
+            col_index = col_lookup.get(col_key, 0)
+            payload = {"row": row_index, "col": col_index}
+            non_null_measure = False
+            measure_offset = len(row_fields) + len(col_fields)
+            fallback_measure_offset = max(0, len(row) - len(measure_aliases))
+            for index, alias in enumerate(measure_aliases):
+                value_index = measure_offset + index
+                if value_index >= len(row):
+                    value_index = fallback_measure_offset + index
+                value = row[value_index] if value_index < len(row) else None
+                if value is not None:
+                    non_null_measure = True
+                payload[alias] = value
+            if non_null_measure or not measure_aliases:
+                cells.append(payload)
         return {
-            "response": {"cells": cells},
+            "response": {
+                "rows": rows_payload,
+                "columns": columns_payload,
+                "cells": cells,
+                "window": {
+                    "rows": {
+                        "offset": row_window_offset,
+                        "limit": row_window_limit or row_total,
+                        "total": row_total,
+                    },
+                    "columns": {
+                        "offset": col_window_offset,
+                        "limit": col_window_limit or col_total,
+                        "total": col_total,
+                    },
+                },
+                "meta": {
+                    "execution_ms": round(duration_ms, 2),
+                    "cache_status": cache_status,
+                    "request_id": get_request_id() or None,
+                },
+            },
             "duration_ms": duration_ms,
             "row_count": len(rows),
             "queue_wait_ms": queue_wait_ms,
@@ -356,7 +515,7 @@ async def post_query_cells(
         },
     )
 
-    return CellsResponse(cells=result["response"]["cells"])
+    return CellsResponse(**result["response"])
 
 
 @router.post("/members", response_model=PicklistResponse)

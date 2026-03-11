@@ -313,10 +313,26 @@ Success `200` example:
 
 ```json
 {
+  "rows": [
+    { "symbol": "AAPL" },
+    { "symbol": "GOOG" }
+  ],
+  "columns": [
+    {}
+  ],
   "cells": [
-    {"row_index": 0, "values": {"0": "AAPL", "1": 1500}},
-    {"row_index": 1, "values": {"0": "GOOG", "1": 2200}}
-  ]
+    { "row": 0, "col": 0, "sum_volume": 1500 },
+    { "row": 1, "col": 0, "sum_volume": 2200 }
+  ],
+  "window": {
+    "rows": { "offset": 0, "limit": 10, "total": 2 },
+    "columns": { "offset": 0, "limit": 1, "total": 1 }
+  },
+  "meta": {
+    "execution_ms": 12.4,
+    "cache_status": "miss",
+    "request_id": "srv-abc123"
+  }
 }
 ```
 

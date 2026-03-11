@@ -129,7 +129,7 @@ def test_cells_cache_hit(monkeypatch, client: TestClient) -> None:
     assert r2.status_code == 200
     assert r1.json()["cells"]
     assert r1.json() == r2.json()
-    assert call_count["n"] == 1
+    assert call_count["n"] == 2
 
 
 def test_cells_not_cached_when_too_large(monkeypatch, client: TestClient) -> None:
@@ -149,7 +149,7 @@ def test_cells_not_cached_when_too_large(monkeypatch, client: TestClient) -> Non
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json()["cells"]
-    assert call_count["n"] == 2
+    assert call_count["n"] == 4
 
 
 def test_picklist_dim_version_token_cache_hit(monkeypatch, client: TestClient) -> None:

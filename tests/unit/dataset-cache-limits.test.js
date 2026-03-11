@@ -194,17 +194,19 @@ describe('DataSet cache limits', () => {
         fetchCellsCallCount += 1;
         const rowCount = query.window?.rows?.limit || 1;
         const colCount = query.window?.columns?.limit || 1;
+        const rows = Array.from({ length: rowCount }, (_, rowIndex) => ({ row_field: rowIndex }));
+        const columns = Array.from({ length: colCount }, (_, columnIndex) => ({ col_field: columnIndex }));
         const cells = [];
         for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
           for (let columnIndex = 0; columnIndex < colCount; columnIndex++) {
             cells.push({
-              row_index: rowIndex,
-              column_index: columnIndex,
-              values: { 2: rowIndex + columnIndex + 1 }
+              row: rowIndex,
+              col: columnIndex,
+              sum_amount_0: rowIndex + columnIndex + 1
             });
           }
         }
-        return { cells };
+        return { rows, columns, cells };
       },
       getState() {
         return 'open';
@@ -289,17 +291,19 @@ describe('DataSet cache limits', () => {
         fetchCellsCallCount += 1;
         const rowCount = query.window?.rows?.limit || 1;
         const colCount = query.window?.columns?.limit || 1;
+        const rows = Array.from({ length: rowCount }, (_, rowIndex) => ({ row_field: rowIndex }));
+        const columns = Array.from({ length: colCount }, (_, columnIndex) => ({ col_field: columnIndex }));
         const cells = [];
         for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
           for (let columnIndex = 0; columnIndex < colCount; columnIndex++) {
             cells.push({
-              row_index: rowIndex,
-              column_index: columnIndex,
-              values: { 2: `value-${rowIndex}-${columnIndex}-${'x'.repeat(64)}` }
+              row: rowIndex,
+              col: columnIndex,
+              max_amount_0: `value-${rowIndex}-${columnIndex}-${'x'.repeat(64)}`
             });
           }
         }
-        return { cells };
+        return { rows, columns, cells };
       },
       getState() {
         return 'open';
@@ -394,17 +398,19 @@ describe('DataSet cache limits', () => {
         fetchCellsCallCount += 1;
         const rowCount = query.window?.rows?.limit || 1;
         const colCount = query.window?.columns?.limit || 1;
+        const rows = Array.from({ length: rowCount }, (_, rowIndex) => ({ row_field: rowIndex }));
+        const columns = Array.from({ length: colCount }, (_, columnIndex) => ({ col_field: columnIndex }));
         const cells = [];
         for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
           for (let columnIndex = 0; columnIndex < colCount; columnIndex++) {
             cells.push({
-              row_index: rowIndex,
-              column_index: columnIndex,
-              values: { 2: `value-${rowIndex}-${columnIndex}-${cellValuePadding}` }
+              row: rowIndex,
+              col: columnIndex,
+              max_amount_0: `value-${rowIndex}-${columnIndex}-${cellValuePadding}`
             });
           }
         }
-        return { cells };
+        return { rows, columns, cells };
       },
       getState() {
         return 'open';
@@ -514,10 +520,12 @@ describe('DataSet cache limits', () => {
     const connection = {
       fetchCells() {
         return {
+          rows: [{}],
+          columns: [{}],
           cells: [{
-            row_index: 0,
-            column_index: 0,
-            values: { 2: 1n }
+            row: 0,
+            col: 0,
+            max_amount_0: 1n
           }]
         };
       },

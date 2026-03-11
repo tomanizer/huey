@@ -40,7 +40,8 @@ def test_full_api_flow(client: TestClient) -> None:
     assert r_cells.status_code == 200
     cells_data = r_cells.json()
     assert len(cells_data["cells"]) > 0
-    assert "row_index" in cells_data["cells"][0]
+    assert "row" in cells_data["cells"][0]
+    assert "col" in cells_data["cells"][0]
 
     r_picklist = client.post(f"/api/v1/datasets/{dataset_id}/query/members", json={
         "date_range": date_range,

@@ -87,12 +87,12 @@ describe('CellSet cell fetching flows', () => {
     const measureSql = queryModelModule.QueryAxisItem.getSqlForQueryAxisItem(measureItem, CellSet.datasetRelationName);
 
     const fetchCells = vi.fn().mockResolvedValue({
+      rows: [{}],
+      columns: [{}],
       cells: [{
-        row_index: 0,
-        column_index: 0,
-        values: {
-          0: 42,
-        },
+        row: 0,
+        col: 0,
+        sales_sum: 42,
       }],
     });
     const connection = {

@@ -190,7 +190,7 @@ def test_timing_out_one_request_does_not_break_other_concurrent_requests(
     assert first_result.status_code == 504
     assert first_result.json()["code"] == "QUERY_TIMEOUT"
     assert second_result.status_code == 200
-    assert second_result.json()["cells"] == [{"row_index": 0, "values": {"0": 42}}]
+    assert second_result.json()["cells"] == [{"row": 0, "col": 0, "sum_volume": 42}]
 
 
 def test_cancelled_acquire_does_not_increment_active_count(settings_override) -> None:
