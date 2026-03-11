@@ -95,7 +95,7 @@ describe('RemoteQueryAdapter', () => {
     }).toThrow('does not support filter type');
   });
 
-  test('builds cells query with uppercase aggregation names', () => {
+  test('builds cells query with normalized lowercase aggregation ids', () => {
     const queryModel = {
       getRowsAxis: () => ({ getItems: () => [{ columnName: 'symbol' }] }),
       getColumnsAxis: () => ({ getItems: () => [{ columnName: 'exchange' }] }),
@@ -132,6 +132,20 @@ describe('RemoteQueryAdapter', () => {
       'unique_list',
       'histogram'
     ]);
+  });
+
+  test('throws on unknown aggregator name', () => {
+    const queryModel = {
+      getRowsAxis: () => ({ getItems: () => [] }),
+      getColumnsAxis: () => ({ getItems: () => [] }),
+      getFiltersAxis: () => ({ getItems: () => [] }),
+    };
+
+    expect(() => {
+      RemoteQueryAdapter.createRemoteCellsQuery(queryModel, 1, 1, [
+        { columnName: 'volume', aggregator: 'some unknown aggregator' },
+      ]);
+    }).toThrow('does not support aggregator');
   });
 
   test('returns undefined when query model has no date range', () => {

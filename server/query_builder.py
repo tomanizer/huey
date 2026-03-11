@@ -689,7 +689,6 @@ def build_export_sql(
     row_fields = [f.field for f in (axes.rows if axes else [])]
     col_fields = [f.field for f in (axes.columns if axes else [])]
     measures = axes.measures if axes else []
-    _validate_measure_specs(dataset_id, list(measures), schema_fields, ["body", "query", "axes", "measures"])
 
     dim_cols = [_quote(f) for f in row_fields + col_fields]
     dim_headers = row_fields + col_fields
