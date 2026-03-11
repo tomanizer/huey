@@ -165,6 +165,20 @@ class TestTuplesValidation:
         assert r.status_code == 422
         assert r.json()["code"] == "FILTER_INVALID"
 
+    def test_unknown_tuple_derivation_returns_derivation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("tuples")
+        body["fields"] = [{"field": "date", "derivation": "not_real"}]
+        r = client.post(_post_path("tuples"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "DERIVATION_NOT_SUPPORTED"
+
+    def test_type_incompatible_tuple_derivation_returns_derivation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("tuples")
+        body["fields"] = [{"field": "symbol", "derivation": "year"}]
+        r = client.post(_post_path("tuples"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "DERIVATION_NOT_SUPPORTED"
+
 
 class TestCellsValidation:
     def test_missing_axes_rejected(self, client: TestClient) -> None:
@@ -217,6 +231,20 @@ class TestCellsValidation:
         assert r.status_code == 422
         assert r.json()["code"] == "VALIDATION_ERROR"
 
+    def test_unknown_cells_derivation_returns_derivation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("cells")
+        body["axes"]["rows"] = [{"field": "date", "derivation": "not_real"}]
+        r = client.post(_post_path("cells"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "DERIVATION_NOT_SUPPORTED"
+
+    def test_type_incompatible_cells_derivation_returns_derivation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("cells")
+        body["axes"]["rows"] = [{"field": "symbol", "derivation": "year"}]
+        r = client.post(_post_path("cells"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "DERIVATION_NOT_SUPPORTED"
+
 
 class TestMembersValidation:
     def test_unknown_members_field_rejected(self, client: TestClient) -> None:
@@ -231,6 +259,21 @@ class TestMembersValidation:
         body["paging"] = {"limit": 10, "offset": -1}
         r = client.post(_post_path("members"), json=body)
         assert r.status_code == 422
+
+    def test_unknown_members_derivation_returns_derivation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("members")
+        body["derivation"] = "not_real"
+        r = client.post(_post_path("members"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "DERIVATION_NOT_SUPPORTED"
+
+    def test_type_incompatible_members_derivation_returns_derivation_not_supported(self, client: TestClient) -> None:
+        body = _valid_body_for("members")
+        body["field"] = "symbol"
+        body["derivation"] = "year"
+        r = client.post(_post_path("members"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "DERIVATION_NOT_SUPPORTED"
 
 
 class TestExportValidation:

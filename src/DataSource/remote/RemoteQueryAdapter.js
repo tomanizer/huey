@@ -33,6 +33,42 @@ export class RemoteQueryAdapter {
     histogram: 'histogram'
   };
 
+  static #DERIVATION_BY_NAME = {
+    year: 'year',
+    'iso-year': 'iso_year',
+    quarter: 'quarter',
+    'month num': 'month_num',
+    'month name': 'month_name',
+    'month shortname': 'month_shortname',
+    'week num': 'week_num',
+    'day of year': 'day_of_year',
+    'day of month': 'day_of_month',
+    'day of week num': 'day_of_week_num',
+    'iso-day of week': 'iso_day_of_week',
+    'day of week name': 'day_of_week_name',
+    'day of week shortname': 'day_of_week_shortname',
+    'local-date': 'local_date',
+    'iso-date': 'iso_date',
+    hour: 'hour',
+    minute: 'minute',
+    second: 'second',
+    'iso-time': 'iso_time',
+    'timestamp (secs)': 'epoch_secs',
+    'timestamp (millis)': 'epoch_millis',
+    'timestamp (micros)': 'epoch_micros',
+    'timestamp (nanos)': 'epoch_nanos',
+    uppercase: 'uppercase',
+    lowercase: 'lowercase',
+    'first letter': 'first_letter',
+    length: 'length',
+    noaccent: 'noaccent',
+    nocase: 'nocase',
+    hash: 'hash',
+    'md5 (hex)': 'md5_hex',
+    sha256: 'sha256',
+    'sha-256': 'sha256',
+  };
+
   static getDateRange(queryModel) {
     if (queryModel && typeof queryModel.getDateRange === 'function') {
       const queryModelDateRange = queryModel.getDateRange();
@@ -47,10 +83,31 @@ export class RemoteQueryAdapter {
     if (!axisItem || typeof axisItem.columnName !== 'string' || !axisItem.columnName.length) {
       throw new Error('Remote datasource requires a valid columnName for ' + context + '.');
     }
-    if (axisItem.derivation) {
-      throw new Error('Remote datasource does not support derivation "' + axisItem.derivation + '" in ' + context + '.');
-    }
     return axisItem.columnName;
+  }
+
+  static #getRemoteDerivation(axisItem, context) {
+    if (!axisItem || !axisItem.derivation) {
+      return undefined;
+    }
+    const normalizedDerivation = String(axisItem.derivation).toLowerCase();
+    const derivation = RemoteQueryAdapter.#DERIVATION_BY_NAME[normalizedDerivation];
+    if (!derivation) {
+      throw new Error('Remote datasource does not support derivation "' + normalizedDerivation + '" in ' + context + '.');
+    }
+    return derivation;
+  }
+
+  static #getRemoteAlias(axisItem) {
+    if (!axisItem || !axisItem.derivation) {
+      return undefined;
+    }
+    const derivation = RemoteQueryAdapter.#getRemoteDerivation(axisItem, 'query');
+    return `${axisItem.columnName}__${derivation}`;
+  }
+
+  static getRemoteOutputName(axisItem) {
+    return RemoteQueryAdapter.#getRemoteAlias(axisItem) || axisItem.columnName;
   }
 
   static #normalizeLiteralToValue(literal) {
@@ -191,6 +248,8 @@ export class RemoteQueryAdapter {
     const fields = axisItems.map((item) => {
       return {
         field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'tuples'),
+        derivation: RemoteQueryAdapter.#getRemoteDerivation(item, 'tuples'),
+        alias: RemoteQueryAdapter.#getRemoteAlias(item),
         sort: 'ASC',
         include_totals: item.includeTotals !== false
       };
@@ -217,10 +276,18 @@ export class RemoteQueryAdapter {
       },
       axes: {
         rows: rowsAxisItems.map((item) => {
-          return { field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells rows') };
+          return {
+            field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells rows'),
+            derivation: RemoteQueryAdapter.#getRemoteDerivation(item, 'cells rows'),
+            alias: RemoteQueryAdapter.#getRemoteAlias(item)
+          };
         }),
         columns: columnsAxisItems.map((item) => {
-          return { field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells columns') };
+          return {
+            field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells columns'),
+            derivation: RemoteQueryAdapter.#getRemoteDerivation(item, 'cells columns'),
+            alias: RemoteQueryAdapter.#getRemoteAlias(item)
+          };
         }),
         measures: (cellsAxisItemsToFetch || []).map((item, index) => {
           const field = RemoteQueryAdapter.#getRemoteFieldForAxisItem(item, 'cells measures');
@@ -238,6 +305,8 @@ export class RemoteQueryAdapter {
   static createRemotePicklistQuery(queryAxisItem, filterAxisItems, search, limit, offset) {
     return {
       field: RemoteQueryAdapter.#getRemoteFieldForAxisItem(queryAxisItem, 'picklist'),
+      derivation: RemoteQueryAdapter.#getRemoteDerivation(queryAxisItem, 'picklist'),
+      alias: RemoteQueryAdapter.#getRemoteAlias(queryAxisItem),
       search: search || undefined,
       filters: RemoteQueryAdapter.toRemoteFilters(filterAxisItems, 'picklist'),
       paging: { limit: limit, offset: offset }

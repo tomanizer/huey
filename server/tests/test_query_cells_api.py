@@ -82,6 +82,37 @@ def test_query_cells_extended_aggregations(client: TestClient) -> None:
     assert "last_symbol" in cell
 
 
+def test_query_cells_row_derivation_default_alias(client: TestClient) -> None:
+    body = {
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        "axes": {
+            "rows": [{"field": "date", "derivation": "year"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "sum", "alias": "sum_volume"}],
+        },
+    }
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["rows"] == [{"date__year": 2026}]
+    assert data["cells"][0]["sum_volume"] > 0
+
+
+def test_query_cells_derivation_alias_override(client: TestClient) -> None:
+    body = {
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        "axes": {
+            "rows": [{"field": "date", "derivation": "year", "alias": "trade_year"}],
+            "columns": [],
+            "measures": [{"field": "volume", "aggregation": "sum", "alias": "sum_volume"}],
+        },
+    }
+    r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["rows"] == [{"trade_year": 2026}]
+
+
 def test_query_cells_with_filter(client: TestClient) -> None:
     dataset_id = "trades_v1"
     body = {
