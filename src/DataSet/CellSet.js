@@ -552,13 +552,12 @@ export class CellSet extends DataSetComponent {
     return -12;
   }
 
-  #remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, columnCount, measureAliases, measureValueOffset){
+  #remoteCellsResponseToResultSet(apiResponse, _query, cellsAxisItemsToFetch, columnCount, measureAliases){
     const cells = apiResponse.cells || [];
-    const colCount = columnCount || 1;
+    const columns = apiResponse.columns || [{}];
+    const colCount = columnCount || columns.length || 1;
     const items = cellsAxisItemsToFetch || [];
     const aliases = measureAliases || [];
-    const offset = measureValueOffset !== null ? measureValueOffset : 0;
-    // Backend returns cell.values keyed by column index: row dims, then column dims, then measures.
     const fields = [{ name: CellSet.#cellIndexColumnName }].concat(items.map((item) => {
       const typeId = CellSet.#measureColumnTypeToArrowTypeId(item.columnType);
       return {
@@ -571,16 +570,13 @@ export class CellSet extends DataSetComponent {
       const c = cells[i];
       if (!c) return {};
       const row = {};
-      row[CellSet.#cellIndexColumnName] = (c.row_index || 0) * colCount + (c.column_index || 0);
-      const vals = c.values || {};
+      const rowIndex = c.row || 0;
+      const columnIndex = c.col || 0;
+      row[CellSet.#cellIndexColumnName] = rowIndex * colCount + columnIndex;
       items.forEach((item, index) => {
         const sqlExpression = QueryAxisItem.getSqlForQueryAxisItem(item, CellSet.datasetRelationName);
         const alias = aliases[index];
-        const keyedByPosition = vals[String(offset + index)];
-        const keyedByMeasureIndex = vals[String(index)];
-        row[sqlExpression] = keyedByPosition !== undefined ? keyedByPosition : (
-          keyedByMeasureIndex !== undefined ? keyedByMeasureIndex : vals[alias]
-        );
+        row[sqlExpression] = c[alias];
       });
       return row;
     };
@@ -598,16 +594,12 @@ export class CellSet extends DataSetComponent {
 
     if (isRemote && datasource.getManagedConnection().fetchCells) {
       const query = this.#buildRemoteCellsQuery(tuplesToQuery, tuplesFields, cellsAxisItemsToFetch);
-      const colCount = query.columns && query.columns.count ? query.columns.count : 1;
-      const axes = query.axes || {};
-      const rowDimCount = (axes.rows && axes.rows.length) || 0;
-      const colDimCount = (axes.columns && axes.columns.length) || 0;
-      const measureValueOffset = rowDimCount + colDimCount;
+      const colCount = query.window && query.window.columns && query.window.columns.limit ? query.window.columns.limit : 1;
       const measureAliases = query.axes && query.axes.measures ? query.axes.measures.map((measure) => { return measure.alias; }) : [];
       const dateRange = RemoteQueryAdapter.getDateRange(queryModel);
       const connection = await this.getManagedConnection();
       const apiResponse = await connection.fetchCells(dateRange, query);
-      const resultSet = this.#remoteCellsResponseToResultSet(apiResponse, cellsAxisItemsToFetch, colCount, measureAliases, measureValueOffset);
+      const resultSet = this.#remoteCellsResponseToResultSet(apiResponse, query, cellsAxisItemsToFetch, colCount, measureAliases);
       return resultSet;
     }
 

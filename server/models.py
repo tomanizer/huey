@@ -345,7 +345,11 @@ class TuplesResponse(BaseModel):
 class CellsResponse(BaseModel):
     """Response envelope for the v1 cells endpoint."""
 
+    rows: list[dict[str, Any]]
+    columns: list[dict[str, Any]]
     cells: list[dict[str, Any]]
+    window: dict[str, Any]
+    meta: dict[str, Any]
 
 
 class PicklistResponse(BaseModel):
