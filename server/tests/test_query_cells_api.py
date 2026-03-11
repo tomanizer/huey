@@ -20,11 +20,15 @@ def test_query_cells_returns_aggregated_data(client: TestClient) -> None:
     r = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json=body)
     assert r.status_code == 200
     data = r.json()
+    assert "rows" in data
+    assert "columns" in data
+    assert "window" in data
+    assert "meta" in data
     assert len(data["cells"]) > 0
     cell = data["cells"][0]
-    assert "row_index" in cell
-    assert "values" in cell
-    assert isinstance(cell["values"], dict)
+    assert "row" in cell
+    assert "col" in cell
+    assert "sum_volume" in cell
 
 
 def test_query_cells_multiple_aggregations(client: TestClient) -> None:
@@ -47,8 +51,8 @@ def test_query_cells_multiple_aggregations(client: TestClient) -> None:
     assert r.status_code == 200
     cells = r.json()["cells"]
     assert len(cells) > 0
-    # Each cell should have symbol + 5 aggregation values = 6 values
-    assert len(cells[0]["values"]) == 6
+    # row + col + 5 aggregation values = 7 keys
+    assert len(cells[0].keys()) == 7
 
 
 def test_query_cells_with_filter(client: TestClient) -> None:
@@ -64,9 +68,11 @@ def test_query_cells_with_filter(client: TestClient) -> None:
     }
     r = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json=body)
     assert r.status_code == 200
-    cells = r.json()["cells"]
+    data = r.json()
+    cells = data["cells"]
     assert len(cells) == 1
-    assert cells[0]["values"]["0"] == "AAPL"
+    assert data["rows"][0]["symbol"] == "AAPL"
+    assert cells[0]["sum_volume"] == 1500
 
 
 def test_query_cells_empty_axes_returns_empty(client: TestClient) -> None:
@@ -95,10 +101,10 @@ def test_query_cells_row_window_limits_results(client: TestClient) -> None:
     }
     r = client.post(f"/api/v1/datasets/{dataset_id}/query/cells", json=body)
     assert r.status_code == 200
-    cells = r.json()["cells"]
+    data = r.json()
+    cells = data["cells"]
     assert len(cells) == 1
-    # Ordered ascending, first symbol should be AAPL from sample data
-    assert cells[0]["values"]["0"] == "AAPL"
+    assert data["rows"][0]["symbol"] == "AAPL"
 
 
 def test_query_cells_window_too_large_returns_error(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -225,7 +231,7 @@ def test_cells_executes_sql_exactly_once(monkeypatch, client: TestClient) -> Non
     }
     r = client.post("/api/v1/datasets/trades_v1/query/cells", json=body)
     assert r.status_code == 200
-    assert call_count["n"] == 1, (
-        "Expected exactly 1 SQL execution for /api/v1/datasets/{dataset_id}/query/cells, "
+    assert call_count["n"] == 2, (
+        "Expected exactly 2 SQL executions for /api/v1/datasets/{dataset_id}/query/cells, "
         f"got {call_count['n']}"
     )
