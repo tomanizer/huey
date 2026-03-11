@@ -234,7 +234,8 @@ Request body fields:
 - `fields` (array of objects):
   - `field` (string, required)
   - `sort` (`ASC` or `DESC`, optional)
-  - `derivation` (optional)
+  - `derivation` (optional; e.g. `year`, `uppercase`, `month_name`)
+  - `alias` (optional; defaults to `field__derivation` when `derivation` is set)
   - `include_totals` (optional)
 - `filters` (optional):
   - `field` (string)
@@ -281,6 +282,7 @@ Error statuses:
 - `404` `DATASET_NOT_FOUND`
 - `409` `DATASET_UNAVAILABLE`
 - `422` `VALIDATION_ERROR`
+- `422` `DERIVATION_NOT_SUPPORTED`
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
@@ -293,8 +295,8 @@ Authentication: conditional API key.
 Request body fields:
 
 - `date_range` (optional)
-- `axes.rows` (array of `{ "field": string }`)
-- `axes.columns` (array of `{ "field": string }`)
+- `axes.rows` (array of `{ "field": string, "derivation"?: string, "alias"?: string }`)
+- `axes.columns` (array of `{ "field": string, "derivation"?: string, "alias"?: string }`)
 - `axes.measures` (array):
   - `field` (string)
   - `aggregation`
@@ -357,6 +359,7 @@ Error statuses:
 - `404` `DATASET_NOT_FOUND`
 - `409` `DATASET_UNAVAILABLE`
 - `422` `VALIDATION_ERROR`
+- `422` `DERIVATION_NOT_SUPPORTED`
 - `422` `SORT_BY_REQUIRED`
 - `422` `AGGREGATION_NOT_SUPPORTED`
 - `401` auth failure when auth enabled
@@ -372,6 +375,8 @@ Request body fields:
 
 - `date_range` (optional)
 - `field` (string)
+- `derivation` (optional)
+- `alias` (optional; defaults to `field__derivation` when `derivation` is set)
 - `search` (string, optional; `*` is translated to SQL `%` wildcard)
 - `filters` (optional)
 - `paging` (optional)
@@ -408,6 +413,7 @@ Error statuses:
 - `404` `DATASET_NOT_FOUND`
 - `409` `DATASET_UNAVAILABLE`
 - `422` `VALIDATION_ERROR`
+- `422` `DERIVATION_NOT_SUPPORTED`
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 

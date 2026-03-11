@@ -61,6 +61,18 @@ class AggregationNotSupportedError(AppError):
         )
 
 
+class DerivationNotSupportedError(AppError):
+    """Raised when a requested derivation is unknown or incompatible."""
+
+    def __init__(self, errors: list[dict[str, Any]]) -> None:
+        super().__init__(
+            code="DERIVATION_NOT_SUPPORTED",
+            message="Derivation is not supported for this request",
+            status_code=422,
+            details={"errors": errors},
+        )
+
+
 class DatasetNotFoundError(AppError):
     """Raised when a requested dataset_id is not registered in the service."""
 

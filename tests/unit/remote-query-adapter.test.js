@@ -148,6 +148,48 @@ describe('RemoteQueryAdapter', () => {
     }).toThrow('does not support aggregator');
   });
 
+  test('maps derivation labels to API ids and aliases', () => {
+    const queryModel = {
+      getQueryAxis: () => ({
+        getItems: () => [{ columnName: 'date', derivation: 'month name' }],
+      }),
+      getRowsAxis: () => ({ getItems: () => [{ columnName: 'date', derivation: 'year' }] }),
+      getColumnsAxis: () => ({ getItems: () => [{ columnName: 'symbol', derivation: 'uppercase' }] }),
+      getFiltersAxis: () => ({ getItems: () => [] }),
+    };
+
+    const tuplesQuery = RemoteQueryAdapter.createRemoteTuplesQuery(queryModel, 'rows', 10, 0);
+    const cellsQuery = RemoteQueryAdapter.createRemoteCellsQuery(queryModel, 10, 10, []);
+    const picklistQuery = RemoteQueryAdapter.createRemotePicklistQuery(
+      { columnName: 'symbol', derivation: 'uppercase' },
+      [],
+      undefined,
+      10,
+      0
+    );
+
+    expect(tuplesQuery.fields[0]).toMatchObject({
+      field: 'date',
+      derivation: 'month_name',
+      alias: 'date__month_name',
+    });
+    expect(cellsQuery.axes.rows[0]).toMatchObject({
+      field: 'date',
+      derivation: 'year',
+      alias: 'date__year',
+    });
+    expect(cellsQuery.axes.columns[0]).toMatchObject({
+      field: 'symbol',
+      derivation: 'uppercase',
+      alias: 'symbol__uppercase',
+    });
+    expect(picklistQuery).toMatchObject({
+      field: 'symbol',
+      derivation: 'uppercase',
+      alias: 'symbol__uppercase',
+    });
+  });
+
   test('returns undefined when query model has no date range', () => {
     const dateRange = RemoteQueryAdapter.getDateRange({});
     expect(dateRange).toBeUndefined();

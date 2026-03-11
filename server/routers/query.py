@@ -11,6 +11,7 @@ from server import datasets
 from server.auth import require_api_key
 from server.cache import build_cache_key, get_query_cache
 from server.config import get_settings
+from server.derivations import get_output_name
 from server.engine import QueryCancelHandle, db_manager
 from server.errors import (
     CellsWindowTooLargeError,
@@ -135,7 +136,7 @@ def _validate_cells_measure_aliases(measures) -> None:
 async def _fetch_axis_window(
     request: Request,
     dataset_id: str,
-    field_names: list[str],
+    axis_items: list[object],
     filters,
     date_range,
     schema_fields: set[str],
@@ -143,6 +144,10 @@ async def _fetch_axis_window(
     offset: int | None,
     cancel_handle: QueryCancelHandle | None = None,
 ) -> tuple[list[dict[str, object]], int]:
+    field_names = [
+        get_output_name(item.field, getattr(item, "derivation", None), getattr(item, "alias", None))
+        for item in axis_items
+    ]
     if not field_names:
         total = 1
         if offset and offset > 0:
@@ -152,7 +157,15 @@ async def _fetch_axis_window(
         return [{}], total
 
     query = TuplesQueryBody(
-        fields=[{"field": field_name, "sort": "ASC"} for field_name in field_names],
+        fields=[
+            {
+                "field": item.field,
+                "derivation": getattr(item, "derivation", None),
+                "alias": getattr(item, "alias", None),
+                "sort": "ASC",
+            }
+            for item in axis_items
+        ],
         filters=filters,
         paging=PagingSpec(limit=limit or get_settings().tuples_default_limit, offset=offset or 0),
     )
@@ -189,7 +202,7 @@ async def _fetch_axis_window(
     return members, total
 
 
-@router.post("/tuples", response_model=TuplesResponse)
+@router.post("/tuples", response_model=TuplesResponse, response_model_exclude_none=True)
 @limiter.limit(lambda: get_settings().rate_limit_query)
 async def post_query_tuples(
     request: Request,
@@ -231,7 +244,10 @@ async def post_query_tuples(
             )
 
         rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
-        field_names = [field.field for field in (query.fields or [])]
+        field_names = [
+            get_output_name(field.field, getattr(field, "derivation", None), getattr(field, "alias", None))
+            for field in (query.fields or [])
+        ]
         if rows:
             total_count = int(rows[0][-1])
             items = [
@@ -387,8 +403,10 @@ async def post_query_cells(
         start = time.perf_counter()
         effective_max = settings.max_cells_per_response
         axes = query.axes or CellsQueryBody().axes
-        row_fields = [item.field for item in (axes.rows if axes else [])]
-        col_fields = [item.field for item in (axes.columns if axes else [])]
+        row_items = list(axes.rows if axes else [])
+        col_items = list(axes.columns if axes else [])
+        row_fields = [get_output_name(item.field, item.derivation, item.alias) for item in row_items]
+        col_fields = [get_output_name(item.field, item.derivation, item.alias) for item in col_items]
         measures = list(axes.measures if axes else [])
         row_window_limit = body.window.rows.limit if body.window and body.window.rows else effective_max
         row_window_offset = body.window.rows.offset if body.window and body.window.rows else 0
@@ -398,7 +416,7 @@ async def post_query_cells(
         rows_payload, row_total = await _fetch_axis_window(
             request,
             dataset_id,
-            row_fields,
+            row_items,
             body.filters,
             body.date_range,
             schema_fields,
@@ -409,7 +427,7 @@ async def post_query_cells(
         columns_payload, col_total = await _fetch_axis_window(
             request,
             dataset_id,
-            col_fields,
+            col_items,
             body.filters,
             body.date_range,
             schema_fields,
@@ -579,6 +597,8 @@ async def post_query_members(
 
     query = PicklistQueryBody(
         field=body.field,
+        derivation=body.derivation,
+        alias=body.alias,
         search=body.search,
         filters=body.filters,
         paging=body.paging,
@@ -628,7 +648,7 @@ async def post_query_members(
         duration_ms = (time.perf_counter() - start) * 1000
         return {
             "response": {
-                "field": query.field,
+                "field": get_output_name(query.field, query.derivation, query.alias) if query.field else None,
                 "total_count": total_count,
                 "items": items,
                 "paging": {"limit": paging.limit, "offset": paging.offset, "returned": len(items)},

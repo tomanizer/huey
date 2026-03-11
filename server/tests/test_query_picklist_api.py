@@ -43,6 +43,33 @@ def test_query_members_search_wildcard(client: TestClient) -> None:
     assert "AMZN" in values
 
 
+def test_query_members_string_derivation_default_alias(client: TestClient) -> None:
+    body = {
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "field": "symbol",
+        "derivation": "uppercase",
+        "paging": {"limit": 100, "offset": 0},
+    }
+    r = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["field"] == "symbol__uppercase"
+    assert "AAPL" in [item["value"] for item in data["items"]]
+
+
+def test_query_members_derivation_alias_override(client: TestClient) -> None:
+    body = {
+        "date_range": {"type": "single", "date": "2026-03-01"},
+        "field": "symbol",
+        "derivation": "uppercase",
+        "alias": "symbol_upper",
+        "paging": {"limit": 100, "offset": 0},
+    }
+    r = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
+    assert r.status_code == 200
+    assert r.json()["field"] == "symbol_upper"
+
+
 def test_query_members_with_filter(client: TestClient) -> None:
     dataset_id = "trades_v1"
     body = {

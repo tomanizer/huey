@@ -182,9 +182,17 @@ class TupleFieldSpec(BaseModel):
     """Dimension or measure requested in tuple queries, with sort/totals flags."""
 
     field: str
-    derivation: str | None = None  # reserved: tech spec derivation support
+    derivation: str | None = None
+    alias: str | None = None
     sort: SortDirection | None = None
     include_totals: bool | None = None  # reserved: tech spec totals support
+
+    @field_validator("derivation", mode="before")
+    @classmethod
+    def normalize_derivation(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            return value.lower()
+        return value
 
 
 class TupleFilter(BaseModel):
@@ -294,6 +302,15 @@ class AxisField(BaseModel):
     """A dimension field referenced in a cells or export query axis."""
 
     field: str
+    derivation: str | None = None
+    alias: str | None = None
+
+    @field_validator("derivation", mode="before")
+    @classmethod
+    def normalize_derivation(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            return value.lower()
+        return value
 
 
 class MeasureSpec(BaseModel):
@@ -366,6 +383,8 @@ class PicklistQueryBody(BaseModel):
     """Body for /api/v1/datasets/{dataset_id}/query/picklist."""
 
     field: str | None = None
+    derivation: str | None = None
+    alias: str | None = None
     search: str | None = ""
     filters: list[TupleFilter] | None = None
     paging: PagingSpec | None = None
@@ -423,6 +442,8 @@ class QueryPicklistRequest(BaseModel):
 
     date_range: DateRange | None = None
     field: str | None = None
+    derivation: str | None = None
+    alias: str | None = None
     search: str | None = ""
     filters: list[TupleFilter] | None = None
     paging: PagingSpec | None = None

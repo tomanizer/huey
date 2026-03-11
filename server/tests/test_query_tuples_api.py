@@ -98,6 +98,30 @@ def test_query_tuples_date_range(client: TestClient) -> None:
     assert data["total_count"] == 5
 
 
+def test_query_tuples_date_derivation_default_alias(client: TestClient) -> None:
+    body = {
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        "fields": [{"field": "date", "derivation": "year"}],
+        "paging": {"limit": 10, "offset": 0},
+    }
+    r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["items"] == [{"date__year": 2026}]
+
+
+def test_query_tuples_derivation_alias_override(client: TestClient) -> None:
+    body = {
+        "date_range": {"type": "range", "start": "2026-03-01", "end": "2026-03-02"},
+        "fields": [{"field": "date", "derivation": "year", "alias": "trade_year"}],
+        "paging": {"limit": 10, "offset": 0},
+    }
+    r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["items"] == [{"trade_year": 2026}]
+
+
 def test_query_tuples_paging(client: TestClient) -> None:
     dataset_id = "trades_v1"
     body = {

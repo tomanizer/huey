@@ -171,6 +171,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     has_filter_error = False
     has_sort_by_error = False
     has_aggregation_error = False
+    has_derivation_error = False
     for err in exc.errors():
         entry = {
             "loc": list(err.get("loc", [])),
@@ -183,6 +184,8 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
             has_sort_by_error = True
         if entry["type"] == "aggregation_not_supported":
             has_aggregation_error = True
+        if entry["type"] == "derivation_not_supported":
+            has_derivation_error = True
         if "ctx" in err:
             entry["ctx"] = jsonable_encoder(err["ctx"])
         clean_errors.append(entry)
@@ -191,6 +194,9 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     if has_filter_error:
         code = "FILTER_INVALID"
         message = "Filter validation failed"
+    elif has_derivation_error:
+        code = "DERIVATION_NOT_SUPPORTED"
+        message = "Derivation is not supported for this request"
     elif has_sort_by_error:
         code = "SORT_BY_REQUIRED"
         message = "sort_by is required for this aggregation"

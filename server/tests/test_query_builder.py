@@ -159,6 +159,24 @@ class TestBuildTuplesSql:
         assert '"date" =' not in sql
         assert params == ["s3://bucket/data/*.parquet"]
 
+    def test_derivation_uses_derived_expression_and_alias(self) -> None:
+        query = TuplesQueryBody(
+            fields=[TupleFieldSpec(field="date", derivation="year")],
+            paging=PagingSpec(limit=10, offset=0),
+        )
+        sql, _ = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert 'CAST(YEAR("date") AS INT) AS "date__year"' in sql
+        assert 'GROUP BY "date__year"' in sql
+
+    def test_derivation_alias_override(self) -> None:
+        query = TuplesQueryBody(
+            fields=[TupleFieldSpec(field="date", derivation="year", alias="trade_year")],
+            paging=PagingSpec(limit=10, offset=0),
+        )
+        sql, _ = build_tuples_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert 'AS "trade_year"' in sql
+        assert 'GROUP BY "trade_year"' in sql
+
 
 class TestBuildTuplesCountSql:
     def test_count_query(self) -> None:
@@ -396,6 +414,12 @@ class TestBuildPicklistSql:
         sql, params = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
         assert "NOT IN" in sql
         assert "TSLA" in params
+
+    def test_derivation_uses_derived_value(self) -> None:
+        query = PicklistQueryBody(field="symbol", derivation="uppercase", paging=PagingSpec(limit=100, offset=0))
+        sql, _ = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
+        assert 'UPPER("symbol") AS "symbol__uppercase"' in sql
+        assert 'SELECT "symbol__uppercase" AS value' in sql
 
     @pytest.mark.parametrize(
         ("operator", "values", "sql_fragment"),

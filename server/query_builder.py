@@ -9,6 +9,7 @@ placeholders.
 from typing import Any
 
 from server import datasets
+from server.derivations import apply_derivation, get_output_name, quote_output_name
 from server.errors import AggregationNotSupportedError, ValidationAppError
 from server.models import (
     AxesSpec,
@@ -272,6 +273,39 @@ def validate_picklist_query_fields(query: PicklistQueryBody, schema_fields: set[
     _raise_if_unknown(errors)
 
 
+def _build_dimension_selects(
+    dataset_id: str,
+    items: list[Any],
+    schema_fields: set[str],
+    loc_prefix: list[Any],
+) -> list[dict[str, str]]:
+    schema_field_types = _get_schema_field_types(dataset_id)
+    selects = []
+    for index, item in enumerate(items):
+        output_name = get_output_name(item.field, getattr(item, "derivation", None), getattr(item, "alias", None))
+        if getattr(item, "derivation", None):
+            expression = apply_derivation(
+                item.derivation,
+                _quote(item.field),
+                item.field,
+                schema_field_types.get(item.field),
+                [*loc_prefix, index, "derivation"],
+            )
+        else:
+            expression = _quote(item.field)
+        selects.append(
+            {
+                "field": item.field,
+                "expression": expression,
+                "output_name": output_name,
+                "select_sql": f"{expression} AS {quote_output_name(item.field, getattr(item, 'derivation', None), getattr(item, 'alias', None))}",
+                "column_sql": quote_output_name(item.field, getattr(item, "derivation", None), getattr(item, "alias", None)),
+                "sort": getattr(item, "sort", None),
+            }
+        )
+    return selects
+
+
 def validate_export_query_fields(
     dataset_id: str,
     query: ExportQueryBody,
@@ -363,9 +397,8 @@ def build_tuples_sql(
     if not fields:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
-    select_cols = []
-    for f in fields:
-        select_cols.append(_quote(f.field))
+    dimension_selects = _build_dimension_selects(dataset_id, list(fields), schema_fields, ["body", "fields"])
+    select_cols = [select["column_sql"] for select in dimension_selects]
     if not select_cols:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
@@ -378,7 +411,7 @@ def build_tuples_sql(
     params: list[Any] = list(base.params)
     table = base.from_sql
 
-    select_clause = ", ".join(select_cols)
+    projection_clause = ", ".join(select["select_sql"] for select in dimension_selects)
     where_parts = []
 
     if not base.handles_date and base.requires_time_filter:
@@ -390,12 +423,12 @@ def build_tuples_sql(
 
     where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
+    projected_from = f"(SELECT {projection_clause} FROM {table}{where_clause}) AS projected"
     group_clause = " GROUP BY " + ", ".join(select_cols)
 
     order_parts = []
-    for f in fields:
-        col = _quote(f.field)
-        order_parts.append(f"{col} {f.sort or 'ASC'}")
+    for select in dimension_selects:
+        order_parts.append(f"{select['column_sql']} {select['sort'] or 'ASC'}")
     order_clause = (" ORDER BY " + ", ".join(order_parts)) if order_parts else ""
 
     paging = query.paging
@@ -403,7 +436,8 @@ def build_tuples_sql(
     offset = paging.offset if paging else 0
     limit_clause = f" LIMIT {limit} OFFSET {offset}"
 
-    base_sql = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}"
+    select_clause = ", ".join(select_cols)
+    base_sql = f"SELECT {select_clause} FROM {projected_from}{group_clause}"
     sql_body = (
         f"SELECT {select_clause}, COUNT(*) OVER() AS __count__ "
         f"FROM ({base_sql}) AS grouped{order_clause}{limit_clause}"
@@ -421,7 +455,8 @@ def build_tuples_count_sql(
     """Generate a COUNT query for total_count in tuples response."""
     validate_tuples_query_fields(query, schema_fields)
     fields = query.fields or []
-    select_cols = [_quote(f.field) for f in fields]
+    dimension_selects = _build_dimension_selects(dataset_id, list(fields), schema_fields, ["body", "fields"])
+    select_cols = [select["column_sql"] for select in dimension_selects]
     if not select_cols:
         return "SELECT 0", []
 
@@ -444,7 +479,9 @@ def build_tuples_count_sql(
 
     where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
-    sql_body = f"SELECT COUNT(*) FROM (SELECT {group_expr} FROM {table}{where_clause} GROUP BY {group_expr})"
+    projection_clause = ", ".join(select["select_sql"] for select in dimension_selects)
+    projected_from = f"(SELECT {projection_clause} FROM {table}{where_clause}) AS projected"
+    sql_body = f"SELECT COUNT(*) FROM (SELECT {group_expr} FROM {projected_from} GROUP BY {group_expr})"
     sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 
@@ -464,12 +501,14 @@ def build_cells_sql(
     validate_cells_query_fields(query, schema_fields)
     axes = query.axes
 
-    row_fields = [f.field for f in (axes.rows if axes else [])]
-    col_fields = [f.field for f in (axes.columns if axes else [])]
+    row_specs = _build_dimension_selects(dataset_id, list(axes.rows if axes else []), schema_fields, ["body", "axes", "rows"])
+    col_specs = _build_dimension_selects(dataset_id, list(axes.columns if axes else []), schema_fields, ["body", "axes", "columns"])
+    row_fields = [spec["output_name"] for spec in row_specs]
+    col_fields = [spec["output_name"] for spec in col_specs]
     measures = axes.measures if axes else []
     _validate_measure_specs(dataset_id, list(measures), schema_fields, ["body", "axes", "measures"])
 
-    dim_cols = [_quote(f) for f in row_fields + col_fields]
+    dim_cols = [spec["column_sql"] for spec in row_specs + col_specs]
     agg_exprs = []
     for m in measures:
         agg_exprs.append(_build_aggregation_expression(m))
@@ -477,9 +516,12 @@ def build_cells_sql(
     if not dim_cols and not agg_exprs:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
-    required_columns = set(row_fields + col_fields)
-    required_columns.update(m.field for m in measures)
-    required_columns.update(m.sort_by for m in measures if getattr(m, "sort_by", None))
+    if not dim_cols and not agg_exprs:
+        required_columns = set(schema_fields)
+    else:
+        required_columns = {spec["field"] for spec in row_specs + col_specs}
+        required_columns.update(m.field for m in measures)
+        required_columns.update(m.sort_by for m in measures if getattr(m, "sort_by", None))
     if query.filters:
         required_columns.update(f.field for f in query.filters)
     required_columns.update(required_relation_columns(dataset_id))
@@ -507,6 +549,16 @@ def build_cells_sql(
     # preserved and matches the params list.
     ctes: list[str] = []
     root_table = "base"
+    projection_columns = []
+    included_source_columns = set()
+    for source_field in required_columns:
+        if source_field and source_field not in included_source_columns:
+            projection_columns.append(_quote(source_field))
+            included_source_columns.add(source_field)
+    for spec in row_specs + col_specs:
+        if spec["output_name"] != spec["field"] or spec["expression"] != _quote(spec["field"]):
+            projection_columns.append(spec["select_sql"])
+
     if base.cte_sql:
         base_def = base.cte_sql.strip()
         if base_def.upper().startswith("WITH "):
@@ -520,12 +572,15 @@ def build_cells_sql(
         # No existing CTE; construct base from the underlying table directly.
         ctes.append(f"base AS (SELECT * FROM {table}{filters_where})")
 
+    ctes.append(f"projected_base AS (SELECT {', '.join(projection_columns)} FROM {root_table})")
+    root_table = "projected_base"
+
     row_window = query.rows
     row_cte_name = None
     if row_fields:
         row_cte_name = "row_window"
-        row_select_cols = ", ".join(_quote(f) for f in row_fields)
-        row_order = " ORDER BY " + ", ".join(_quote(f) for f in row_fields)
+        row_select_cols = ", ".join(spec["column_sql"] for spec in row_specs)
+        row_order = " ORDER BY " + ", ".join(spec["column_sql"] for spec in row_specs)
         row_limit = ""
         if row_window:
             limit_val = row_window.count
@@ -542,8 +597,8 @@ def build_cells_sql(
     col_cte_name = None
     if col_fields:
         col_cte_name = "col_window"
-        col_select_cols = ", ".join(_quote(f) for f in col_fields)
-        col_order = " ORDER BY " + ", ".join(_quote(f) for f in col_fields)
+        col_select_cols = ", ".join(spec["column_sql"] for spec in col_specs)
+        col_order = " ORDER BY " + ", ".join(spec["column_sql"] for spec in col_specs)
         col_limit = ""
         if col_window:
             limit_val = col_window.count
@@ -560,9 +615,9 @@ def build_cells_sql(
 
     joins = []
     if row_cte_name:
-        joins.append(f"INNER JOIN {row_cte_name} USING ({', '.join(_quote(f) for f in row_fields)})")
+        joins.append(f"INNER JOIN {row_cte_name} USING ({', '.join(spec['column_sql'] for spec in row_specs)})")
     if col_cte_name:
-        joins.append(f"INNER JOIN {col_cte_name} USING ({', '.join(_quote(f) for f in col_fields)})")
+        joins.append(f"INNER JOIN {col_cte_name} USING ({', '.join(spec['column_sql'] for spec in col_specs)})")
 
     from_clause = f" FROM {root_table} " + " ".join(joins)
 
@@ -589,7 +644,9 @@ def build_picklist_sql(
     if not field:
         return f"SELECT 1 FROM {_quote(dataset_id)} WHERE FALSE", []
 
-    col = _quote(field)
+    field_spec = type("PicklistFieldSpec", (), {"field": field, "derivation": query.derivation, "alias": query.alias})()
+    select_spec = _build_dimension_selects(dataset_id, [field_spec], schema_fields, ["body"])[0]
+    output_col = select_spec["column_sql"]
     required_columns = {field}
     required_columns.update(required_relation_columns(dataset_id))
     if query.filters:
@@ -598,28 +655,36 @@ def build_picklist_sql(
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
     table = base.from_sql
-    where_parts = []
+    base_where_parts = []
 
     if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
-            where_parts.append(date_clause)
+            base_where_parts.append(date_clause)
 
+    base_where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
+    base_where_clause = (" WHERE " + " AND ".join(base_where_parts)) if base_where_parts else ""
+
+    projection_columns = [_quote(source_field) for source_field in sorted(required_columns)]
+    if select_spec["output_name"] != field or select_spec["expression"] != _quote(field):
+        projection_columns.append(select_spec["select_sql"])
+
+    projected_from = f"(SELECT {', '.join(projection_columns)} FROM {table}{base_where_clause}) AS projected"
+
+    search_where_parts = []
     if query.search:
         search_val = query.search.replace("*", "%")
-        where_parts.append(f"{col} LIKE ?")
+        search_where_parts.append(f"{output_col} LIKE ?")
         params.append(search_val)
-
-    where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
-    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
+    where_clause = (" WHERE " + " AND ".join(search_where_parts)) if search_where_parts else ""
 
     paging = query.paging
     limit = paging.limit if paging else 100
     offset = paging.offset if paging else 0
 
     base_sql = (
-        f"SELECT {col} AS value, COUNT(*) AS value_count "
-        f"FROM {table}{where_clause} GROUP BY {col}"
+        f"SELECT {output_col} AS value, COUNT(*) AS value_count "
+        f"FROM {projected_from}{where_clause} GROUP BY {output_col}"
     )
     sql_body = (
         f"SELECT value, value_count, COUNT(*) OVER() AS __count__ "
@@ -641,7 +706,9 @@ def build_picklist_count_sql(
     if not field:
         return "SELECT 0", []
 
-    col = _quote(field)
+    field_spec = type("PicklistFieldSpec", (), {"field": field, "derivation": query.derivation, "alias": query.alias})()
+    select_spec = _build_dimension_selects(dataset_id, [field_spec], schema_fields, ["body"])[0]
+    output_col = select_spec["column_sql"]
     required_columns = {field}
     required_columns.update(required_relation_columns(dataset_id))
     if query.filters:
@@ -650,22 +717,31 @@ def build_picklist_count_sql(
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
     table = base.from_sql
-    where_parts = []
+    base_where_parts = []
 
     if not base.handles_date and base.requires_time_filter:
         date_clause = _build_date_clause(date_range, params)
         if date_clause:
-            where_parts.append(date_clause)
+            base_where_parts.append(date_clause)
+
+    base_where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
+    base_where_clause = (" WHERE " + " AND ".join(base_where_parts)) if base_where_parts else ""
+
+    projection_columns = [_quote(source_field) for source_field in sorted(required_columns)]
+    if select_spec["output_name"] != field or select_spec["expression"] != _quote(field):
+        projection_columns.append(select_spec["select_sql"])
+
+    projected_from = f"(SELECT {', '.join(projection_columns)} FROM {table}{base_where_clause}) AS projected"
+
+    search_where_parts = []
 
     if query.search:
         search_val = query.search.replace("*", "%")
-        where_parts.append(f"{col} LIKE ?")
+        search_where_parts.append(f"{output_col} LIKE ?")
         params.append(search_val)
+    where_clause = (" WHERE " + " AND ".join(search_where_parts)) if search_where_parts else ""
 
-    where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
-    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
-
-    sql_body = f"SELECT COUNT(DISTINCT {col}) FROM {table}{where_clause}"
+    sql_body = f"SELECT COUNT(DISTINCT {output_col}) FROM {projected_from}{where_clause}"
     sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params
 
@@ -686,12 +762,12 @@ def build_export_sql(
     axes = query.axes
     max_rows = query.max_rows
 
-    row_fields = [f.field for f in (axes.rows if axes else [])]
-    col_fields = [f.field for f in (axes.columns if axes else [])]
+    row_specs = _build_dimension_selects(dataset_id, list(axes.rows if axes else []), schema_fields, ["body", "query", "axes", "rows"])
+    col_specs = _build_dimension_selects(dataset_id, list(axes.columns if axes else []), schema_fields, ["body", "query", "axes", "columns"])
     measures = axes.measures if axes else []
 
-    dim_cols = [_quote(f) for f in row_fields + col_fields]
-    dim_headers = row_fields + col_fields
+    dim_cols = [spec["column_sql"] for spec in row_specs + col_specs]
+    dim_headers = [spec["output_name"] for spec in row_specs + col_specs]
     agg_exprs = []
     agg_headers: list[str] = []
     for m in measures:
@@ -699,9 +775,12 @@ def build_export_sql(
         agg_exprs.append(_build_aggregation_expression(m))
         agg_headers.append(alias)
 
-    required_columns = set(row_fields + col_fields)
-    required_columns.update(m.field for m in measures)
-    required_columns.update(m.sort_by for m in measures if getattr(m, "sort_by", None))
+    if not dim_cols and not agg_exprs:
+        required_columns = set(schema_fields)
+    else:
+        required_columns = {spec["field"] for spec in row_specs + col_specs}
+        required_columns.update(m.field for m in measures)
+        required_columns.update(m.sort_by for m in measures if getattr(m, "sort_by", None))
     if query.filters:
         required_columns.update(f.field for f in query.filters)
     required_columns.update(required_relation_columns(dataset_id))
@@ -709,6 +788,22 @@ def build_export_sql(
     base = build_base_relation(dataset_id, date_range, required_columns)
     params: list[Any] = list(base.params)
     table = base.from_sql
+
+    where_parts = []
+    if not base.handles_date and base.requires_time_filter:
+        date_clause = _build_date_clause(date_range, params)
+        if date_clause:
+            where_parts.append(date_clause)
+    where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
+    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
+
+    projection_source_fields = sorted(schema_fields) if not dim_cols and not agg_exprs else sorted(required_columns)
+    projection_columns = [_quote(source_field) for source_field in projection_source_fields]
+    for spec in row_specs + col_specs:
+        if spec["output_name"] != spec["field"] or spec["expression"] != _quote(spec["field"]):
+            projection_columns.append(spec["select_sql"])
+
+    projected_from = f"(SELECT {', '.join(projection_columns)} FROM {table}{where_clause}) AS projected"
 
     if not dim_cols and not agg_exprs:
         all_fields = sorted(schema_fields)
@@ -718,14 +813,6 @@ def build_export_sql(
         select_parts = dim_cols + agg_exprs
         select_clause = ", ".join(select_parts)
         headers = dim_headers + agg_headers
-
-    where_parts = []
-    if not base.handles_date and base.requires_time_filter:
-        date_clause = _build_date_clause(date_range, params)
-        if date_clause:
-            where_parts.append(date_clause)
-    where_parts.extend(_build_filter_clauses(query.filters, params, schema_fields))
-    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
     group_clause = ""
     if dim_cols and agg_exprs:
@@ -737,6 +824,6 @@ def build_export_sql(
 
     limit_clause = f" LIMIT {max_rows}"
 
-    sql_body = f"SELECT {select_clause} FROM {table}{where_clause}{group_clause}{order_clause}{limit_clause}"
+    sql_body = f"SELECT {select_clause} FROM {projected_from}{group_clause}{order_clause}{limit_clause}"
     sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"
     return sql, params, headers

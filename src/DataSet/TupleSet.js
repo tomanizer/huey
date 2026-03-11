@@ -473,10 +473,10 @@ export class TupleSet extends DataSetComponent {
     if (hasGroupingId) fields.push({ name: TupleSet.groupingIdAlias });
     axisItems.forEach((item) => {
       const typeId = TupleSet.#columnTypeToArrowTypeId(item.columnType);
-      fields.push({ name: item.columnName, type: { typeId: typeId } });
+      fields.push({ name: RemoteQueryAdapter.getRemoteOutputName(item), type: { typeId: typeId } });
     });
     if (includeCountAll) fields.push({ name: '__huey_count' });
-    const fieldNames = axisItems.map((item) => { return item.columnName; });
+    const fieldNames = axisItems.map((item) => { return RemoteQueryAdapter.getRemoteOutputName(item); });
     const numRows = items.length;
     const get = (function(items, fieldNames, totalCount, includeCountAll, hasGroupingId) {
       return function(i) {
