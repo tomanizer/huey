@@ -298,8 +298,8 @@ class TestExportErrors:
 
     def test_dataset_unavailable_in_sample_table_mode(self, client: TestClient, monkeypatch) -> None:
         """In sample_table mode, missing DuckDB table returns 409 DATASET_UNAVAILABLE."""
-        from server.engine import db_manager
         from server.config import get_settings
+        from server.engine import db_manager
 
         monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "sample_table")
         get_settings.cache_clear()
@@ -311,8 +311,8 @@ class TestExportErrors:
 
     def test_dataset_available_in_parquet_partitioned_mode(self, client: TestClient, monkeypatch) -> None:
         """In parquet_partitioned mode, no DuckDB table check is performed at submission time."""
-        from server.engine import db_manager
         from server.config import get_settings
+        from server.engine import db_manager
 
         monkeypatch.setenv("QUERYSERVICE_EXECUTION_MODE", "parquet_partitioned")
         get_settings.cache_clear()

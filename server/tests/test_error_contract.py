@@ -56,7 +56,7 @@ def _query_body(endpoint: str = "tuples") -> dict:
     }
 
 
-def _export_body(dataset_id: str = "trades_v1") -> dict:
+def _export_body() -> dict:
     return {
         "date_range": {"type": "single", "date": "2024-01-15"},
         "query": {"max_rows": 10},
@@ -104,7 +104,7 @@ class TestErrorResponseSchema:
         assert body["details"]["dataset_id"] == "no_such"
 
     def test_export_post_404_envelope(self, client: TestClient) -> None:
-        r = client.post(_export_submit_path("no_such"), json=_export_body(dataset_id="no_such"))
+        r = client.post(_export_submit_path("no_such"), json=_export_body())
         assert r.status_code == 404
         body = r.json()
         assert body["code"] == "DATASET_NOT_FOUND"
@@ -206,7 +206,7 @@ class TestErrorResponseSchema:
             lambda dataset_id: {"dataset_id": dataset_id, "fields": [{"name": "symbol"}]},
         )
         monkeypatch.setattr(export_router.db_manager, "table_exists", lambda _dataset_id: False)
-        r = client.post(_export_submit_path("not_materialized_ds"), json=_export_body(dataset_id="not_materialized_ds"))
+        r = client.post(_export_submit_path("not_materialized_ds"), json=_export_body())
         get_settings.cache_clear()
         assert r.status_code == 409
         payload = r.json()
