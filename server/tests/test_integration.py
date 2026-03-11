@@ -51,7 +51,7 @@ def test_full_api_flow(client: TestClient) -> None:
     assert r_picklist.status_code == 200
     picklist_data = r_picklist.json()
     assert picklist_data["total_count"] > 0
-    assert len(picklist_data["values"]) > 0
+    assert len(picklist_data["items"]) > 0
 
     r_export = client.post(f"/api/v1/datasets/{dataset_id}/exports", json={
         "date_range": date_range,

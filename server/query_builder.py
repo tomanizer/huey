@@ -411,9 +411,12 @@ def build_picklist_sql(
     limit = paging.limit if paging else 100
     offset = paging.offset if paging else 0
 
-    base_sql = f"SELECT DISTINCT {col} AS value FROM {table}{where_clause}"
+    base_sql = (
+        f"SELECT {col} AS value, COUNT(*) AS value_count "
+        f"FROM {table}{where_clause} GROUP BY {col}"
+    )
     sql_body = (
-        f"SELECT value, COUNT(*) OVER() AS __count__ "
+        f"SELECT value, value_count, COUNT(*) OVER() AS __count__ "
         f"FROM ({base_sql}) AS distinct_values ORDER BY value LIMIT {limit} OFFSET {offset}"
     )
     sql = f"{base.cte_sql + ' ' if base.cte_sql else ''}{sql_body}"

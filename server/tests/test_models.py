@@ -8,6 +8,7 @@ from server.models import (
     AxesSpec,
     AxisField,
     CellsQueryBody,
+    CellsResponse,
     CellsWindowRequest,
     DateRangeRange,
     DateRangeSingle,
@@ -15,13 +16,18 @@ from server.models import (
     ExportRequest,
     ExportSubmitRequest,
     MeasureSpec,
+    MemberItem,
+    MetaResponse,
     PagingResponse,
     PagingSpec,
+    PicklistResponse,
     QueryCellsRequest,
     QueryPicklistRequest,
     QueryTuplesRequest,
     TupleFieldSpec,
     TupleFilter,
+    TupleItem,
+    TuplesResponse,
 )
 
 
@@ -364,3 +370,39 @@ class TestPagingModels:
     def test_paging_response(self) -> None:
         pr = PagingResponse(limit=10, offset=5, returned=3)
         assert pr.returned == 3
+
+
+class TestResponseModels:
+    def test_meta_response(self) -> None:
+        meta = MetaResponse(execution_ms=12.5, cache_status="miss", request_id="req-1")
+        assert meta.cache_status == "miss"
+        assert meta.request_id == "req-1"
+
+    def test_tuples_response_accepts_named_items(self) -> None:
+        response = TuplesResponse(
+            total_count=2,
+            items=[TupleItem(symbol="AAPL"), TupleItem(symbol="GOOG")],
+            paging=PagingResponse(limit=10, offset=0, returned=2),
+            meta=MetaResponse(execution_ms=1.2, cache_status="hit", request_id="req-2"),
+        )
+        assert response.items[0].model_dump()["symbol"] == "AAPL"
+
+    def test_members_response_uses_items_with_counts(self) -> None:
+        response = PicklistResponse(
+            field="symbol",
+            total_count=2,
+            items=[MemberItem(value="AAPL", count=2)],
+            paging=PagingResponse(limit=10, offset=0, returned=1),
+            meta=MetaResponse(execution_ms=1.1, cache_status="miss", request_id="req-3"),
+        )
+        assert response.items[0].count == 2
+
+    def test_cells_response_uses_shared_meta_model(self) -> None:
+        response = CellsResponse(
+            rows=[{"symbol": "AAPL"}],
+            columns=[{}],
+            cells=[{"row": 0, "col": 0, "sum_volume": 1500}],
+            window={"rows": {"offset": 0, "limit": 1, "total": 1}, "columns": {"offset": 0, "limit": 1, "total": 1}},
+            meta=MetaResponse(execution_ms=2.0, cache_status="disabled", request_id=None),
+        )
+        assert response.meta.cache_status == "disabled"

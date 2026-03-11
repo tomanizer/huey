@@ -378,4 +378,4 @@ class TestHappyPathUnchanged:
     def test_query_members_success(self, client: TestClient) -> None:
         r = client.post(_query_path("members"), json=_query_body("members"))
         assert r.status_code == 200
-        assert "values" in r.json()
+        assert "items" in r.json()

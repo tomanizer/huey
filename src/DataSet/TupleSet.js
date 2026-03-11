@@ -468,7 +468,9 @@ export class TupleSet extends DataSetComponent {
   #remoteResponseToResultSet(apiResponse, axisItems, includeCountAll){
     const items = apiResponse.items || [];
     const totalCount = apiResponse.total_count !== null ? apiResponse.total_count : items.length;
-    const hasGroupingId = items.some((item) => { return item.grouping_id !== null; });
+    const hasGroupingId = items.some((item) => {
+      return item && Object.prototype.hasOwnProperty.call(item, 'grouping_id') && item.grouping_id !== null;
+    });
     const fields = [];
     if (hasGroupingId) fields.push({ name: TupleSet.groupingIdAlias });
     axisItems.forEach((item) => {
@@ -484,9 +486,8 @@ export class TupleSet extends DataSetComponent {
         const item = items[i];
         if (!item) return row;
         if (hasGroupingId) row[TupleSet.groupingIdAlias] = item.grouping_id !== null ? item.grouping_id : 0;
-        const vals = item.values || [];
         for (let j = 0; j < fieldNames.length; j++) {
-          row[fieldNames[j]] = vals[j];
+          row[fieldNames[j]] = item[fieldNames[j]];
         }
         if (includeCountAll) {
           row['__huey_count'] = i === 0 ? totalCount : (numRows > 0 ? totalCount : 0);

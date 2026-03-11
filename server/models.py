@@ -195,6 +195,14 @@ class PagingResponse(BaseModel):
     returned: int
 
 
+class MetaResponse(BaseModel):
+    """Common query execution metadata returned by v1 query endpoints."""
+
+    execution_ms: float
+    cache_status: str
+    request_id: str | None = None
+
+
 # --- Axes models ---
 class AxisField(BaseModel):
     """A dimension field referenced in a cells or export query axis."""
@@ -330,7 +338,8 @@ class ExportSubmitRequest(BaseModel):
 class TupleItem(BaseModel):
     """Single tuple row returned by the v1 tuples endpoint."""
 
-    values: list[Any]
+    model_config = ConfigDict(extra="allow")
+
     grouping_id: int | None = None  # reserved: tech spec grouping sets
 
 
@@ -340,6 +349,7 @@ class TuplesResponse(BaseModel):
     total_count: int
     items: list[TupleItem]
     paging: PagingResponse
+    meta: MetaResponse
 
 
 class CellsResponse(BaseModel):
@@ -349,15 +359,24 @@ class CellsResponse(BaseModel):
     columns: list[dict[str, Any]]
     cells: list[dict[str, Any]]
     window: dict[str, Any]
-    meta: dict[str, Any]
+    meta: MetaResponse
+
+
+class MemberItem(BaseModel):
+    """Single member row returned by the v1 members endpoint."""
+
+    value: Any
+    count: int
 
 
 class PicklistResponse(BaseModel):
-    """Response envelope for the v1 picklist endpoint."""
+    """Response envelope for the v1 members endpoint."""
 
+    field: str
     total_count: int
-    values: list[dict[str, str]]
+    items: list[MemberItem]
     paging: PagingResponse
+    meta: MetaResponse
 
 
 class ExportLinks(BaseModel):

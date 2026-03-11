@@ -260,8 +260,13 @@ Success `200` example:
 ```json
 {
   "total_count": 2,
-  "items": [{"values": ["AAPL"]}, {"values": ["GOOG"]}],
-  "paging": {"limit": 10, "offset": 0, "returned": 2}
+  "items": [{"symbol": "AAPL"}, {"symbol": "GOOG"}],
+  "paging": {"limit": 10, "offset": 0, "returned": 2},
+  "meta": {
+    "execution_ms": 4.1,
+    "cache_status": "miss",
+    "request_id": "srv-tuples123"
+  }
 }
 ```
 
@@ -374,9 +379,15 @@ Success `200` example:
 
 ```json
 {
+  "field": "symbol",
   "total_count": 2,
-  "values": [{"value": "AAPL", "label": "AAPL"}, {"value": "AMZN", "label": "AMZN"}],
-  "paging": {"limit": 10, "offset": 0, "returned": 2}
+  "items": [{"value": "AAPL", "count": 2}, {"value": "AMZN", "count": 1}],
+  "paging": {"limit": 10, "offset": 0, "returned": 2},
+  "meta": {
+    "execution_ms": 3.8,
+    "cache_status": "hit",
+    "request_id": "srv-members123"
+  }
 }
 ```
 

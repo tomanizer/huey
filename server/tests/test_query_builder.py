@@ -270,11 +270,11 @@ class TestBuildCellsSql:
 
 
 class TestBuildPicklistSql:
-    def test_basic_distinct(self) -> None:
+    def test_basic_distinct_with_counts(self) -> None:
         query = PicklistQueryBody(field="symbol", paging=PagingSpec(limit=50, offset=0))
         sql, params = build_picklist_sql("trades_v1", query, DR_SINGLE, SCHEMA_FIELDS)
-        assert "DISTINCT" in sql
         assert '"symbol"' in sql
+        assert "COUNT(*) AS value_count" in sql
         assert "LIMIT 50" in sql
         assert "COUNT(*) OVER()" in sql
 

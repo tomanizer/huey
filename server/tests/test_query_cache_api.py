@@ -87,7 +87,14 @@ def test_tuples_cache_hit(monkeypatch, client: TestClient) -> None:
     r2 = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
-    assert r1.json() == r2.json()
+    data1 = r1.json()
+    data2 = r2.json()
+    assert data1["items"] == data2["items"]
+    assert data1["paging"] == data2["paging"]
+    assert data1["total_count"] == data2["total_count"]
+    assert data1["meta"]["cache_status"] == "miss"
+    assert data2["meta"]["cache_status"] == "hit"
+    assert data1["meta"]["request_id"] != data2["meta"]["request_id"]
     assert call_count["n"] == 1
 
 
@@ -107,7 +114,15 @@ def test_picklist_cache_hit(monkeypatch, client: TestClient) -> None:
     r2 = client.post("/api/v1/datasets/trades_v1/query/members", json=body)
     assert r1.status_code == 200
     assert r2.status_code == 200
-    assert r1.json() == r2.json()
+    data1 = r1.json()
+    data2 = r2.json()
+    assert data1["field"] == data2["field"]
+    assert data1["items"] == data2["items"]
+    assert data1["paging"] == data2["paging"]
+    assert data1["total_count"] == data2["total_count"]
+    assert data1["meta"]["cache_status"] == "miss"
+    assert data2["meta"]["cache_status"] == "hit"
+    assert data1["meta"]["request_id"] != data2["meta"]["request_id"]
     assert call_count["n"] == 1
 
 

@@ -1250,15 +1250,18 @@ export class FilterDialog {
         const apiResponse = await connection.fetchPicklist(dateRange, query);
         console.timeEnd(timeMessage);
         const hasTotalCount = apiResponse.total_count !== null && apiResponse.total_count !== undefined;
-        const totalCount = hasTotalCount ? apiResponse.total_count : (apiResponse.values || []).length;
-        const values = apiResponse.values || [];
+        const values = apiResponse.items || [];
+        const totalCount = hasTotalCount ? apiResponse.total_count : values.length;
         const fields = (offset === 0 ? [{ name: FilterDialog.#numRowsColumnName }] : []).concat([{ name: 'value', type: { typeId: 0 } }, { name: 'label', type: { typeId: 0 } }]);
         const resultSet = {
           numRows: values.length,
           schema: { fields: fields },
           get: function(i) {
             const v = values[i];
-            const row = { value: v ? v.value : null, label: v ? (v.label !== null ? v.label : v.value) : null };
+            const row = {
+              value: v ? v.value : null,
+              label: v && v.value !== null && v.value !== undefined ? String(v.value) : null
+            };
             if (offset === 0 && i === 0) row[FilterDialog.#numRowsColumnName] = totalCount;
             return row;
           }

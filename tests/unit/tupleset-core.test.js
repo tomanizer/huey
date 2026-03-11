@@ -31,7 +31,11 @@ function makeRemoteDatasource(allValues) {
       const paging = query.paging || {};
       const limit = paging.limit || allValues.length;
       const offset = paging.offset || 0;
-      const items = allValues.slice(offset, offset + limit).map((value) => ({ values: [value] }));
+      const items = allValues.slice(offset, offset + limit).map((value) => ({
+        city: value,
+        letter: value,
+        hugeint_field: value,
+      }));
       return { items, total_count: allValues.length };
     },
     getState() { return 'open'; },
@@ -165,7 +169,7 @@ describe('TupleSet pagination', () => {
         const paging = query.paging || {};
         const limit = paging.limit || allValues.length;
         const offset = paging.offset || 0;
-        const items = allValues.slice(offset, offset + limit).map((value) => ({ values: [value] }));
+        const items = allValues.slice(offset, offset + limit).map((value) => ({ city: value }));
         return { items, total_count: allValues.length };
       },
       getState() { return 'open'; },
