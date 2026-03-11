@@ -79,8 +79,6 @@ def test_query_tuples_extended_filter_operators(
         "filters": [{"field": "symbol" if "null" in operator else "volume", "operator": operator, "values": values}],
         "paging": {"limit": 10, "offset": 0},
     }
-    if operator in ("is_null", "not_null"):
-        body["filters"][0]["field"] = "symbol"
     r = client.post("/api/v1/datasets/trades_v1/query/tuples", json=body)
     assert r.status_code == 200
     symbols = {item["symbol"] for item in r.json()["items"]}

@@ -151,6 +151,20 @@ class TestTuplesValidation:
         r = client.post(_post_path("tuples"), json=body)
         assert r.status_code == 200
 
+    def test_unknown_filter_operator_returns_filter_invalid(self, client: TestClient) -> None:
+        body = _valid_body_for("tuples")
+        body["filters"] = [{"field": "volume", "operator": "NOPE", "values": [1500]}]
+        r = client.post(_post_path("tuples"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "FILTER_INVALID"
+
+    def test_missing_filter_operator_returns_filter_invalid(self, client: TestClient) -> None:
+        body = _valid_body_for("tuples")
+        body["filters"] = [{"field": "volume", "values": [1500]}]
+        r = client.post(_post_path("tuples"), json=body)
+        assert r.status_code == 422
+        assert r.json()["code"] == "FILTER_INVALID"
+
 
 class TestCellsValidation:
     def test_missing_axes_rejected(self, client: TestClient) -> None:

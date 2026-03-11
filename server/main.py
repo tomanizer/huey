@@ -175,7 +175,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
             "msg": err.get("msg", ""),
             "type": err.get("type", ""),
         }
-        if entry["type"] == "filter_invalid":
+        if entry["type"] == "filter_invalid" or "filters" in entry["loc"]:
             has_filter_error = True
         if "ctx" in err:
             entry["ctx"] = jsonable_encoder(err["ctx"])
