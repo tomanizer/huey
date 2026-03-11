@@ -36,7 +36,10 @@ describe('DataSet cache limits', () => {
         const paging = query.paging || {};
         const limit = paging.limit || allValues.length;
         const offset = paging.offset || 0;
-        const items = allValues.slice(offset, offset + limit).map((value) => ({ values: [value] }));
+        const items = allValues.slice(offset, offset + limit).map((value) => ({
+          city: value,
+          hugeint_field: value,
+        }));
         return { items, total_count: allValues.length };
       },
       getState() {
@@ -86,7 +89,10 @@ describe('DataSet cache limits', () => {
         const paging = query.paging || {};
         const limit = paging.limit || 1;
         const offset = paging.offset || 0;
-        const items = Array.from({ length: limit }, (_value, i) => ({ values: [BigInt(offset + i + 1)] }));
+        const items = Array.from({ length: limit }, (_value, i) => ({
+          city: BigInt(offset + i + 1),
+          hugeint_field: BigInt(offset + i + 1),
+        }));
         return { items, total_count: 2 };
       },
       getState() {
@@ -129,7 +135,10 @@ describe('DataSet cache limits', () => {
         const paging = query.paging || {};
         const limit = paging.limit || allValues.length;
         const offset = paging.offset || 0;
-        const items = allValues.slice(offset, offset + limit).map((value) => ({ values: [value] }));
+        const items = allValues.slice(offset, offset + limit).map((value) => ({
+          city: value,
+          hugeint_field: value,
+        }));
         return { items, total_count: allValues.length };
       },
       getState() {

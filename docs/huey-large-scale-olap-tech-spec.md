@@ -140,13 +140,18 @@ Fetch **row or column headers** (tuples) for one axis.
 {
   "total_count": 12345,
   "items": [
-    { "values": ["AAPL"], "grouping_id": 0 },
-    { "values": ["GOOG"], "grouping_id": 0 }
+    { "symbol": "AAPL", "grouping_id": 0 },
+    { "symbol": "GOOG", "grouping_id": 0 }
   ],
   "paging": {
     "limit": 200,
     "offset": 0,
     "returned": 200
+  },
+  "meta": {
+    "execution_ms": 12,
+    "cache_status": "miss",
+    "request_id": "srv-a1b2c3d4"
   }
 }
 ```
@@ -234,15 +239,21 @@ Fetch distinct values for a field to populate the filter UI.
 
 ```json
 {
+  "field": "symbol",
   "total_count": 4321,
-  "values": [
-    { "value": "AAPL", "label": "AAPL" },
-    { "value": "AAL",  "label": "AAL"  }
+  "items": [
+    { "value": "AAPL", "count": 1200 },
+    { "value": "AAL",  "count": 540 }
   ],
   "paging": {
     "limit": 100,
     "offset": 0,
     "returned": 100
+  },
+  "meta": {
+    "execution_ms": 4,
+    "cache_status": "hit",
+    "request_id": "srv-c3d4e5f6"
   }
 }
 ```
@@ -471,4 +482,3 @@ Huey should keep its current WASM-based datasource for local/small file usage, s
   - S3 throttling and transient failures.
   - Engine restarts while queries are in flight.
   - QueryService rolling upgrades and failure scenarios.
-

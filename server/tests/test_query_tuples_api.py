@@ -18,7 +18,8 @@ def test_query_tuples_returns_results(client: TestClient) -> None:
     assert data["total_count"] > 0
     assert len(data["items"]) > 0
     assert data["paging"]["returned"] == len(data["items"])
-    symbols = [item["values"][0] for item in data["items"]]
+    assert "meta" in data
+    symbols = [item["symbol"] for item in data["items"]]
     assert "AAPL" in symbols
 
 
@@ -34,7 +35,7 @@ def test_query_tuples_with_include_filter(client: TestClient) -> None:
     assert r.status_code == 200
     data = r.json()
     assert data["total_count"] == 2
-    symbols = {item["values"][0] for item in data["items"]}
+    symbols = {item["symbol"] for item in data["items"]}
     assert symbols == {"AAPL", "GOOG"}
 
 
@@ -49,7 +50,7 @@ def test_query_tuples_with_exclude_filter(client: TestClient) -> None:
     r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
     data = r.json()
-    symbols = {item["values"][0] for item in data["items"]}
+    symbols = {item["symbol"] for item in data["items"]}
     assert "AAPL" not in symbols
     assert data["total_count"] == 4
 
@@ -106,8 +107,8 @@ def test_query_tuples_paging_offset(client: TestClient) -> None:
     body_page2 = {**body_page1, "paging": {"limit": 2, "offset": 2}}
     r1 = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body_page1)
     r2 = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body_page2)
-    page1_symbols = {item["values"][0] for item in r1.json()["items"]}
-    page2_symbols = {item["values"][0] for item in r2.json()["items"]}
+    page1_symbols = {item["symbol"] for item in r1.json()["items"]}
+    page2_symbols = {item["symbol"] for item in r2.json()["items"]}
     assert page1_symbols.isdisjoint(page2_symbols)
 
 
@@ -154,7 +155,7 @@ def test_query_tuples_sort_desc(client: TestClient) -> None:
     }
     r = client.post(f"/api/v1/datasets/{dataset_id}/query/tuples", json=body)
     assert r.status_code == 200
-    symbols = [item["values"][0] for item in r.json()["items"]]
+    symbols = [item["symbol"] for item in r.json()["items"]]
     assert symbols == sorted(symbols, reverse=True)
 
 

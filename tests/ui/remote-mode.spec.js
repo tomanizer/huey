@@ -37,24 +37,41 @@ test.describe('Remote mode UI', () => {
     const tuplesResponse = {
       total_count: 3,
       items: [
-        { values: ['AAPL'], grouping_id: null },
-        { values: ['GOOG'], grouping_id: null },
-        { values: ['MSFT'], grouping_id: null },
+        { symbol: 'AAPL', grouping_id: null },
+        { symbol: 'GOOG', grouping_id: null },
+        { symbol: 'MSFT', grouping_id: null },
       ],
       paging: { limit: 100, offset: 0, returned: 3 },
+      meta: { execution_ms: 2, cache_status: 'miss', request_id: 'test-tuples' },
     };
     const cellsResponse = {
+      rows: [{ symbol: 'AAPL' }, { symbol: 'GOOG' }, { symbol: 'MSFT' }],
+      columns: [{}],
       cells: [
-        { row_index: 0, column_index: 0, values: { sum_volume_0: 1500 } },
-        { row_index: 1, column_index: 0, values: { sum_volume_0: 2200 } },
-        { row_index: 2, column_index: 0, values: { sum_volume_0: 1800 } },
+        { row: 0, col: 0, sum_volume_0: 1500 },
+        { row: 1, col: 0, sum_volume_0: 2200 },
+        { row: 2, col: 0, sum_volume_0: 1800 },
       ],
+      window: {
+        rows: { offset: 0, limit: 100, total: 3 },
+        columns: { offset: 0, limit: 1, total: 1 },
+      },
+      meta: { execution_ms: 3, cache_status: 'miss', request_id: 'test-cells' },
     };
 
     await page.route('**/api/v1/datasets/*/schema', (route) => route.fulfill({ status: 200, body: JSON.stringify(schemaResponse) }));
     await page.route('**/api/v1/datasets/*/query/tuples', (route) => route.fulfill({ status: 200, body: JSON.stringify(tuplesResponse) }));
     await page.route('**/api/v1/datasets/*/query/cells', (route) => route.fulfill({ status: 200, body: JSON.stringify(cellsResponse) }));
-    await page.route('**/api/v1/datasets/*/query/members', (route) => route.fulfill({ status: 200, body: JSON.stringify({ total_count: 3, values: [{ value: 'AAPL', label: 'AAPL' }], paging: { limit: 100, offset: 0, returned: 1 } }) }));
+    await page.route('**/api/v1/datasets/*/query/members', (route) => route.fulfill({
+      status: 200,
+      body: JSON.stringify({
+        field: 'symbol',
+        total_count: 3,
+        items: [{ value: 'AAPL', count: 1 }],
+        paging: { limit: 100, offset: 0, returned: 1 },
+        meta: { execution_ms: 1, cache_status: 'miss', request_id: 'test-members' },
+      }),
+    }));
 
     await waitForAppReady(page);
     await expect(page.locator('#addRemoteDatasource')).toBeVisible({ timeout: 10000 });

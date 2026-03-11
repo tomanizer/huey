@@ -21,6 +21,7 @@ from server.errors import (
 from server.models import (
     CellsQueryBody,
     CellsResponse,
+    MetaResponse,
     PagingResponse,
     PagingSpec,
     PicklistQueryBody,
@@ -68,6 +69,15 @@ def _time_filter_metadata(dataset_id: str) -> tuple[bool, str | None]:
     if source.time_filter is None:
         return False, None
     return True, source.time_filter.column
+
+
+def _create_meta_response(result: dict[str, object], cache_status: str) -> MetaResponse:
+    """Build per-response query metadata outside cached payloads."""
+    return MetaResponse(
+        execution_ms=round(float(result.get("duration_ms", 0.0)), 2),
+        cache_status=cache_status,
+        request_id=get_request_id() or None,
+    )
 
 
 def _ensure_date_range_supported(dataset_id: str, date_range) -> None:
@@ -221,9 +231,13 @@ async def post_query_tuples(
             )
 
         rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
+        field_names = [field.field for field in (query.fields or [])]
         if rows:
             total_count = int(rows[0][-1])
-            items = [{"values": list(row[:-1])} for row in rows]
+            items = [
+                {field_name: row[index] for index, field_name in enumerate(field_names)}
+                for row in rows
+            ]
         else:
             total_count = 0
             items = []
@@ -298,6 +312,7 @@ async def post_query_tuples(
         total_count=resp_body["total_count"],
         items=[TupleItem(**item) for item in resp_body["items"]],
         paging=PagingResponse(**resp_body["paging"]),
+        meta=_create_meta_response(result, cache_status),
     )
 
 
@@ -543,11 +558,7 @@ async def post_query_cells(
     )
 
     response_payload = dict(result["response"])
-    response_payload["meta"] = {
-        "execution_ms": round(result.get("duration_ms", 0.0), 2),
-        "cache_status": cache_status,
-        "request_id": get_request_id() or None,
-    }
+    response_payload["meta"] = _create_meta_response(result, cache_status)
     return CellsResponse(**response_payload)
 
 
@@ -597,10 +608,10 @@ async def post_query_members(
         rows, queue_wait_ms, execution_ms = await _execute_with_budget(request, _run_query, cancel_fn=cancel_handle.cancel)
         if rows:
             total_count = int(rows[0][-1])
-            values = [{"value": str(row[0]), "label": str(row[0])} for row in rows]
+            items = [{"value": row[0], "count": int(row[1])} for row in rows]
         else:
             total_count = 0
-            values = []
+            items = []
 
         if total_count == 0 and paging.offset > 0:
             count_sql, count_params = build_picklist_count_sql(dataset_id, query, body.date_range, schema_fields)
@@ -617,12 +628,13 @@ async def post_query_members(
         duration_ms = (time.perf_counter() - start) * 1000
         return {
             "response": {
+                "field": query.field,
                 "total_count": total_count,
-                "values": values,
-                "paging": {"limit": paging.limit, "offset": paging.offset, "returned": len(values)},
+                "items": items,
+                "paging": {"limit": paging.limit, "offset": paging.offset, "returned": len(items)},
             },
             "duration_ms": duration_ms,
-            "row_count": len(values),
+            "row_count": len(items),
             "queue_wait_ms": queue_wait_ms,
             "execution_ms": execution_ms,
         }
@@ -671,7 +683,9 @@ async def post_query_members(
     )
 
     return PicklistResponse(
+        field=resp_body["field"],
         total_count=resp_body["total_count"],
-        values=resp_body["values"],
+        items=resp_body["items"],
         paging=PagingResponse(**resp_body["paging"]),
+        meta=_create_meta_response(result, cache_status),
     )
