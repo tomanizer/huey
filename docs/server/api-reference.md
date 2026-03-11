@@ -388,26 +388,28 @@ Error statuses:
 - `401` auth failure when auth enabled
 - `429` if rate limiting enabled and exceeded
 
-## `POST /api/v1/exports`
+## `POST /api/v1/datasets/{dataset_id}/exports`
 
 Submits async export job and returns job id immediately.
 
 Authentication: conditional API key.
 
-Request body fields:
+Path parameters:
 
 - `dataset_id` (string, required)
+
+Request body fields:
+
 - `date_range` (required)
 - `query.axes` (optional; rows/columns/measures)
 - `query.filters` (optional)
 - `query.max_rows` (`1..100000`, default `10000`)
-- `query.format` (`parquet` or `csv`, default `parquet`)
+- `query.format` (`parquet`, `csv`, `csv_with_bom`, `ndjson`, `sqlite`, or `duckdb`; default `parquet`)
 
 Request example:
 
 ```json
 {
-  "dataset_id": "trades_v1",
   "date_range": {"type": "single", "date": "2026-03-01"},
   "query": {
     "axes": {
@@ -420,10 +422,18 @@ Request example:
 }
 ```
 
-Success `200` example:
+Success `202` example:
 
 ```json
-{"export_id": "exp-1234abcd", "status": "pending"}
+{
+  "export_id": "exp-1234abcd",
+  "dataset_id": "trades_v1",
+  "status": "pending",
+  "links": {
+    "self": "/api/v1/exports/exp-1234abcd",
+    "file": "/api/v1/exports/exp-1234abcd/file"
+  }
+}
 ```
 
 Error statuses:
@@ -450,19 +460,65 @@ Success `200` example:
 ```json
 {
   "export_id": "exp-1234abcd",
+  "dataset_id": "trades_v1",
   "status": "complete",
-  "download_url": "/api/v1/exports/exp-1234abcd/download"
+  "format": "parquet",
+  "created_at": "2026-03-10T01:00:00Z",
+  "expires_at": "2026-03-10T02:00:00Z",
+  "download_url": "/api/v1/exports/exp-1234abcd/file",
+  "size_bytes": 2183640,
+  "completed_at": "2026-03-10T01:00:12Z",
+  "links": {
+    "self": "/api/v1/exports/exp-1234abcd",
+    "file": "/api/v1/exports/exp-1234abcd/file"
+  }
 }
 ```
 
-Other statuses include `pending`, `processing`, `failed`, `expired`.
+Other statuses include `pending`, `processing`, `failed`, `expired`, and `cancelled`.
 
 Error statuses:
 
 - `404` `EXPORT_NOT_FOUND`
 - `401` auth failure when auth enabled
 
-## `GET /api/v1/exports/{export_id}/download`
+## `GET /api/v1/exports`
+
+Lists export jobs newest-first.
+
+Authentication: conditional API key.
+
+Query parameters:
+
+- `limit` (default `20`, max `100`)
+- `cursor` (opaque pagination cursor)
+- `status` (optional job-state filter)
+
+Success `200` example:
+
+```json
+{
+  "items": [
+    {
+      "export_id": "exp-1234abcd",
+      "dataset_id": "trades_v1",
+      "status": "complete",
+      "format": "parquet",
+      "row_count": 15420,
+      "size_bytes": 2183640,
+      "created_at": "2026-03-10T01:00:00Z",
+      "expires_at": "2026-03-10T02:00:00Z",
+      "links": {
+        "self": "/api/v1/exports/exp-1234abcd",
+        "file": "/api/v1/exports/exp-1234abcd/file"
+      }
+    }
+  ],
+  "cursor": null
+}
+```
+
+## `GET /api/v1/exports/{export_id}/file`
 
 Downloads completed export artifact.
 
@@ -474,14 +530,31 @@ Path parameters:
 
 Success `200`:
 
+- Includes `Content-Length`, `ETag`, and `Last-Modified` response headers
 - For parquet export: binary file, `Content-Disposition: attachment; filename="<id>.parquet"`
-- For csv export: text/csv, `Content-Disposition: attachment; filename="<id>.csv"`
+- For csv / csv_with_bom export: `text/csv`, `Content-Disposition: attachment; filename="<id>.csv"`
+- For ndjson export: `application/x-ndjson`, `Content-Disposition: attachment; filename="<id>.ndjson"`
 
 Error statuses:
 
 - `404` `EXPORT_NOT_FOUND`
 - `409` `EXPORT_NOT_READY`
 - `404` `EXPORT_FILE_NOT_FOUND`
+- `401` auth failure when auth enabled
+
+## `HEAD /api/v1/exports/{export_id}/file`
+
+Returns the same file metadata headers as `GET /api/v1/exports/{export_id}/file` without a response body.
+
+## `DELETE /api/v1/exports/{export_id}`
+
+Cancels active export jobs or deletes terminal jobs and their files.
+
+Success `204` with no response body.
+
+Error statuses:
+
+- `404` `EXPORT_NOT_FOUND`
 - `401` auth failure when auth enabled
 
 ## Pagination, Filtering, and Sorting Summary

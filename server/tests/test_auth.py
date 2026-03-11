@@ -21,8 +21,7 @@ _PROTECTED_ENDPOINTS = [
         "date_range": {"type": "single", "date": "2026-03-01"},
         "field": "symbol",
     }, {}),
-    ("POST", "/api/v1/exports", {
-        "dataset_id": "trades_v1",
+    ("POST", "/api/v1/datasets/trades_v1/exports", {
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {
             "export_type": "pivot_results",
@@ -33,7 +32,7 @@ _PROTECTED_ENDPOINTS = [
         },
     }, {}),
     ("GET", "/api/v1/exports/nonexistent", None, {}),
-    ("GET", "/api/v1/exports/nonexistent/download", None, {}),
+    ("GET", "/api/v1/exports/nonexistent/file", None, {}),
 ]
 
 

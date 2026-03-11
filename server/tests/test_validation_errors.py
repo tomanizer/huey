@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from server.config import get_settings
 
 QUERY_ENDPOINTS = ["tuples", "cells", "members"]
-EXPORTS_ROOT = "/api/v1/exports"
+EXPORTS_ROOT = "/api/v1/datasets/trades_v1/exports"
 
 
 def _post_path(endpoint: str, dataset_id: str = "trades_v1") -> str:
@@ -42,7 +42,6 @@ def _valid_body_for(endpoint: str) -> dict:
             "date_range": {"type": "single", "date": "2026-03-01"},
         }
     return {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {"format": "csv"},
     }
@@ -168,7 +167,6 @@ class TestExportValidation:
         r = client.post(
             EXPORTS_ROOT,
             json={
-                "dataset_id": "trades_v1",
                 "date_range": {"type": "single", "date": "2026-03-01"},
                 "query": {"format": "xlsx"},
             },
@@ -179,7 +177,6 @@ class TestExportValidation:
         r = client.post(
             EXPORTS_ROOT,
             json={
-                "dataset_id": "trades_v1",
                 "date_range": {"type": "single", "date": "2026-03-01"},
                 "query": {"max_rows": 100001},
             },

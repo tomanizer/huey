@@ -74,7 +74,7 @@
     {
       "name": "export_csv_symbol_volume",
       "method": "POST",
-      "path": "/api/v1/exports",
+      "path": "/api/v1/datasets/trades_v1/exports",
       "body": {
         "query": {
           "export_type": "pivot_results",

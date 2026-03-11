@@ -18,10 +18,10 @@ class _BenchmarkHandler(BaseHTTPRequestHandler):
             "/api/v1/datasets/trades_v1/query/tuples",
             "/api/v1/datasets/trades_v1/query/cells",
             "/api/v1/datasets/trades_v1/query/members",
-            "/api/v1/exports",
+            "/api/v1/datasets/trades_v1/exports",
         }:
             payload = b'{"ok":true}'
-            self.send_response(200)
+            self.send_response(202 if self.path.endswith("/exports") else 200)
             self.send_header("Content-Type", "application/json")
             self.send_header("x-bytes-scanned", "123")
             self.send_header("x-spill-bytes", "7")

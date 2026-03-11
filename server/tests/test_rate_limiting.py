@@ -33,7 +33,6 @@ def _query_body() -> dict:
 
 def _export_body() -> dict:
     return {
-        "dataset_id": "trades_v1",
         "date_range": {"type": "single", "date": "2026-03-01"},
         "query": {
             "export_type": "pivot_results",
@@ -78,18 +77,18 @@ def test_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None
 def test_export_rate_limit_exceeded(rate_limited_client: TestClient) -> None:
     """POST /exports is rate-limited; exceeding the limit returns 429."""
     # RATE_LIMIT_EXPORT = "1/minute", so two requests should exceed it
-    first = rate_limited_client.post("/api/v1/exports", json=_export_body())
+    first = rate_limited_client.post("/api/v1/datasets/trades_v1/exports", json=_export_body())
     assert first.headers["X-API-Version"] == "1"
     assert "X-RateLimit-Limit" in first.headers
 
-    response = rate_limited_client.post("/api/v1/exports", json=_export_body())
+    response = rate_limited_client.post("/api/v1/datasets/trades_v1/exports", json=_export_body())
     assert response.status_code == 429
 
 
 def test_export_rate_limit_returns_retry_after(rate_limited_client: TestClient) -> None:
     """Exceeded export rate limit includes a Retry-After header."""
-    rate_limited_client.post("/api/v1/exports", json=_export_body())
-    response = rate_limited_client.post("/api/v1/exports", json=_export_body())
+    rate_limited_client.post("/api/v1/datasets/trades_v1/exports", json=_export_body())
+    response = rate_limited_client.post("/api/v1/datasets/trades_v1/exports", json=_export_body())
     assert response.status_code == 429
     assert response.headers["X-API-Version"] == "1"
     retry_after = response.headers.get("Retry-After")
@@ -113,8 +112,8 @@ def test_rate_limiting_disabled(monkeypatch) -> None:
             assert r.status_code == 200
         # Export: two calls exceed the "1/minute" limit but limiting is off
         for _ in range(2):
-            r = client.post("/api/v1/exports", json=_export_body())
-            assert r.status_code == 200
+            r = client.post("/api/v1/datasets/trades_v1/exports", json=_export_body())
+            assert r.status_code == 202
     finally:
         get_settings.cache_clear()
         limiter.enabled = get_settings().rate_limit_enabled

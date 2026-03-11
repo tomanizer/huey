@@ -19,10 +19,11 @@ def store() -> ExportJobStore:
 
 class TestCreate:
     def test_creates_pending_job(self, store: ExportJobStore) -> None:
-        job = store.create("exp-1", "ds1")
+        job = store.create("exp-1", "ds1", "csv")
         assert job.id == "exp-1"
         assert job.status == "pending"
         assert job.dataset_id == "ds1"
+        assert job.format == "csv"
         assert job.created_at > 0
         assert job.file_path is None
 
@@ -55,13 +56,16 @@ class TestUpdateStatus:
         job = store.update_status(
             "exp-1", "complete",
             file_path="/tmp/exp-1.csv",
-            download_url="/api/v1/exports/exp-1/download",
+            download_url="/api/v1/exports/exp-1/file",
             row_count=42,
+            size_bytes=128,
         )
         assert job.status == "complete"
         assert job.file_path == "/tmp/exp-1.csv"
-        assert job.download_url == "/api/v1/exports/exp-1/download"
+        assert job.download_url == "/api/v1/exports/exp-1/file"
         assert job.row_count == 42
+        assert job.size_bytes == 128
+        assert job.completed_at is not None
 
     def test_transition_to_failed_with_error(self, store: ExportJobStore) -> None:
         store.create("exp-1", "ds1")
@@ -108,9 +112,10 @@ class TestCountActive:
 
 class TestAtomicCreateAndClaim:
     def test_create_if_capacity_creates_when_slot_available(self, store: ExportJobStore) -> None:
-        job = store.create_if_capacity("exp-1", "ds1", max_concurrent=1)
+        job = store.create_if_capacity("exp-1", "ds1", fmt="ndjson", max_concurrent=1)
         assert job is not None
         assert job.status == "pending"
+        assert job.format == "ndjson"
 
     def test_create_if_capacity_returns_none_when_full(self, store: ExportJobStore) -> None:
         store.create("exp-1", "ds1")
@@ -198,6 +203,34 @@ class TestDelete:
 
     def test_missing_returns_false(self, store: ExportJobStore) -> None:
         assert store.delete("nonexistent") is False
+
+
+class TestList:
+    def test_lists_newest_first(self, store: ExportJobStore) -> None:
+        store.create("exp-1", "ds1")
+        time.sleep(0.01)
+        store.create("exp-2", "ds1")
+
+        jobs = store.list(limit=10)
+        assert [job.id for job in jobs] == ["exp-2", "exp-1"]
+
+    def test_filters_by_status_and_cursor(self, store: ExportJobStore) -> None:
+        store.create("exp-1", "ds1")
+        store.update_status("exp-1", "processing")
+        store.update_status("exp-1", "complete", file_path="/tmp/f1.csv")
+        time.sleep(0.01)
+        store.create("exp-2", "ds1")
+        store.update_status("exp-2", "processing")
+        time.sleep(0.01)
+        store.create("exp-3", "ds1")
+        store.update_status("exp-3", "processing")
+        store.update_status("exp-3", "cancelled")
+
+        first_page = store.list(limit=1, status="processing")
+        assert [job.id for job in first_page] == ["exp-2"]
+
+        next_page = store.list(limit=10, before_created_at=first_page[0].created_at, before_id=first_page[0].id)
+        assert "exp-1" in [job.id for job in next_page]
 
 
 class TestPersistence:

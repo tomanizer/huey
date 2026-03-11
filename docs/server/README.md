@@ -16,7 +16,7 @@ QueryService is a Python FastAPI service that runs analytical SQL against DuckDB
 - Dataset discovery (`/api/v1/datasets`, `/api/v1/datasets/{dataset_id}`)
 - Dataset schema discovery (`/api/v1/datasets/{dataset_id}/schema`)
 - Distinct tuples, picklists, and aggregated cells (`/api/v1/datasets/{dataset_id}/query/*`)
-- Async export jobs (`/api/v1/exports*`) with durable job state in SQLite
+- Async export jobs (submit via `/api/v1/datasets/{dataset_id}/exports`, then poll/list under `/api/v1/exports*`) with durable job state in SQLite
 - Health probes (`/health/*`)
 
 In the Huey architecture, this service is the backend execution layer behind the frontend query UI.
@@ -41,7 +41,7 @@ Typical workflows:
 1. Discover datasets with `GET /api/v1/datasets` and inspect metadata with `GET /api/v1/datasets/{dataset_id}`.
 2. Fetch the lightweight field list with `GET /api/v1/datasets/{dataset_id}/schema`.
 3. Build interactive queries with `POST /api/v1/datasets/{dataset_id}/query/tuples`, `POST /api/v1/datasets/{dataset_id}/query/cells`, `POST /api/v1/datasets/{dataset_id}/query/members`.
-4. Trigger async export with `POST /api/v1/exports`, poll with `GET /api/v1/exports/{export_id}`, then download.
+4. Trigger async export with `POST /api/v1/datasets/{dataset_id}/exports`, poll with `GET /api/v1/exports/{export_id}`, then download from `GET /api/v1/exports/{export_id}/file`.
 
 ## 3. Installation and Setup
 
@@ -131,7 +131,7 @@ PYTHONPATH=. ./.venv-server/bin/uvicorn server.main:app --host 0.0.0.0 --port 80
 
 ### Request conventions
 
-- Query/export requests use an envelope with `dataset_id`, `date_range`, and `query`
+- Query requests include the dataset in the URL path; export submission uses `POST /api/v1/datasets/{dataset_id}/exports` with a body containing `date_range` and `query`
 - `date_range` supports:
   - `{"type": "single", "date": "YYYY-MM-DD"}`
   - `{"type": "range", "start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}`
@@ -209,10 +209,9 @@ curl -X POST 'http://localhost:8000/api/v1/datasets/trades_v1/query/tuples' \
 Create export (default format is parquet):
 
 ```bash
-curl -X POST 'http://localhost:8000/api/v1/exports' \
+curl -X POST 'http://localhost:8000/api/v1/datasets/trades_v1/exports' \
   -H 'Content-Type: application/json' \
   -d '{
-    "dataset_id": "trades_v1",
     "date_range": {"type": "single", "date": "2026-03-01"},
     "query": {
       "axes": {
@@ -228,7 +227,7 @@ Poll + download:
 
 ```bash
 curl 'http://localhost:8000/api/v1/exports/<export_id>'
-curl -OJ 'http://localhost:8000/api/v1/exports/<export_id>/download'
+curl -OJ 'http://localhost:8000/api/v1/exports/<export_id>/file'
 ```
 
 ### Example environment profiles
