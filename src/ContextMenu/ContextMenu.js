@@ -81,9 +81,27 @@ export class ContextMenu {
         menuItem.setAttribute('aria-expanded', 'false');
         return;
       }
+      // Set position before showPopover so the element never paints at (0,0).
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      let left = itemBoundingRect.x + itemBoundingRect.width;
+      let top = itemBoundingRect.y;
+      popoverTargetDom.style.left = left + 'px';
+      popoverTargetDom.style.top = top + 'px';
       popoverTargetDom.showPopover();
-      popoverTargetDom.style.left = (itemBoundingRect.x + itemBoundingRect.width) + 'px';
-      popoverTargetDom.style.top = itemBoundingRect.y + 'px';
+      // Correct for viewport overflow now that we know the rendered size.
+      const subWidth = popoverTargetDom.clientWidth;
+      const subHeight = popoverTargetDom.clientHeight;
+      const correctionX = (left + subWidth) - viewportWidth;
+      if (correctionX > 0) {
+        left = Math.max(0, itemBoundingRect.x - subWidth);
+        popoverTargetDom.style.left = left + 'px';
+      }
+      const correctionY = (top + subHeight) - viewportHeight;
+      if (correctionY > 0) {
+        top = Math.max(0, top - correctionY);
+        popoverTargetDom.style.top = top + 'px';
+      }
       menuItem.setAttribute('aria-expanded', 'true');
     });
   }
@@ -211,9 +229,8 @@ export class ContextMenu {
 
   // show the popover at the coordinates of the initiating contextmenu event.
   #showPopover(event){
-    const body = document.body;
     const dom = this.getDom();
-        
+
     const targetElement = event.target instanceof HTMLElement ? event.target : undefined;
     this.#targetElement = targetElement;
     this.#focusOrigin = this.#targetElement;
@@ -223,30 +240,32 @@ export class ContextMenu {
 
     dom.showPopover();
 
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
     const width = dom.clientWidth;
-    let left = event.pageX;
+    let left = event.clientX;
     const right = left + width;
-    const correctionX = right - body.clientWidth;
+    const correctionX = right - viewportWidth;
     if (correctionX > 0){
       left -= correctionX;
       if (left < 0) {
         left = 0;
       }
     }
-    
+
     dom.style.left = left + 'px';
-    
+
     const height = dom.clientHeight;
-    let top = event.pageY;
+    let top = event.clientY;
     const bottom = top + height;
-    const correctionY = bottom - body.clientHeight;
+    const correctionY = bottom - viewportHeight;
     if (correctionY > 0){
       top -= correctionY;
       if (top < 0){
         top = 0;
       }
     }
-    dom.style.top = top  + 'px';
+    dom.style.top = top + 'px';
     const menuItems = this.#getMenuItems();
     if (menuItems.length && this.#focusFirstNestedMenuItem(menuItems[0])) {
       return;

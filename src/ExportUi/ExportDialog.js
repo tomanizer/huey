@@ -1,11 +1,12 @@
 import { byId } from '../util/dom/dom.js';
 import { settings } from '../SettingsDialog/SettingsDialog.js';
-import { QueryModel, queryModel } from '../QueryModel/QueryModel.js';
+import { QueryModel, QueryAxisItem, queryModel } from '../QueryModel/QueryModel.js';
 import { DataSourcesUi } from '../DataSource/DataSourcesUi.js';
 import { DuckDbDataSource } from '../DataSource/duckdb/DuckDbDataSource.js';
 import { showErrorDialog } from '../ErrorDialog/ErrorDialog.js';
 import { copyToClipboard } from '../util/clipboard/clipboard.js';
-import { ensureDuckDbExtensionLoadedAndInstalled, getCopyToStatement, getQuotedIdentifier, quoteStringLiteral, unQuote } from '../util/sql/SQLHelper.js';
+import { ensureDuckDbExtensionLoadedAndInstalled, getCopyToStatement, getComma, getQuotedIdentifier, quoteIdentifierWhenRequired, quoteStringLiteral, unQuote } from '../util/sql/SQLHelper.js';
+import { SqlQueryGenerator } from '../DataSet/SqlQueryGenerator.js';
 
 /** Format a DuckDB query result as CSV (browser fallback when COPY TO cannot write). */
 export function formatQueryResultAsCsv(result, options) {
@@ -230,7 +231,13 @@ export class ExportUi {
   }
   
   static getExportSqlForQueryModel(queryModel, exportSettings, exportType){
-    
+
+    const sqlOptions = {
+      keywordLettercase: exportSettings[exportType + 'KeywordLettercase'],
+      alwaysQuoteIdentifiers: exportSettings[exportType + 'AlwaysQuoteIdentifiers'],
+      commaStyle: exportSettings[exportType + 'CommaStyle']
+    };
+
     let sql, _structure;
     if (exportSettings.exportResultShapePivot){
       _structure = 'pivot';
@@ -241,12 +248,6 @@ export class ExportUi {
       _structure = 'table';
       sql = ExportUi.getSqlForTabularExport(queryModel, sqlOptions);
     }
-
-    const sqlOptions = {
-      keywordLettercase: exportSettings[exportType + 'KeywordLettercase'],
-      alwaysQuoteIdentifiers: exportSettings[exportType + 'AlwaysQuoteIdentifiers'],
-      commaStyle: exportSettings[exportType + 'CommaStyle']
-    };
     if (sqlOptions) {
       sql = [
         `/***********************************`,
@@ -262,7 +263,7 @@ export class ExportUi {
   }
 
   static async exportDataForQueryModel(queryModel, exportSettings, progressCallback){
-    const sql = ExportUi.getExportSqlForQueryModel(queryModel, exportSettings);
+    const sql = ExportUi.getExportSqlForQueryModel(queryModel, exportSettings, exportSettings.exportType);
     const datasource = queryModel.getDatasource();
     return ExportUi.exportData(datasource, sql, exportSettings, progressCallback);
   }
